@@ -1,0 +1,121 @@
+{
+  "version": "med_rule_v1",
+  "features": [
+    {
+      "name": "age",
+      "type": "continuous",
+      "immutable": true,
+      "actionable": false,
+      "default_mutable": false,
+      "global_min": 18,
+      "global_max": 100,
+      "cost_weight": 10.0,
+      "preferred_direction": "any",
+      "aliases": []
+    },
+    {
+      "name": "smoking_status",
+      "type": "ordinal",
+      "immutable": false,
+      "actionable": true,
+      "default_mutable": true,
+      "global_min": 0,
+      "global_max": 2,
+      "cost_weight": 2.0,
+      "preferred_direction": "decrease",
+      "aliases": []
+    },
+    {
+      "name": "is_cholesterol",
+      "type": "binary",
+      "immutable": false,
+      "actionable": true,
+      "default_mutable": true,
+      "global_min": 0,
+      "global_max": 1,
+      "cost_weight": 2.0,
+      "preferred_direction": "decrease",
+      "aliases": []
+    },
+    {
+      "name": "is_macrosomic_baby",
+      "type": "ordinal",
+      "immutable": true,
+      "actionable": false,
+      "default_mutable": false,
+      "global_min": 0,
+      "global_max": 2,
+      "cost_weight": 10.0,
+      "preferred_direction": "any",
+      "aliases": [
+        "macrosomic_baby"
+      ]
+    },
+    {
+      "name": "moderate_physical_activity_frequency",
+      "type": "ordinal",
+      "immutable": false,
+      "actionable": true,
+      "default_mutable": true,
+      "global_min": 0,
+      "global_max": 14,
+      "cost_weight": 0.8,
+      "preferred_direction": "increase",
+      "aliases": [
+        "physical_activity_frequency"
+      ]
+    },
+    {
+      "name": "is_bloodline",
+      "type": "binary",
+      "immutable": true,
+      "actionable": false,
+      "default_mutable": false,
+      "global_min": 0,
+      "global_max": 1,
+      "cost_weight": 10.0,
+      "preferred_direction": "any",
+      "aliases": [
+        "bloodline"
+      ]
+    },
+    {
+      "name": "brinkman_index",
+      "type": "ordinal",
+      "immutable": false,
+      "actionable": true,
+      "default_mutable": true,
+      "global_min": 0,
+      "global_max": 3,
+      "cost_weight": 1.5,
+      "preferred_direction": "decrease",
+      "aliases": []
+    },
+    {
+      "name": "BMI",
+      "type": "continuous",
+      "immutable": false,
+      "actionable": true,
+      "default_mutable": true,
+      "global_min": 10,
+      "global_max": 60,
+      "cost_weight": 1.0,
+      "preferred_direction": "decrease",
+      "aliases": [
+        "bmi"
+      ]
+    },
+    {
+      "name": "is_hypertension",
+      "type": "binary",
+      "immutable": false,
+      "actionable": true,
+      "default_mutable": true,
+      "global_min": 0,
+      "global_max": 1,
+      "cost_weight": 1.5,
+      "preferred_direction": "decrease",
+      "aliases": []
+    }
+  ]
+}
