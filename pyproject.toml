@@ -36,5 +36,6 @@ strict_optional = true
 exclude = "tests/"
 
 [tool.pytest.ini_options]
+addopts = "-p no:cacheprovider"
 testpaths = ["tests"]
 pythonpath = ["src"]

@@ -7,7 +7,13 @@ from diabetify_cf.engine.artifacts import ModelArtifacts
 from diabetify_cf.engine.feature_registry import FeatureDefinition, FeatureRegistry
 from diabetify_cf.planner.base import PrescriptivePlanner
 from diabetify_cf.reason_codes import ReasonCode, Status
-from diabetify_cf.schemas import CounterfactualRequest, PredictionInfo, PrescriptivePlan
+from diabetify_cf.schemas import (
+    CandidateMetrics,
+    CounterfactualCandidate,
+    CounterfactualRequest,
+    PredictionInfo,
+    PrescriptivePlan,
+)
 
 
 def _request_payload(mutable_allowed: list[str]) -> dict:
@@ -36,7 +42,7 @@ def _request_payload(mutable_allowed: list[str]) -> dict:
 
 def test_engine_returns_infeasible_when_no_mutable_feature() -> None:
     req = CounterfactualRequest.model_validate(_request_payload([]))
-    engine = DiceCounterfactualEngine(allow_stub_feasible=False)
+    engine = DiceCounterfactualEngine()
 
     result = engine.generate(req)
 
@@ -45,37 +51,14 @@ def test_engine_returns_infeasible_when_no_mutable_feature() -> None:
     assert result.candidates == []
 
 
-def test_engine_returns_not_ready_when_stub_disabled() -> None:
+def test_engine_returns_not_ready_when_artifacts_are_missing() -> None:
     req = CounterfactualRequest.model_validate(_request_payload(["bmi"]))
-    engine = DiceCounterfactualEngine(allow_stub_feasible=False)
+    engine = DiceCounterfactualEngine()
 
     result = engine.generate(req)
 
     assert result.status == Status.ERROR
     assert result.reason_code == ReasonCode.ENGINE_NOT_READY
-
-
-def test_engine_returns_stub_candidate_when_enabled() -> None:
-    req = CounterfactualRequest.model_validate(_request_payload(["bmi"]))
-    engine = DiceCounterfactualEngine(allow_stub_feasible=True)
-
-    result = engine.generate(req)
-
-    assert result.status == Status.FEASIBLE
-    assert result.reason_code == ReasonCode.OK
-    assert len(result.candidates) == 1
-    assert "bmi" in result.candidates[0].delta
-
-
-def test_engine_stub_raises_when_no_numeric_mutable_feature() -> None:
-    payload = _request_payload(["diet_plan"])
-    payload["instance"]["features"] = {"age": 45, "diet_plan": "keto"}
-    req = CounterfactualRequest.model_validate(payload)
-    engine = DiceCounterfactualEngine(allow_stub_feasible=True)
-
-    result = engine.generate(req)
-    assert result.status == Status.INFEASIBLE
-    assert result.reason_code == ReasonCode.TARGET_UNREACHABLE_UNDER_CONSTRAINTS
 
 
 def test_as_dice_input_df_coerces_numeric_columns() -> None:
@@ -87,7 +70,7 @@ def test_as_dice_input_df_coerces_numeric_columns() -> None:
         feature_registry=registry,
         lof_model=None,
     )
-    engine = DiceCounterfactualEngine(allow_stub_feasible=True)
+    engine = DiceCounterfactualEngine()
     engine.artifacts = artifacts
 
     raw = pd.DataFrame({"feature_a": ["1.5"], "feature_b": ["2"]})
@@ -136,7 +119,7 @@ def test_permitted_range_includes_binary_mutable_feature() -> None:
         "BMI": {"min": 18.5, "max": 35},
     }
     request = CounterfactualRequest.model_validate(payload)
-    engine = DiceCounterfactualEngine(allow_stub_feasible=True)
+    engine = DiceCounterfactualEngine()
 
     permitted = engine._build_permitted_range(
         model_columns=["is_hypertension", "BMI"],
@@ -186,7 +169,7 @@ def test_permitted_range_applies_directional_constraints() -> None:
         "BMI": 31.2,
     }
     request = CounterfactualRequest.model_validate(payload)
-    engine = DiceCounterfactualEngine(allow_stub_feasible=True)
+    engine = DiceCounterfactualEngine()
 
     permitted = engine._build_permitted_range(
         model_columns=["moderate_physical_activity_frequency", "BMI"],
@@ -201,7 +184,7 @@ def test_permitted_range_applies_directional_constraints() -> None:
 
 
 def test_target_satisfied_enforces_min_probability() -> None:
-    engine = DiceCounterfactualEngine(allow_stub_feasible=True)
+    engine = DiceCounterfactualEngine()
     low_prediction = PredictionInfo(class_name="low_risk", probability_low_risk=0.72)
     high_prediction = PredictionInfo(class_name="high_risk", probability_low_risk=0.22)
 
@@ -253,7 +236,7 @@ def test_build_mutable_allowed_filters_immutable_non_actionable_and_duplicates()
             ),
         ],
     )
-    engine = DiceCounterfactualEngine(allow_stub_feasible=True)
+    engine = DiceCounterfactualEngine()
     mutable = engine._build_mutable_allowed(
         mutable_input=["age", "BMI", "BMI", "smoking_status", "unknown_feature"],
         model_columns=["age", "BMI", "smoking_status"],
@@ -294,7 +277,7 @@ def test_directional_ok_rejects_physical_activity_decrease() -> None:
             ),
         ],
     )
-    engine = DiceCounterfactualEngine(allow_stub_feasible=True)
+    engine = DiceCounterfactualEngine()
 
     baseline = {"moderate_physical_activity_frequency": 2, "BMI": 31.2}
     invalid_candidate = {"moderate_physical_activity_frequency": 1, "BMI": 28.0}
@@ -331,15 +314,25 @@ class _DummyPlanner(PrescriptivePlanner):
         )
 
 
-def test_feasible_response_includes_prescriptive_plan_when_planner_is_enabled() -> None:
+def test_prescriptive_plan_builder_uses_configured_planner() -> None:
     req = CounterfactualRequest.model_validate(_request_payload(["bmi"]))
     engine = DiceCounterfactualEngine(
-        allow_stub_feasible=True,
         planner=_DummyPlanner(),
     )
+    candidate = CounterfactualCandidate(
+        candidate_id="cf_1",
+        features={"age": 45, "bmi": 28.0},
+        delta={"bmi": -3.2},
+        prediction=PredictionInfo(class_name="low_risk", probability_low_risk=0.75),
+        metrics=CandidateMetrics(
+            distance_l1=0.1,
+            changed_feature_count=1,
+            lof_score=1.0,
+            constraint_violations=0,
+        ),
+    )
 
-    result = engine.generate(req)
+    result = engine._build_prescriptive_plan(request=req, candidate=candidate)
 
-    assert result.status == Status.FEASIBLE
-    assert result.prescriptive_plan is not None
-    assert result.prescriptive_plan.provider == "dummy_test"
+    assert result is not None
+    assert result.provider == "dummy_test"

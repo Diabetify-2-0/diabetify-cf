@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import urllib.error
 import urllib.request
+from typing import cast
 
 from diabetify_cf.planner.base import PrescriptivePlanner
 from diabetify_cf.schemas import CounterfactualCandidate, CounterfactualRequest, PrescriptivePlan
@@ -39,16 +40,10 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
             generation_mode="llm",
             provider=f"openai:{self.model}",
             summary=str(payload.get("summary", "")).strip(),
-            goals=[str(x).strip() for x in payload.get("goals", []) if str(x).strip()],
-            action_steps=[
-                str(x).strip() for x in payload.get("action_steps", []) if str(x).strip()
-            ],
-            safety_notes=[
-                str(x).strip() for x in payload.get("safety_notes", []) if str(x).strip()
-            ],
-            monitoring_plan=[
-                str(x).strip() for x in payload.get("monitoring_plan", []) if str(x).strip()
-            ],
+            goals=self._string_list(payload, "goals"),
+            action_steps=self._string_list(payload, "action_steps"),
+            safety_notes=self._string_list(payload, "safety_notes"),
+            monitoring_plan=self._string_list(payload, "monitoring_plan"),
             disclaimer=str(
                 payload.get(
                     "disclaimer",
@@ -56,6 +51,12 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
                 )
             ).strip(),
         )
+
+    def _string_list(self, payload: dict[str, object], key: str) -> list[str]:
+        raw_items = payload.get(key, [])
+        if not isinstance(raw_items, list):
+            return []
+        return [str(item).strip() for item in raw_items if str(item).strip()]
 
     def _build_prompt(
         self,
@@ -118,12 +119,12 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
             raise RuntimeError("OpenAI returned empty planner content.")
         return content
 
-    def _parse_json(self, text: str) -> dict:
+    def _parse_json(self, text: str) -> dict[str, object]:
         try:
-            return json.loads(text)
-        except json.JSONDecodeError:
+            return cast(dict[str, object], json.loads(text))
+        except json.JSONDecodeError as err:
             start = text.find("{")
             end = text.rfind("}")
             if start != -1 and end != -1 and end > start:
-                return json.loads(text[start : end + 1])
-            raise RuntimeError("Planner output is not valid JSON.")
+                return cast(dict[str, object], json.loads(text[start : end + 1]))
+            raise RuntimeError("Planner output is not valid JSON.") from err

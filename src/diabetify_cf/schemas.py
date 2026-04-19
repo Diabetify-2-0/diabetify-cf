@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from diabetify_cf.reason_codes import ReasonCode, Status
 
-JSONNumber = Union[int, float]
-JSONFeatureValue = Union[int, float, bool, str]
+JSONNumber = int | float
+JSONFeatureValue = int | float | bool | str
 
 
 class TargetSpec(BaseModel):
@@ -21,11 +21,11 @@ class TargetSpec(BaseModel):
 class FeatureBound(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    min: Optional[float] = None
-    max: Optional[float] = None
+    min: float | None = None
+    max: float | None = None
 
     @model_validator(mode="after")
-    def validate_bounds(self) -> "FeatureBound":
+    def validate_bounds(self) -> FeatureBound:
         if self.min is not None and self.max is not None and self.min > self.max:
             raise ValueError("min cannot be greater than max")
         return self
@@ -34,14 +34,14 @@ class FeatureBound(BaseModel):
 class ConstraintSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    immutable_features: List[str] = Field(default_factory=list)
-    mutable_allowed: List[str] = Field(default_factory=list)
-    feature_bounds: Dict[str, FeatureBound] = Field(default_factory=dict)
-    must_not_change: List[str] = Field(default_factory=list)
+    immutable_features: list[str] = Field(default_factory=list)
+    mutable_allowed: list[str] = Field(default_factory=list)
+    feature_bounds: dict[str, FeatureBound] = Field(default_factory=dict)
+    must_not_change: list[str] = Field(default_factory=list)
     medical_rule_set_version: str = "med_rule_v1"
 
     @model_validator(mode="after")
-    def validate_no_overlap(self) -> "ConstraintSpec":
+    def validate_no_overlap(self) -> ConstraintSpec:
         immutable_set = set(self.immutable_features)
         mutable_set = set(self.mutable_allowed)
         overlap = immutable_set.intersection(mutable_set)
@@ -63,14 +63,14 @@ class GenerationSpec(BaseModel):
 class PreferenceSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    cost_weights: Dict[str, float] = Field(default_factory=dict)
-    objective_weights: Dict[str, float] = Field(default_factory=dict)
+    cost_weights: dict[str, float] = Field(default_factory=dict)
+    objective_weights: dict[str, float] = Field(default_factory=dict)
 
 
 class InstanceSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    features: Dict[str, JSONFeatureValue]
+    features: dict[str, JSONFeatureValue]
 
 
 class CounterfactualRequest(BaseModel):
@@ -78,7 +78,7 @@ class CounterfactualRequest(BaseModel):
 
     request_id: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    patient_id: Optional[str] = None
+    patient_id: str | None = None
     model_version: str = "xgb_v1"
     target: TargetSpec = Field(default_factory=TargetSpec)
     instance: InstanceSpec
@@ -93,7 +93,7 @@ class PredictionInfo(BaseModel):
     class_name: str = Field(alias="class")
     probability_low_risk: float = Field(ge=0.0, le=1.0)
 
-    def to_wire(self) -> Dict[str, Any]:
+    def to_wire(self) -> dict[str, Any]:
         return {
             "class": self.class_name,
             "probability_low_risk": self.probability_low_risk,
@@ -113,12 +113,12 @@ class CounterfactualCandidate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     candidate_id: str
-    features: Dict[str, JSONFeatureValue]
-    delta: Dict[str, JSONNumber]
+    features: dict[str, JSONFeatureValue]
+    delta: dict[str, JSONNumber]
     prediction: PredictionInfo
     metrics: CandidateMetrics
 
-    def to_wire(self) -> Dict[str, Any]:
+    def to_wire(self) -> dict[str, Any]:
         payload = self.model_dump()
         payload["prediction"] = self.prediction.to_wire()
         return payload
@@ -135,8 +135,8 @@ class ValidationSummary(BaseModel):
 class PlannerInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    recommended_candidate_id: Optional[str] = None
-    target_deltas: Dict[str, JSONNumber] = Field(default_factory=dict)
+    recommended_candidate_id: str | None = None
+    target_deltas: dict[str, JSONNumber] = Field(default_factory=dict)
 
 
 class PrescriptivePlan(BaseModel):
@@ -145,10 +145,10 @@ class PrescriptivePlan(BaseModel):
     generation_mode: str
     provider: str
     summary: str
-    goals: List[str] = Field(default_factory=list)
-    action_steps: List[str] = Field(default_factory=list)
-    safety_notes: List[str] = Field(default_factory=list)
-    monitoring_plan: List[str] = Field(default_factory=list)
+    goals: list[str] = Field(default_factory=list)
+    action_steps: list[str] = Field(default_factory=list)
+    safety_notes: list[str] = Field(default_factory=list)
+    monitoring_plan: list[str] = Field(default_factory=list)
     disclaimer: str = "Panduan ini bersifat edukatif dan tidak menggantikan konsultasi dokter."
 
 
@@ -163,14 +163,14 @@ class CounterfactualResponse(BaseModel):
     cf_engine_version: str
     constraint_version: str = "cf_spec_1.0.0"
     runtime_ms: int = 0
-    input_prediction: Optional[PredictionInfo] = None
-    candidates: List[CounterfactualCandidate] = Field(default_factory=list)
+    input_prediction: PredictionInfo | None = None
+    candidates: list[CounterfactualCandidate] = Field(default_factory=list)
     validation: ValidationSummary
     planner_input: PlannerInput = Field(default_factory=PlannerInput)
-    prescriptive_plan: Optional[PrescriptivePlan] = None
+    prescriptive_plan: PrescriptivePlan | None = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    def to_wire(self) -> Dict[str, Any]:
+    def to_wire(self) -> dict[str, Any]:
         payload = self.model_dump(exclude_none=True)
         payload["status"] = self.status.value
         payload["reason_code"] = self.reason_code.value

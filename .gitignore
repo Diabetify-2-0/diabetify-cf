@@ -1,10 +1,22 @@
+# Local environment
+.env
 .venv/
+venv/
+
+# Python bytecode/cache
 __pycache__/
+*.py[cod]
+*$py.class
+
+# Quality tool cache/output
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-dist/
-build/
-*.pyc
-.env
+.black_cache/
+.coverage
+htmlcov/
 
+# Packaging/build artifacts
+*.egg-info/
+build/
+dist/

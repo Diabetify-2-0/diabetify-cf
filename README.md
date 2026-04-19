@@ -10,7 +10,6 @@ Phase 4 (prescriptive planning):
 - Contract schema (request/response) sudah dibuat.
 - RabbitMQ consumer/publisher sudah dibuat.
 - DICE real engine sudah aktif jika artifact tersedia.
-- Mode stub tetap tersedia untuk plumbing test.
 - Hardening aktif: target probability enforcement, actionable-feature filtering, timeout-aware reason code, dan plausibility gate via LOF threshold.
 - Hardening klinis tambahan: directional constraints per fitur (mis. aktivitas fisik tidak boleh direkomendasikan menurun).
 - Prescriptive planner aktif dengan mode `template` default.
@@ -51,10 +50,11 @@ python -m diabetify_cf.app
 
 ## Quality Commands
 ```powershell
-ruff check .
-black --check .
-mypy src
-pytest -q
+$env:PYTHONDONTWRITEBYTECODE = "1"
+python -m ruff check --no-cache src tests
+python -m black --check src tests
+python -m mypy src
+python -m pytest -q tests
 ```
 
 ## Docker
@@ -65,9 +65,7 @@ docker run --rm --env-file .env diabetify-cf:dev
 ```
 
 ## Notes
-- Default `CF_ALLOW_STUB_FEASIBLE=false` akan menjalankan engine DICE real.
-- Mode real membutuhkan `CF_MODEL_PATH` dan `CF_COLUMNS_PATH` valid.
-- Jika butuh uji plumbing end-to-end tanpa model, set `CF_ALLOW_STUB_FEASIBLE=true`.
+- Service selalu menjalankan engine DiCE real dan membutuhkan `CF_MODEL_PATH` dan `CF_COLUMNS_PATH` valid.
 - Input `instance.features` wajib berisi seluruh fitur model pada `x_columns.pkl`.
 - `CF_MAX_LOF_SCORE` mengatur batas maksimum skor LOF kandidat (semakin kecil semakin ketat).
 - Planner default `CF_PLANNER_PROVIDER=template`; set `openai` + `OPENAI_API_KEY` untuk narasi LLM.

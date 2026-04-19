@@ -24,7 +24,6 @@ def main() -> None:
     planner = build_planner(settings)
 
     engine = DiceCounterfactualEngine(
-        allow_stub_feasible=settings.allow_stub_feasible,
         model_path=settings.model_path,
         columns_path=settings.columns_path,
         reference_data_path=settings.reference_data_path,

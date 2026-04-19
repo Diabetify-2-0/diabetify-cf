@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from time import perf_counter
-from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
 
 from diabetify_cf.engine.artifacts import ModelArtifacts, load_artifacts
 from diabetify_cf.engine.base import CounterfactualEngine
+from diabetify_cf.engine.feature_registry import FeatureRegistry
 from diabetify_cf.planner.base import PrescriptivePlanner
 from diabetify_cf.reason_codes import ReasonCode, Status
 from diabetify_cf.schemas import (
@@ -16,8 +16,10 @@ from diabetify_cf.schemas import (
     CounterfactualCandidate,
     CounterfactualRequest,
     CounterfactualResponse,
+    JSONFeatureValue,
     PlannerInput,
     PredictionInfo,
+    PrescriptivePlan,
     ValidationSummary,
 )
 
@@ -30,14 +32,13 @@ class CandidateEvaluation:
 
 class DiceCounterfactualEngine(CounterfactualEngine):
     """
-    Phase-3 engine:
-    - Supports real DiCE generation when artifacts are configured.
-    - Keeps stub mode for controlled plumbing tests.
+    DiCE-based counterfactual engine.
+
+    The engine requires model artifacts and never fabricates feasible candidates.
     """
 
     def __init__(
         self,
-        allow_stub_feasible: bool = False,
         model_path: str = "",
         columns_path: str = "",
         reference_data_path: str = "",
@@ -45,7 +46,6 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         max_lof_score: float = 2.5,
         planner: PrescriptivePlanner | None = None,
     ) -> None:
-        self.allow_stub_feasible = allow_stub_feasible
         self.max_lof_score = max(1.0, float(max_lof_score))
         self.engine_version = "dice_engine_v3"
         self.planner = planner
@@ -53,16 +53,15 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         self.artifacts: ModelArtifacts | None = None
         self.initialization_error: str | None = None
 
-        if not self.allow_stub_feasible:
-            try:
-                self.artifacts = load_artifacts(
-                    model_path=model_path,
-                    columns_path=columns_path,
-                    reference_data_path=reference_data_path,
-                    feature_registry_path=feature_registry_path,
-                )
-            except Exception as exc:  # noqa: BLE001
-                self.initialization_error = str(exc)
+        try:
+            self.artifacts = load_artifacts(
+                model_path=model_path,
+                columns_path=columns_path,
+                reference_data_path=reference_data_path,
+                feature_registry_path=feature_registry_path,
+            )
+        except Exception as exc:  # noqa: BLE001
+            self.initialization_error = str(exc)
 
     def generate(self, request: CounterfactualRequest) -> CounterfactualResponse:
         started = perf_counter()
@@ -81,50 +80,6 @@ class DiceCounterfactualEngine(CounterfactualEngine):
                     immutable_violation=False,
                     mutable_compliance=True,
                     medical_rules_passed=True,
-                ),
-            )
-
-        if self.allow_stub_feasible:
-            try:
-                candidate, deltas = self._build_stub_candidate(request)
-            except ValueError as err:
-                return CounterfactualResponse(
-                    request_id=request.request_id,
-                    status=Status.INFEASIBLE,
-                    reason_code=ReasonCode.TARGET_UNREACHABLE_UNDER_CONSTRAINTS,
-                    message=str(err),
-                    model_version=request.model_version,
-                    cf_engine_version=self.engine_version,
-                    runtime_ms=self._elapsed_ms(started),
-                    validation=ValidationSummary(
-                        immutable_violation=False,
-                        mutable_compliance=False,
-                        medical_rules_passed=True,
-                    ),
-                )
-
-            return CounterfactualResponse(
-                request_id=request.request_id,
-                status=Status.FEASIBLE,
-                reason_code=ReasonCode.OK,
-                message="Stub feasible counterfactual generated for integration testing.",
-                model_version=request.model_version,
-                cf_engine_version=self.engine_version,
-                runtime_ms=self._elapsed_ms(started),
-                input_prediction=PredictionInfo(class_name="high_risk", probability_low_risk=0.2),
-                candidates=[candidate],
-                validation=ValidationSummary(
-                    immutable_violation=False,
-                    mutable_compliance=True,
-                    medical_rules_passed=True,
-                ),
-                planner_input=PlannerInput(
-                    recommended_candidate_id=candidate.candidate_id,
-                    target_deltas=deltas,
-                ),
-                prescriptive_plan=self._build_prescriptive_plan(
-                    request=request,
-                    candidate=candidate,
                 ),
             )
 
@@ -280,7 +235,7 @@ class DiceCounterfactualEngine(CounterfactualEngine):
                 ),
             )
 
-        evaluated: List[CandidateEvaluation] = []
+        evaluated: list[CandidateEvaluation] = []
         immutable_violation_seen = False
         mutable_violation_seen = False
         medical_violation_seen = False
@@ -439,8 +394,8 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         query_df: pd.DataFrame,
         total_cfs: int,
         desired_class: int | str,
-        features_to_vary: List[str],
-        permitted_range: Dict[str, List[float]],
+        features_to_vary: list[str],
+        permitted_range: dict[str, list[float]],
         random_seed: int,
     ) -> pd.DataFrame:
         assert self.artifacts is not None
@@ -524,12 +479,12 @@ class DiceCounterfactualEngine(CounterfactualEngine):
 
     def _build_permitted_range(
         self,
-        model_columns: List[str],
-        mutable_allowed: List[str],
+        model_columns: list[str],
+        mutable_allowed: list[str],
         request: CounterfactualRequest,
-        registry: object,
-        baseline_features: Dict[str, object],
-    ) -> Dict[str, List[float]]:
+        registry: FeatureRegistry,
+        baseline_features: dict[str, JSONFeatureValue],
+    ) -> dict[str, list[float]]:
         default_range = registry.default_permitted_range(mutable_allowed)
         request_bounds = {}
 
@@ -606,7 +561,9 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         proba_high = float(np.clip(proba_high, 0.0, 1.0))
         proba_low = float(np.clip(1.0 - proba_high, 0.0, 1.0))
         class_name = "low_risk" if proba_low >= 0.5 else "high_risk"
-        return PredictionInfo(class_name=class_name, probability_low_risk=proba_low)
+        return PredictionInfo.model_validate(
+            {"class": class_name, "probability_low_risk": proba_low}
+        )
 
     def _target_satisfied(
         self,
@@ -651,12 +608,12 @@ class DiceCounterfactualEngine(CounterfactualEngine):
 
     def _build_mutable_allowed(
         self,
-        mutable_input: List[str],
-        model_columns: List[str],
+        mutable_input: list[str],
+        model_columns: list[str],
         immutable_set: set[str],
-        registry: object,
-    ) -> List[str]:
-        allowed: List[str] = []
+        registry: FeatureRegistry,
+    ) -> list[str]:
+        allowed: list[str] = []
         seen: set[str] = set()
         for name in mutable_input:
             if name in seen:
@@ -675,9 +632,12 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         return allowed
 
     def _to_series(
-        self, ordered_columns: List[str], features: Dict[str, object], registry: object
-    ) -> Dict[str, object]:
-        series: Dict[str, object] = {}
+        self,
+        ordered_columns: list[str],
+        features: dict[str, JSONFeatureValue],
+        registry: FeatureRegistry,
+    ) -> dict[str, object]:
+        series: dict[str, object] = {}
         for column in ordered_columns:
             value = features[column]
             if isinstance(value, bool):
@@ -689,22 +649,24 @@ class DiceCounterfactualEngine(CounterfactualEngine):
     def _coerce_candidate_features(
         self,
         row: pd.Series,
-        model_columns: List[str],
-        registry: object,
-    ) -> Dict[str, object]:
-        result: Dict[str, object] = {}
+        model_columns: list[str],
+        registry: FeatureRegistry,
+    ) -> dict[str, JSONFeatureValue]:
+        result: dict[str, JSONFeatureValue] = {}
         for column in model_columns:
             value = row[column]
             if pd.isna(value):
                 value = 0.0
             coerced = registry.coerce_value(column, value)
+            if not isinstance(coerced, (int, float, bool, str)):
+                coerced = float(str(coerced))
             result[column] = coerced
         return result
 
     def _immutable_ok(
         self,
-        candidate: Dict[str, object],
-        baseline: Dict[str, object],
+        candidate: dict[str, JSONFeatureValue],
+        baseline: dict[str, JSONFeatureValue],
         immutable_set: set[str],
     ) -> bool:
         for feature in immutable_set:
@@ -716,8 +678,8 @@ class DiceCounterfactualEngine(CounterfactualEngine):
 
     def _mutable_ok(
         self,
-        candidate: Dict[str, object],
-        baseline: Dict[str, object],
+        candidate: dict[str, JSONFeatureValue],
+        baseline: dict[str, JSONFeatureValue],
         mutable_set: set[str],
     ) -> bool:
         for feature, value in candidate.items():
@@ -728,7 +690,9 @@ class DiceCounterfactualEngine(CounterfactualEngine):
                 return False
         return True
 
-    def _medical_ok(self, candidate: Dict[str, object], registry: object) -> bool:
+    def _medical_ok(
+        self, candidate: dict[str, JSONFeatureValue], registry: FeatureRegistry
+    ) -> bool:
         for feature_name, value in candidate.items():
             feature = registry.get(feature_name)
             if feature is None:
@@ -751,10 +715,10 @@ class DiceCounterfactualEngine(CounterfactualEngine):
 
     def _directional_ok(
         self,
-        candidate: Dict[str, object],
-        baseline: Dict[str, object],
+        candidate: dict[str, JSONFeatureValue],
+        baseline: dict[str, JSONFeatureValue],
         mutable_allowed: set[str],
-        registry: object,
+        registry: FeatureRegistry,
     ) -> bool:
         for feature_name in mutable_allowed:
             if feature_name not in candidate or feature_name not in baseline:
@@ -782,11 +746,11 @@ class DiceCounterfactualEngine(CounterfactualEngine):
 
     def _build_delta(
         self,
-        candidate: Dict[str, object],
-        baseline: Dict[str, object],
+        candidate: dict[str, JSONFeatureValue],
+        baseline: dict[str, JSONFeatureValue],
         mutable_allowed: set[str],
-    ) -> Dict[str, float]:
-        delta: Dict[str, float] = {}
+    ) -> dict[str, float]:
+        delta: dict[str, float] = {}
         for feature in mutable_allowed:
             if feature not in candidate or feature not in baseline:
                 continue
@@ -800,9 +764,9 @@ class DiceCounterfactualEngine(CounterfactualEngine):
 
     def _normalized_l1(
         self,
-        candidate: Dict[str, object],
-        baseline: Dict[str, object],
-        registry: object,
+        candidate: dict[str, JSONFeatureValue],
+        baseline: dict[str, JSONFeatureValue],
+        registry: FeatureRegistry,
     ) -> float:
         total = 0.0
         count = 0
@@ -839,8 +803,8 @@ class DiceCounterfactualEngine(CounterfactualEngine):
     def _objective_score(
         self,
         candidate: CounterfactualCandidate,
-        preferences: Dict[str, float],
-        registry: object,
+        preferences: dict[str, float],
+        registry: FeatureRegistry,
     ) -> float:
         w_proximity = float(preferences.get("proximity", 0.30))
         w_sparsity = float(preferences.get("sparsity", 0.20))
@@ -869,59 +833,13 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         self,
         request: CounterfactualRequest,
         candidate: CounterfactualCandidate,
-    ):
+    ) -> PrescriptivePlan | None:
         if self.planner is None:
             return None
         try:
             return self.planner.build_plan(request=request, candidate=candidate)
         except Exception:  # noqa: BLE001
             return None
-
-    def _build_stub_candidate(
-        self, request: CounterfactualRequest
-    ) -> Tuple[CounterfactualCandidate, Dict[str, float]]:
-        features = dict(request.instance.features)
-        deltas: Dict[str, float] = {}
-
-        for feature_name in request.constraints.mutable_allowed:
-            if feature_name not in features:
-                continue
-            value = features[feature_name]
-            if isinstance(value, bool) or not isinstance(value, (int, float)):
-                continue
-
-            old_value = float(value)
-            bound = request.constraints.feature_bounds.get(feature_name)
-            new_value = self._bounded_target_value(old_value, bound.min if bound else None)
-
-            if new_value != old_value:
-                features[feature_name] = round(new_value, 4)
-                deltas[feature_name] = round(new_value - old_value, 4)
-                break
-
-        if not deltas:
-            raise ValueError("No numeric mutable feature available for stub candidate generation.")
-
-        return (
-            CounterfactualCandidate(
-                candidate_id="cf_1",
-                features=features,
-                delta=deltas,
-                prediction=PredictionInfo(class_name="low_risk", probability_low_risk=0.75),
-                metrics=CandidateMetrics(
-                    distance_l1=0.1,
-                    changed_feature_count=len(deltas),
-                    lof_score=1.0,
-                    constraint_violations=0,
-                ),
-            ),
-            deltas,
-        )
-
-    def _bounded_target_value(self, current_value: float, min_bound: float | None) -> float:
-        if min_bound is not None:
-            return max(min_bound, current_value - abs(current_value * 0.1))
-        return current_value - abs(current_value * 0.1)
 
     @staticmethod
     def _equal(a: object, b: object) -> bool:

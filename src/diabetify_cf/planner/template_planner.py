@@ -73,7 +73,8 @@ class TemplatePrescriptivePlanner(PrescriptivePlanner):
         if name == "bmi":
             return [
                 "Terapkan defisit kalori moderat 300-500 kkal per hari dengan menu terukur.",
-                "Lakukan aktivitas aerobik minimal 150 menit per minggu ditambah latihan kekuatan 2 kali per minggu.",
+                "Lakukan aktivitas aerobik minimal 150 menit per minggu "
+                "ditambah latihan kekuatan 2 kali per minggu.",
             ]
         if "physical_activity" in name:
             return [
@@ -87,12 +88,14 @@ class TemplatePrescriptivePlanner(PrescriptivePlanner):
             ]
         if "cholesterol" in name:
             return [
-                "Kurangi lemak jenuh dan trans, tingkatkan serat larut dari sayur, buah, dan kacang-kacangan.",
+                "Kurangi lemak jenuh dan trans, tingkatkan serat larut "
+                "dari sayur, buah, dan kacang-kacangan.",
                 "Jadwalkan cek profil lipid ulang sesuai arahan tenaga kesehatan.",
             ]
         if "hypertension" in name:
             return [
-                "Batasi konsumsi garam, perbanyak makanan segar, dan pantau tekanan darah di rumah.",
+                "Batasi konsumsi garam, perbanyak makanan segar, "
+                "dan pantau tekanan darah di rumah.",
                 "Konsultasikan tata laksana tekanan darah dengan dokter bila nilai tetap tinggi.",
             ]
 
@@ -101,7 +104,8 @@ class TemplatePrescriptivePlanner(PrescriptivePlanner):
 
     def _build_safety_notes(self, deltas: list[tuple[str, float]]) -> list[str]:
         notes = [
-            "Hindari perubahan ekstrem dalam waktu singkat; gunakan progres bertahap dan konsisten.",
+            "Hindari perubahan ekstrem dalam waktu singkat; "
+            "gunakan progres bertahap dan konsisten.",
             "Jika ada gejala memburuk, hentikan intervensi dan konsultasikan ke dokter.",
         ]
         if any(feature.lower() == "bmi" for feature, _ in deltas):
@@ -116,7 +120,9 @@ class TemplatePrescriptivePlanner(PrescriptivePlanner):
         current = candidate.prediction.probability_low_risk
         target = request.target.min_target_probability
         return [
-            "Evaluasi indikator utama setiap 1-2 minggu (berat badan, aktivitas, tekanan darah, kebiasaan merokok).",
-            f"Review prediksi ulang setelah perubahan utama; target probabilitas low_risk >= {target:.2f}.",
+            "Evaluasi indikator utama setiap 1-2 minggu "
+            "(berat badan, aktivitas, tekanan darah, kebiasaan merokok).",
+            "Review prediksi ulang setelah perubahan utama; "
+            f"target probabilitas low_risk >= {target:.2f}.",
             f"Probabilitas low_risk kandidat saat ini: {current:.2f}.",
         ]

@@ -42,7 +42,6 @@ class Settings:
     rabbitmq_retry_delay_sec: int = int(os.getenv("CF_RABBITMQ_RETRY_DELAY_SEC", "5"))
     prefetch_count: int = int(os.getenv("CF_PREFETCH_COUNT", "1"))
 
-    allow_stub_feasible: bool = _bool_env("CF_ALLOW_STUB_FEASIBLE", False)
     default_total_cfs: int = int(os.getenv("CF_DEFAULT_TOTAL_CFS", "3"))
     request_timeout_ms: int = int(os.getenv("CF_REQUEST_TIMEOUT_MS", "5000"))
     max_lof_score: float = float(os.getenv("CF_MAX_LOF_SCORE", "2.5"))

@@ -3,7 +3,7 @@ from __future__ import annotations
 import pickle
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -14,11 +14,11 @@ from diabetify_cf.engine.feature_registry import FeatureRegistry
 
 @dataclass
 class ModelArtifacts:
-    model: object
-    feature_columns: List[str]
+    model: Any
+    feature_columns: list[str]
     reference_data: pd.DataFrame
     feature_registry: FeatureRegistry
-    lof_model: Optional[LocalOutlierFactor]
+    lof_model: LocalOutlierFactor | None
 
 
 def load_artifacts(
@@ -56,7 +56,7 @@ def load_artifacts(
     )
 
 
-def _load_feature_registry(path: str, feature_columns: List[str]) -> FeatureRegistry:
+def _load_feature_registry(path: str, feature_columns: list[str]) -> FeatureRegistry:
     if not path:
         return FeatureRegistry.from_columns(feature_columns)
 
@@ -78,7 +78,7 @@ def _load_feature_registry(path: str, feature_columns: List[str]) -> FeatureRegi
     return FeatureRegistry(version=registry.version, features=definitions)
 
 
-def _load_reference_data(path: str, feature_columns: List[str]) -> pd.DataFrame:
+def _load_reference_data(path: str, feature_columns: list[str]) -> pd.DataFrame:
     if not path:
         return _empty_reference(feature_columns)
 
@@ -105,11 +105,11 @@ def _load_reference_data(path: str, feature_columns: List[str]) -> pd.DataFrame:
     return data[feature_columns].copy()
 
 
-def _empty_reference(feature_columns: List[str]) -> pd.DataFrame:
+def _empty_reference(feature_columns: list[str]) -> pd.DataFrame:
     return pd.DataFrame([np.zeros(len(feature_columns))], columns=feature_columns)
 
 
-def _build_lof_model(reference_data: pd.DataFrame) -> Optional[LocalOutlierFactor]:
+def _build_lof_model(reference_data: pd.DataFrame) -> LocalOutlierFactor | None:
     if len(reference_data) < 2:
         return None
 
