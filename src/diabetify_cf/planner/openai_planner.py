@@ -6,6 +6,7 @@ import urllib.request
 from typing import cast
 
 from diabetify_cf.planner.base import PrescriptivePlanner
+from diabetify_cf.planner.policy import build_policy_result, normalize_intended_user
 from diabetify_cf.schemas import CounterfactualCandidate, CounterfactualRequest, PrescriptivePlan
 
 
@@ -17,6 +18,7 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
         timeout_ms: int = 4000,
         temperature: float = 0.2,
         endpoint: str = "https://api.openai.com/v1/chat/completions",
+        intended_user: str = "clinician",
     ) -> None:
         if not api_key:
             raise ValueError("OPENAI_API_KEY is required for OpenAI prescriptive planner.")
@@ -26,24 +28,36 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
         self.timeout_sec = max(1.0, float(timeout_ms) / 1000.0)
         self.temperature = max(0.0, min(float(temperature), 1.0))
         self.endpoint = endpoint
+        self.intended_user = normalize_intended_user(intended_user)
 
     def build_plan(
         self,
         request: CounterfactualRequest,
         candidate: CounterfactualCandidate,
     ) -> PrescriptivePlan:
-        prompt = self._build_prompt(request=request, candidate=candidate)
+        policy = build_policy_result(
+            request=request,
+            candidate=candidate,
+            intended_user=self.intended_user,
+        )
+        prompt = self._build_prompt(request=request, candidate=candidate, policy=policy)
         raw_text = self._call_openai(prompt)
         payload = self._parse_json(raw_text)
 
         return PrescriptivePlan(
             generation_mode="llm",
             provider=f"openai:{self.model}",
-            summary=str(payload.get("summary", "")).strip(),
+            intended_user=policy.intended_user,
+            clinical_scope=policy.clinical_scope,
+            policy_version=policy.policy_version,
+            summary=str(payload.get("summary", policy.summary)).strip(),
             goals=self._string_list(payload, "goals"),
             action_steps=self._string_list(payload, "action_steps"),
             safety_notes=self._string_list(payload, "safety_notes"),
             monitoring_plan=self._string_list(payload, "monitoring_plan"),
+            missing_context=policy.missing_context,
+            contraindication_flags=policy.contraindication_flags,
+            human_review_required=policy.human_review_required,
             disclaimer=str(
                 payload.get(
                     "disclaimer",
@@ -62,19 +76,32 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
         self,
         request: CounterfactualRequest,
         candidate: CounterfactualCandidate,
+        policy: object,
     ) -> str:
         compact = {
+            "intended_user": getattr(policy, "intended_user"),
+            "clinical_scope": getattr(policy, "clinical_scope"),
             "target_class": request.target.target_class,
             "min_target_probability": request.target.min_target_probability,
             "candidate_prediction": candidate.prediction.to_wire(),
             "target_deltas": candidate.delta,
             "mutable_allowed": request.constraints.mutable_allowed,
             "immutable_features": request.constraints.immutable_features,
+            "policy_summary": getattr(policy, "summary"),
+            "policy_goals": getattr(policy, "goals"),
+            "policy_action_steps": getattr(policy, "action_steps"),
+            "policy_safety_notes": getattr(policy, "safety_notes"),
+            "policy_monitoring_plan": getattr(policy, "monitoring_plan"),
+            "missing_context": getattr(policy, "missing_context"),
+            "contraindication_flags": getattr(policy, "contraindication_flags"),
+            "human_review_required": getattr(policy, "human_review_required"),
         }
         return (
-            "Anda adalah asisten kesehatan untuk perencanaan perubahan gaya hidup. "
-            "Buat rencana preskriptif yang realistis, bertahap, dan aman, "
-            "dengan mematuhi immutable_features dan hanya menindaklanjuti target_deltas. "
+            "Anda adalah asisten untuk merapikan output decision-support kesehatan. "
+            "Jangan membuat instruksi terapi baru. Jangan menambah target numerik baru. "
+            "Gunakan policy_summary dan policy_action_steps sebagai batas keras. "
+            "Jika intended_user=patient, gunakan bahasa edukatif dan non-direktif. "
+            "Jika intended_user=clinician, gunakan bahasa decision-support yang menekankan perlunya penilaian profesional. "
             "Jawab ketat dalam JSON object dengan kunci: "
             "summary, goals (array), action_steps (array), safety_notes (array), "
             "monitoring_plan (array), disclaimer. "

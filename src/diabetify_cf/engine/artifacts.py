@@ -1,3 +1,14 @@
+"""Helpers for loading model-side artifacts used by the CF engine.
+
+The engine needs more than the trained model itself. It also depends on:
+- the exact feature column order expected by the model,
+- reference/background data used by DiCE and plausibility scoring,
+- feature metadata that defines domain constraints.
+
+This module centralizes that loading logic so the engine can focus on the
+counterfactual workflow instead of file and fallback handling.
+"""
+
 from __future__ import annotations
 
 import pickle
@@ -27,6 +38,8 @@ def load_artifacts(
     reference_data_path: str,
     feature_registry_path: str,
 ) -> ModelArtifacts:
+    """Load all artifacts needed to run the real counterfactual engine."""
+
     if not model_path or not columns_path:
         raise ValueError("model path and columns path are required for real engine mode")
 
@@ -57,6 +70,8 @@ def load_artifacts(
 
 
 def _load_feature_registry(path: str, feature_columns: list[str]) -> FeatureRegistry:
+    """Load feature metadata and align it to the model column order."""
+
     if not path:
         return FeatureRegistry.from_columns(feature_columns)
 
@@ -65,7 +80,7 @@ def _load_feature_registry(path: str, feature_columns: list[str]) -> FeatureRegi
         return FeatureRegistry.from_columns(feature_columns)
 
     registry = FeatureRegistry.from_file(str(file))
-    # Keep only model columns in model order, fallback unknown to auto definition.
+    
     definitions = []
     for column in feature_columns:
         feature = registry.get(column)
@@ -77,8 +92,9 @@ def _load_feature_registry(path: str, feature_columns: list[str]) -> FeatureRegi
         definitions.append(feature)
     return FeatureRegistry(version=registry.version, features=definitions)
 
-
 def _load_reference_data(path: str, feature_columns: list[str]) -> pd.DataFrame:
+    """Load reference data used by DiCE and LOF plausibility scoring."""
+
     if not path:
         return _empty_reference(feature_columns)
 
@@ -106,14 +122,14 @@ def _load_reference_data(path: str, feature_columns: list[str]) -> pd.DataFrame:
 
 
 def _empty_reference(feature_columns: list[str]) -> pd.DataFrame:
+    """Return a minimal placeholder frame when real reference data is absent."""
     return pd.DataFrame([np.zeros(len(feature_columns))], columns=feature_columns)
 
-
 def _build_lof_model(reference_data: pd.DataFrame) -> LocalOutlierFactor | None:
+    """Fit a novelty-detection LOF model when enough reference rows exist."""
     if len(reference_data) < 2:
         return None
 
-    # novelty=True allows scoring unseen candidates.
     lof = LocalOutlierFactor(n_neighbors=min(20, len(reference_data) - 1), novelty=True)
     lof.fit(reference_data)
     return lof

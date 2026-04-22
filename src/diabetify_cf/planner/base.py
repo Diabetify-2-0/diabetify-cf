@@ -27,5 +27,5 @@ class FallbackPrescriptivePlanner(PrescriptivePlanner):
     ) -> PrescriptivePlan:
         try:
             return self.primary.build_plan(request=request, candidate=candidate)
-        except Exception:  # noqa: BLE001
+        except Exception:  
             return self.fallback.build_plan(request=request, candidate=candidate)

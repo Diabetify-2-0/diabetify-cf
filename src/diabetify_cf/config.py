@@ -47,6 +47,7 @@ class Settings:
     max_lof_score: float = float(os.getenv("CF_MAX_LOF_SCORE", "2.5"))
     planner_enabled: bool = _bool_env("CF_PLANNER_ENABLED", True)
     planner_provider: str = os.getenv("CF_PLANNER_PROVIDER", "template")
+    planner_intended_user: str = os.getenv("CF_PLANNER_INTENDED_USER", "clinician")
     planner_model: str = os.getenv("CF_PLANNER_MODEL", "gpt-4o-mini")
     planner_timeout_ms: int = int(os.getenv("CF_PLANNER_TIMEOUT_MS", "4000"))
     planner_temperature: float = float(os.getenv("CF_PLANNER_TEMPERATURE", "0.2"))

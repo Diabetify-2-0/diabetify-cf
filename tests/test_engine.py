@@ -306,11 +306,17 @@ class _DummyPlanner(PrescriptivePlanner):
         return PrescriptivePlan(
             generation_mode="template",
             provider="dummy_test",
+            intended_user="clinician",
+            clinical_scope="clinician_support",
+            policy_version="dummy_policy",
             summary=f"Plan for {request.request_id}",
             goals=["goal"],
             action_steps=["step"],
             safety_notes=["note"],
             monitoring_plan=["monitor"],
+            missing_context=["context"],
+            contraindication_flags=[],
+            human_review_required=True,
         )
 
 

@@ -144,11 +144,17 @@ class PrescriptivePlan(BaseModel):
 
     generation_mode: str
     provider: str
+    intended_user: str = "clinician"
+    clinical_scope: str = "clinician_support"
+    policy_version: str = "planner_policy_v1"
     summary: str
     goals: list[str] = Field(default_factory=list)
     action_steps: list[str] = Field(default_factory=list)
     safety_notes: list[str] = Field(default_factory=list)
     monitoring_plan: list[str] = Field(default_factory=list)
+    missing_context: list[str] = Field(default_factory=list)
+    contraindication_flags: list[str] = Field(default_factory=list)
+    human_review_required: bool = True
     disclaimer: str = "Panduan ini bersifat edukatif dan tidak menggantikan konsultasi dokter."
 
 

@@ -1,6 +1,5 @@
 from enum import Enum
 
-
 class Status(str, Enum):
     FEASIBLE = "FEASIBLE"
     INFEASIBLE = "INFEASIBLE"

@@ -1,3 +1,11 @@
+"""DiCE-based counterfactual engine implementation.
+
+This module is the core of the service. It takes one validated request,
+generates candidate counterfactuals with DiCE, applies additional domain and
+plausibility checks, ranks the surviving candidates, and returns the final
+response payload expected by the messaging layer.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -26,6 +34,8 @@ from diabetify_cf.schemas import (
 
 @dataclass
 class CandidateEvaluation:
+    """Pair a valid candidate with its aggregate objective score."""
+
     candidate: CounterfactualCandidate
     objective_score: float
 
@@ -34,7 +44,15 @@ class DiceCounterfactualEngine(CounterfactualEngine):
     """
     DiCE-based counterfactual engine.
 
-    The engine requires model artifacts and never fabricates feasible candidates.
+    Responsibilities:
+    - load model-side artifacts during startup,
+    - translate request constraints into DiCE search boundaries,
+    - validate every generated candidate against additional hard constraints,
+    - rank feasible candidates and optionally build a prescriptive plan.
+
+    The engine requires model artifacts and never fabricates feasible
+    candidates. If no candidate survives validation, it returns an explicit
+    `INFEASIBLE` or `ERROR` response with a reason code.
     """
 
     def __init__(
@@ -60,10 +78,11 @@ class DiceCounterfactualEngine(CounterfactualEngine):
                 reference_data_path=reference_data_path,
                 feature_registry_path=feature_registry_path,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  
             self.initialization_error = str(exc)
 
     def generate(self, request: CounterfactualRequest) -> CounterfactualResponse:
+        """Generate a counterfactual response for a validated request."""
         started = perf_counter()
 
         mutable_allowed = request.constraints.mutable_allowed
@@ -119,7 +138,7 @@ class DiceCounterfactualEngine(CounterfactualEngine):
                     medical_rules_passed=False,
                 ),
             )
-        except Exception as err:  # noqa: BLE001
+        except Exception as err:  
             return CounterfactualResponse(
                 request_id=request.request_id,
                 status=Status.ERROR,
@@ -138,10 +157,13 @@ class DiceCounterfactualEngine(CounterfactualEngine):
     def _generate_real(
         self, request: CounterfactualRequest, started: float
     ) -> CounterfactualResponse:
+        """Run the full DiCE workflow and post-process the candidates."""
         assert self.artifacts is not None
         registry = self.artifacts.feature_registry
         model_columns = self.artifacts.feature_columns
 
+        # Normalize request payload keys before comparing them against model
+        # columns, because incoming payloads may use aliases such as `bmi`.
         instance_features = registry.canonicalize_feature_map(request.instance.features)
         immutable_input = registry.canonicalize_feature_names(
             request.constraints.immutable_features
@@ -159,6 +181,8 @@ class DiceCounterfactualEngine(CounterfactualEngine):
             missing_str = ", ".join(missing_features)
             raise ValueError(f"Missing required feature(s): {missing_str}")
 
+        # Effective immutability is the union of global policy and request-level
+        # restrictions (`immutable_features` + `must_not_change`).
         immutable_set = (
             set(registry.immutable_defaults()).union(immutable_input).union(must_not_change)
         )
@@ -188,6 +212,8 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         query_df = pd.DataFrame([instance_series], columns=model_columns)
         base_prediction = self._predict_info(query_df)
 
+        # Build the DiCE search space after layering model metadata, user
+        # bounds, and directional constraints from the feature registry.
         dice_data = self._build_dice_data()
         method = self._normalize_dice_method(request.generation.method)
         desired_class = self._target_to_dice_class(
@@ -243,6 +269,8 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         target_violation_seen = False
 
         for _, row in raw_candidates.iterrows():
+            # Candidates returned by DiCE are treated as proposals only. They
+            # still need to pass stricter service-level validation below.
             candidate_features = self._coerce_candidate_features(
                 row=row,
                 model_columns=model_columns,
@@ -398,6 +426,7 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         permitted_range: dict[str, list[float]],
         random_seed: int,
     ) -> pd.DataFrame:
+        """Execute DiCE and return raw candidate rows in model column order."""
         assert self.artifacts is not None
         import dice_ml
 
@@ -435,6 +464,7 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         return raw[present]
 
     def _build_dice_data(self) -> object:
+        """Build the DiCE data wrapper from reference/background samples."""
         assert self.artifacts is not None
         import dice_ml
 
@@ -456,6 +486,7 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         )
 
     def _as_dice_input_df(self, frame: pd.DataFrame) -> pd.DataFrame:
+        """Coerce a dataframe to the numeric dtypes expected by model and DiCE."""
         assert self.artifacts is not None
         typed = frame.copy()
         registry = self.artifacts.feature_registry
@@ -485,6 +516,13 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         registry: FeatureRegistry,
         baseline_features: dict[str, JSONFeatureValue],
     ) -> dict[str, list[float]]:
+        """Build the feature ranges that DiCE is allowed to explore.
+
+        Range construction combines three sources:
+        - default domain bounds from the feature registry,
+        - explicit user-provided bounds from the request,
+        - directional constraints such as "BMI should not increase".
+        """
         default_range = registry.default_permitted_range(mutable_allowed)
         request_bounds = {}
 
@@ -547,6 +585,7 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         return merged
 
     def _predict_info(self, frame: pd.DataFrame) -> PredictionInfo:
+        """Convert model output into the service's normalized prediction format."""
         assert self.artifacts is not None
 
         if hasattr(self.artifacts.model, "predict_proba"):
@@ -571,6 +610,7 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         target_class: str,
         min_target_probability: float,
     ) -> bool:
+        """Check whether a candidate really reaches the requested target."""
         normalized = target_class.strip().lower()
         if normalized in {"low", "low_risk", "non_diabetes", "0"}:
             return (
@@ -586,6 +626,7 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         return prediction.probability_low_risk >= min_target_probability
 
     def _target_to_dice_class(self, target: str, base_prediction: PredictionInfo) -> int | str:
+        """Translate service target labels into the class format expected by DiCE."""
         normalized = target.strip().lower()
         if normalized in {"low", "low_risk", "non_diabetes", "0"}:
             return 0
@@ -596,6 +637,7 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         return 0
 
     def _normalize_dice_method(self, method: str) -> str:
+        """Map service-level generation method names to DiCE backend names."""
         mapping = {
             "dice_genetic": "genetic",
             "genetic": "genetic",
@@ -613,6 +655,7 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         immutable_set: set[str],
         registry: FeatureRegistry,
     ) -> list[str]:
+        """Filter requested mutable features down to valid engine candidates."""
         allowed: list[str] = []
         seen: set[str] = set()
         for name in mutable_input:
@@ -637,6 +680,7 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         features: dict[str, JSONFeatureValue],
         registry: FeatureRegistry,
     ) -> dict[str, object]:
+        """Reorder and cast a raw feature map into model input order."""
         series: dict[str, object] = {}
         for column in ordered_columns:
             value = features[column]
@@ -652,6 +696,7 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         model_columns: list[str],
         registry: FeatureRegistry,
     ) -> dict[str, JSONFeatureValue]:
+        """Cast one raw DiCE row back into a typed feature dictionary."""
         result: dict[str, JSONFeatureValue] = {}
         for column in model_columns:
             value = row[column]
@@ -669,6 +714,7 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         baseline: dict[str, JSONFeatureValue],
         immutable_set: set[str],
     ) -> bool:
+        """Return True when immutable features remain unchanged."""
         for feature in immutable_set:
             if feature not in candidate or feature not in baseline:
                 continue
@@ -682,6 +728,7 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         baseline: dict[str, JSONFeatureValue],
         mutable_set: set[str],
     ) -> bool:
+        """Return True when only user-allowed features changed."""
         for feature, value in candidate.items():
             if feature not in baseline:
                 continue
@@ -693,6 +740,7 @@ class DiceCounterfactualEngine(CounterfactualEngine):
     def _medical_ok(
         self, candidate: dict[str, JSONFeatureValue], registry: FeatureRegistry
     ) -> bool:
+        """Validate candidate values against registry-defined feature domains."""
         for feature_name, value in candidate.items():
             feature = registry.get(feature_name)
             if feature is None:
@@ -720,6 +768,7 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         mutable_allowed: set[str],
         registry: FeatureRegistry,
     ) -> bool:
+        """Validate preferred change direction for mutable features."""
         for feature_name in mutable_allowed:
             if feature_name not in candidate or feature_name not in baseline:
                 continue
@@ -750,6 +799,7 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         baseline: dict[str, JSONFeatureValue],
         mutable_allowed: set[str],
     ) -> dict[str, float]:
+        """Compute per-feature deltas for changed mutable features only."""
         delta: dict[str, float] = {}
         for feature in mutable_allowed:
             if feature not in candidate or feature not in baseline:
@@ -768,6 +818,7 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         baseline: dict[str, JSONFeatureValue],
         registry: FeatureRegistry,
     ) -> float:
+        """Compute a normalized L1 distance between baseline and candidate."""
         total = 0.0
         count = 0
 
@@ -791,6 +842,7 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         return float(total / count)
 
     def _lof_score(self, candidate_df: pd.DataFrame) -> float:
+        """Score candidate plausibility with Local Outlier Factor."""
         assert self.artifacts is not None
         if self.artifacts.lof_model is None:
             return 1.0
@@ -806,6 +858,11 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         preferences: dict[str, float],
         registry: FeatureRegistry,
     ) -> float:
+        """Aggregate ranking score for already-valid candidates.
+
+        Lower scores are better. This ranking does not decide feasibility; it
+        only decides which feasible candidate is preferred.
+        """
         w_proximity = float(preferences.get("proximity", 0.30))
         w_sparsity = float(preferences.get("sparsity", 0.20))
         w_plausibility = float(preferences.get("plausibility", 0.20))
@@ -834,19 +891,22 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         request: CounterfactualRequest,
         candidate: CounterfactualCandidate,
     ) -> PrescriptivePlan | None:
+        """Ask the planner to translate the best candidate into an action plan."""
         if self.planner is None:
             return None
         try:
             return self.planner.build_plan(request=request, candidate=candidate)
-        except Exception:  # noqa: BLE001
+        except Exception:  
             return None
 
     @staticmethod
     def _equal(a: object, b: object) -> bool:
+        """Numeric-aware equality helper for feature comparisons."""
         if isinstance(a, (int, float)) and isinstance(b, (int, float)):
             return abs(float(a) - float(b)) < 1e-9
         return a == b
 
     @staticmethod
     def _elapsed_ms(started: float) -> int:
+        """Return elapsed wall time in milliseconds."""
         return int((perf_counter() - started) * 1000)
