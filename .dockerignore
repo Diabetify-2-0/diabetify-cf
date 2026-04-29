@@ -1,0 +1,17 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.black_cache/
+htmlcov/
+build/
+dist/
+*.egg-info/
+artifacts/models/
+artifacts/results/
+experiments/results/
+.ipynb_checkpoints/

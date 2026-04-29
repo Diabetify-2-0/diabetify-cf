@@ -20,3 +20,14 @@ htmlcov/
 *.egg-info/
 build/
 dist/
+
+# Experiment outputs and local artifacts
+artifacts/models/*
+!artifacts/models/.gitkeep
+artifacts/results/*
+!artifacts/results/.gitkeep
+experiments/results/*
+!experiments/results/.gitkeep
+
+# Notebook local state
+.ipynb_checkpoints/

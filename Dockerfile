@@ -9,8 +9,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src ./src
+COPY configs ./configs
+COPY artifacts/reference ./artifacts/reference
 
 ENV PYTHONPATH=/app/src
 
 CMD ["python", "-m", "diabetify_cf.app"]
-

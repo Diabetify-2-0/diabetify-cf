@@ -18,6 +18,19 @@ Phase 4 (prescriptive planning):
 ## Folder Structure
 ```text
 diabetify-cf/
+  artifacts/
+    reference/
+      reference_data.parquet
+    models/
+    results/
+  configs/
+    feature_registry.json
+  docs/
+  experiments/
+    notebooks/
+    scripts/
+    configs/
+    results/
   src/diabetify_cf/
     engine/
     messaging/
@@ -64,8 +77,16 @@ docker build -t diabetify-cf:dev .
 docker run --rm --env-file .env diabetify-cf:dev
 ```
 
+## Research and Experiment Layout
+- `src/` berisi kode service yang dipakai modul Diabetify.
+- `experiments/notebooks/` berisi notebook eksplorasi counterfactual engine.
+- `experiments/scripts/` disiapkan untuk benchmark dan evaluasi metrik.
+- `experiments/results/` disiapkan untuk output eksperimen lokal dan tidak ditujukan untuk Git.
+- Model XGBoost utama tetap berasal dari repo saudara `diabetify-ml` melalui `CF_MODEL_PATH` dan `CF_COLUMNS_PATH`.
+
 ## Notes
 - Service selalu menjalankan engine DiCE real dan membutuhkan `CF_MODEL_PATH` dan `CF_COLUMNS_PATH` valid.
+- Default `CF_REFERENCE_DATA_PATH` mengarah ke `artifacts/reference/reference_data.parquet`.
 - Input `instance.features` wajib berisi seluruh fitur model pada `x_columns.pkl`.
 - `CF_MAX_LOF_SCORE` mengatur batas maksimum skor LOF kandidat (semakin kecil semakin ketat).
 - Planner default `CF_PLANNER_PROVIDER=template`; set `openai` + `OPENAI_API_KEY` untuk narasi LLM.

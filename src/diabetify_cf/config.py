@@ -23,7 +23,10 @@ def _default_path_for(name: str) -> str:
     defaults = {
         "CF_MODEL_PATH": program_root / "diabetify-ml" / "xg_model.pkl",
         "CF_COLUMNS_PATH": program_root / "diabetify-ml" / "x_columns.pkl",
-        "CF_REFERENCE_DATA_PATH": program_root / "diabetify-ml" / "shap_background.parquet",
+        "CF_REFERENCE_DATA_PATH": service_root
+        / "artifacts"
+        / "reference"
+        / "reference_data.parquet",
         "CF_FEATURE_REGISTRY_PATH": service_root / "configs" / "feature_registry.json",
     }
     return str(defaults[name])
