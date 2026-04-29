@@ -1,0 +1,17 @@
+{
+  "engine": "dice",
+  "limit": 10,
+  "only_high_risk": true,
+  "target_class": "low_risk",
+  "min_target_probability": 0.5,
+  "total_cfs": 3,
+  "generation_method": "dice_genetic",
+  "random_seed": 42,
+  "timeout_ms": 5000,
+  "mutable_allowed": [],
+  "immutable_features": [],
+  "feature_bounds": {},
+  "use_default_mutable": true,
+  "use_default_immutable": true,
+  "use_default_feature_bounds": true
+}

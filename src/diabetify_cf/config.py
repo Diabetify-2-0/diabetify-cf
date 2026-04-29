@@ -16,6 +16,13 @@ def _bool_env(name: str, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _env_or_default(name: str, default: str) -> str:
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return default
+    return raw
+
+
 def _default_path_for(name: str) -> str:
     service_root = Path(__file__).resolve().parents[2]
     program_root = Path(__file__).resolve().parents[3]
@@ -60,12 +67,12 @@ class Settings:
         "CF_OPENAI_ENDPOINT", "https://api.openai.com/v1/chat/completions"
     )
 
-    model_path: str = os.getenv("CF_MODEL_PATH", _default_path_for("CF_MODEL_PATH"))
-    columns_path: str = os.getenv("CF_COLUMNS_PATH", _default_path_for("CF_COLUMNS_PATH"))
+    model_path: str = _env_or_default("CF_MODEL_PATH", _default_path_for("CF_MODEL_PATH"))
+    columns_path: str = _env_or_default("CF_COLUMNS_PATH", _default_path_for("CF_COLUMNS_PATH"))
     preprocessor_path: str = os.getenv("CF_PREPROCESSOR_PATH", "")
-    reference_data_path: str = os.getenv(
+    reference_data_path: str = _env_or_default(
         "CF_REFERENCE_DATA_PATH", _default_path_for("CF_REFERENCE_DATA_PATH")
     )
-    feature_registry_path: str = os.getenv(
+    feature_registry_path: str = _env_or_default(
         "CF_FEATURE_REGISTRY_PATH", _default_path_for("CF_FEATURE_REGISTRY_PATH")
     )

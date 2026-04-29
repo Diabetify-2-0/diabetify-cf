@@ -3,7 +3,6 @@
 Counterfactual microservice untuk Diabetify berbasis spesifikasi:
 - Queue request: `ml.cf.request`
 - Queue response: `ml.cf.response`
-- Contract: `docs/CF_SPEC_V1.md`
 
 ## Current Phase
 Phase 4 (prescriptive planning):
@@ -25,7 +24,6 @@ diabetify-cf/
     results/
   configs/
     feature_registry.json
-  docs/
   experiments/
     notebooks/
     scripts/
@@ -83,6 +81,16 @@ docker run --rm --env-file .env diabetify-cf:dev
 - `experiments/scripts/` disiapkan untuk benchmark dan evaluasi metrik.
 - `experiments/results/` disiapkan untuk output eksperimen lokal dan tidak ditujukan untuk Git.
 - Model XGBoost utama tetap berasal dari repo saudara `diabetify-ml` melalui `CF_MODEL_PATH` dan `CF_COLUMNS_PATH`.
+
+## Experiment Commands
+```powershell
+python experiments/scripts/check_engine_availability.py
+python experiments/scripts/run_benchmark.py --config experiments/configs/dice.json
+python experiments/scripts/summarize_results.py experiments/results/<run-folder>
+python experiments/scripts/run_scenarios.py
+python experiments/scripts/evaluate_stability.py --config experiments/configs/dice.json --repeat-count 10
+python experiments/scripts/collect_results.py
+```
 
 ## Notes
 - Service selalu menjalankan engine DiCE real dan membutuhkan `CF_MODEL_PATH` dan `CF_COLUMNS_PATH` valid.
