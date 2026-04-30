@@ -62,6 +62,12 @@ Copy-Item .env.example .env
 python -m diabetify_cf.app
 ```
 
+For experiment engines beyond DiCE, install the experiment extra:
+
+```powershell
+pip install -e ".[dev,experiments]"
+```
+
 ## Quality Commands
 
 ```powershell
@@ -93,16 +99,20 @@ docker run --rm --env-file .env diabetify-cf:dev
 ```powershell
 python experiments/scripts/check_engine_availability.py
 python experiments/scripts/run_benchmark.py --engine-config experiments/configs/engines/dice.json --scenario-config experiments/configs/scenarios/all_mutable.json
+python experiments/scripts/run_benchmark.py --engine-config experiments/configs/engines/ocean.json --scenario-config experiments/configs/scenarios/all_mutable.json
 python experiments/scripts/summarize_results.py experiments/results/<run-folder>
 python experiments/scripts/run_scenarios.py --limit 1 --timeout-seconds 60
 python experiments/scripts/evaluate_stability.py --engine-config experiments/configs/engines/dice.json --scenario-config experiments/configs/scenarios/stability.json --limit 1 --repeat-count 2
 python experiments/scripts/collect_results.py
 python experiments/scripts/run_baseline.py --engine-config experiments/configs/engines/dice.json --scenario-limit 1 --stability-limit 1 --repeat-count 2 --scenario-timeout-seconds 60 --stability-timeout-seconds 60
+python experiments/scripts/run_comparison.py --scenario-limit 5 --stability-limit 5 --repeat-count 3 --scenario-timeout-seconds 120 --stability-timeout-seconds 120
 python experiments/scripts/print_baseline_report.py experiments/results/<baseline-folder>
 ```
 
 Baseline runs create a readable `report.md` in the baseline folder and update
 `experiments/results/latest/baseline.txt`.
+Comparison runs create `comparison_report.md` and update
+`experiments/results/latest/comparison.txt`.
 
 ## Notes
 

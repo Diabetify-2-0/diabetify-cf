@@ -12,6 +12,12 @@ Gunakan Python dari virtual environment project:
 .\.venv\Scripts\python.exe
 ```
 
+Untuk engine eksperimen selain DiCE, install extra eksperimen:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -e ".[dev,experiments]"
+```
+
 ## 1. Cek Kesiapan Environment
 
 ```powershell
@@ -27,6 +33,7 @@ Command ini mengecek:
 - kesiapan feature registry.
 
 Untuk saat ini, engine yang aktif adalah DiCE. CARLA, OCEAN, dan FOCUS akan muncul sebagai missing sampai dependency-nya dipasang.
+Dengan extra `experiments`, OCEAN akan muncul sebagai available.
 
 ## 2. Jalankan Satu Benchmark DiCE
 
@@ -163,7 +170,45 @@ experiments/results/latest/baseline.txt
 
 Catatan: pada beberapa scenario constraint, engine tertentu bisa berjalan lama. Jika banyak step timeout, naikkan timeout atau turunkan limit terlebih dahulu.
 
-## 7. Tampilkan Quick Report Baseline
+## 7. Jalankan Comparison Experiment
+
+Untuk membandingkan DiCE dan OCEAN dengan desain eksperimen yang sama:
+
+```powershell
+.\.venv\Scripts\python.exe experiments\scripts\run_comparison.py --scenario-limit 5 --stability-limit 5 --repeat-count 3 --scenario-timeout-seconds 120 --stability-timeout-seconds 120
+```
+
+Comparison runner menjalankan baseline setiap engine dengan:
+
+- scenario config yang sama,
+- limit case yang sama,
+- repeat count stability yang sama,
+- timeout yang sama.
+
+Output akan dibuat di:
+
+```text
+experiments/results/comparisons/<timestamp>/
+```
+
+File penting:
+
+- `comparison_report.md`
+- `comparison_manifest.json`
+- `combined/scenario_summary.csv`
+- `combined/stability_summary.csv`
+- `combined/candidates.csv`
+- `baselines/<engine>/<timestamp>/report.md`
+
+Comparison runner juga menulis pointer hasil terbaru:
+
+```text
+experiments/results/latest/comparison.txt
+```
+
+Gunakan command ini sebagai jalur utama ketika tujuan eksperimen adalah membandingkan beberapa library.
+
+## 8. Tampilkan Quick Report Baseline
 
 ```powershell
 .\.venv\Scripts\python.exe experiments\scripts\print_baseline_report.py experiments\results\<timestamp>_<engine>_baseline
@@ -181,7 +226,7 @@ Report menampilkan:
 
 Script ini juga bisa membaca baseline yang belum selesai sepenuhnya, selama sudah ada `summary.csv` atau `candidates.csv` parsial.
 
-## 8. Gabungkan Semua Hasil Eksperimen
+## 9. Gabungkan Semua Hasil Eksperimen
 
 ```powershell
 .\.venv\Scripts\python.exe experiments\scripts\collect_results.py
@@ -195,10 +240,11 @@ experiments/results/combined/stability_summary.csv
 experiments/results/combined/candidates.csv
 ```
 
-## 9. Config yang Tersedia
+## 10. Config yang Tersedia
 
 ```text
 experiments/configs/engines/dice.json
+experiments/configs/engines/ocean.json
 experiments/configs/scenarios/all_mutable.json
 experiments/configs/scenarios/bmi_only.json
 experiments/configs/scenarios/activity_only.json
@@ -209,7 +255,7 @@ experiments/configs/scenarios/stability.json
 
 Engine config menentukan generator counterfactual yang dipakai. Scenario config menentukan constraint dan kasus uji. Runner akan menggabungkan keduanya sebelum benchmark berjalan.
 
-## 10. Output dan Git
+## 11. Output dan Git
 
 Semua hasil eksperimen berada di:
 
@@ -227,11 +273,12 @@ experiments/results/
   scenarios/<engine>/<timestamp>/
   stability/<engine>/<timestamp>/
   baselines/<engine>/<timestamp>/
+  comparisons/<timestamp>/
   combined/
   latest/
 ```
 
-## 11. Notebook
+## 12. Notebook
 
 Notebook berada di:
 

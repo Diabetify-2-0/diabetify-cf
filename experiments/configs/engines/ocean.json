@@ -1,0 +1,6 @@
+{
+  "engine": "ocean",
+  "generation_method": "ocean_cp",
+  "total_cfs": 1,
+  "timeout_ms": 10000
+}
