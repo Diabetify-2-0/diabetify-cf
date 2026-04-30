@@ -21,20 +21,22 @@ def _bootstrap_path() -> None:
 _bootstrap_path()
 
 from experiments.scripts.run_benchmark import (  # noqa: E402
+    DEFAULT_ENGINE_CONFIG_PATH,
     DEFAULT_OUTPUT_ROOT,
     REPO_ROOT,
     load_config,
+    merge_configs,
     run_benchmark,
 )
 from experiments.scripts.run_metadata import build_run_metadata  # noqa: E402
 from experiments.scripts.summarize_results import summarize_run, write_summary_csv  # noqa: E402
 
 DEFAULT_SCENARIO_CONFIGS = [
-    Path("experiments/configs/dice_all_mutable.json"),
-    Path("experiments/configs/dice_bmi_only.json"),
-    Path("experiments/configs/dice_activity_only.json"),
-    Path("experiments/configs/dice_tight_bounds.json"),
-    Path("experiments/configs/dice_no_mutable.json"),
+    Path("experiments/configs/scenarios/all_mutable.json"),
+    Path("experiments/configs/scenarios/bmi_only.json"),
+    Path("experiments/configs/scenarios/activity_only.json"),
+    Path("experiments/configs/scenarios/tight_bounds.json"),
+    Path("experiments/configs/scenarios/no_mutable.json"),
 ]
 
 
@@ -65,13 +67,19 @@ def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         writer.writerows(rows)
 
 
-def run_scenarios(config_paths: list[Path], output_root: Path) -> Path:
+def _scenario_name(config: dict[str, Any], config_path: Path) -> str:
+    return str(config.get("name") or config_path.stem)
+
+
+def run_scenarios(config_paths: list[Path], output_root: Path, engine_config_path: Path) -> Path:
     scenario_root = _make_output_root(output_root)
     summary_rows: list[dict[str, Any]] = []
+    engine_config = load_config(engine_config_path)
 
     for config_path in config_paths:
-        config = load_config(config_path)
-        scenario_name = config_path.stem
+        scenario_config = load_config(config_path)
+        config = merge_configs(engine_config=engine_config, scenario_config=scenario_config)
+        scenario_name = _scenario_name(scenario_config, config_path)
         scenario_output_root = scenario_root / scenario_name
         run_dir = run_benchmark(
             config=config,
@@ -82,13 +90,14 @@ def run_scenarios(config_paths: list[Path], output_root: Path) -> Path:
         write_summary_csv(run_dir / "summary.csv", summary)
         summary_rows.append(_flatten_summary(summary, scenario_name=scenario_name))
 
-    scenario_engines = {str(load_config(path).get("engine", "dice")) for path in config_paths}
+    engine_name = str(engine_config.get("engine", "dice"))
     metadata = build_run_metadata(
         repo_root=REPO_ROOT,
         run_type="scenarios",
-        engine_name=",".join(sorted(scenario_engines)),
+        engine_name=engine_name,
         config_path=None,
     )
+    metadata["engine_config"] = str(engine_config_path)
     metadata["scenario_configs"] = [str(path) for path in config_paths]
     (scenario_root / "run_metadata.json").write_text(
         json.dumps(metadata, indent=2, ensure_ascii=True),
@@ -107,10 +116,15 @@ def main() -> None:
         default=DEFAULT_SCENARIO_CONFIGS,
         help="Scenario config files to run.",
     )
+    parser.add_argument("--engine-config", type=Path, default=DEFAULT_ENGINE_CONFIG_PATH)
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
     args = parser.parse_args()
 
-    output_dir = run_scenarios(config_paths=args.configs, output_root=args.output_root)
+    output_dir = run_scenarios(
+        config_paths=args.configs,
+        output_root=args.output_root,
+        engine_config_path=args.engine_config,
+    )
     print(f"Scenario outputs written to {output_dir}")
 
 

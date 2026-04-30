@@ -30,9 +30,9 @@ def test_flatten_summary_serializes_nested_counts() -> None:
             "total_cases": 2,
             "status_counts": {"FEASIBLE": 1, "INFEASIBLE": 1},
         },
-        scenario_name="dice_test",
+        scenario_name="test_scenario",
     )
 
-    assert row["scenario"] == "dice_test"
+    assert row["scenario"] == "test_scenario"
     assert row["total_cases"] == 2
     assert row["status_counts"] == '{"FEASIBLE": 1, "INFEASIBLE": 1}'

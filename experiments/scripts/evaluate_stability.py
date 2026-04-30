@@ -25,11 +25,12 @@ from diabetify_cf.config import Settings  # noqa: E402
 from diabetify_cf.schemas import CounterfactualRequest  # noqa: E402
 from experiments.engines.factory import build_experiment_engine  # noqa: E402
 from experiments.scripts.run_benchmark import (  # noqa: E402
-    DEFAULT_CONFIG_PATH,
+    DEFAULT_ENGINE_CONFIG_PATH,
     DEFAULT_OUTPUT_ROOT,
     REPO_ROOT,
     build_request_payload,
     load_config,
+    load_effective_config,
     select_evaluation_rows,
 )
 from experiments.scripts.run_metadata import build_run_metadata  # noqa: E402
@@ -204,17 +205,33 @@ def evaluate_stability(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate repeated-run stability.")
-    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH)
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="Merged effective config. Prefer --engine-config and --scenario-config.",
+    )
+    parser.add_argument("--engine-config", type=Path, default=DEFAULT_ENGINE_CONFIG_PATH)
+    parser.add_argument(
+        "--scenario-config",
+        type=Path,
+        default=Path("experiments/configs/scenarios/stability.json"),
+    )
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
     parser.add_argument("--repeat-count", type=int, default=10)
     args = parser.parse_args()
 
-    config = load_config(args.config)
+    config_path = args.config or args.scenario_config
+    if args.config is not None:
+        config = load_config(args.config)
+    else:
+        config = load_effective_config(args.engine_config, args.scenario_config)
+
     output_dir = evaluate_stability(
         config=config,
         output_root=args.output_root,
         repeat_count=args.repeat_count,
-        config_path=args.config,
+        config_path=config_path,
     )
     print(f"Stability output written to {output_dir}")
 

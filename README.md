@@ -1,11 +1,14 @@
 # diabetify-cf
 
 Counterfactual microservice untuk Diabetify berbasis spesifikasi:
+
 - Queue request: `ml.cf.request`
 - Queue response: `ml.cf.response`
 
 ## Current Phase
+
 Phase 4 (prescriptive planning):
+
 - Contract schema (request/response) sudah dibuat.
 - RabbitMQ consumer/publisher sudah dibuat.
 - DICE real engine sudah aktif jika artifact tersedia.
@@ -15,6 +18,7 @@ Phase 4 (prescriptive planning):
 - Integrasi OpenAI planner tersedia dengan fallback otomatis ke template jika API key tidak ada/gagal.
 
 ## Folder Structure
+
 ```text
 diabetify-cf/
   artifacts/
@@ -38,12 +42,12 @@ diabetify-cf/
     reason_codes.py
     schemas.py
   tests/
-  requirements.txt
-  requirements-dev.txt
+  pyproject.toml
   .env.example
 ```
 
 ## Local Setup
+
 1. Buat virtual environment.
 2. Install dependencies.
 3. Salin `.env.example` menjadi `.env`.
@@ -53,13 +57,13 @@ diabetify-cf/
 cd diabetify-cf
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements-dev.txt
-pip install -e .
+pip install -e ".[dev]"
 Copy-Item .env.example .env
 python -m diabetify_cf.app
 ```
 
 ## Quality Commands
+
 ```powershell
 $env:PYTHONDONTWRITEBYTECODE = "1"
 python -m ruff check --no-cache src tests
@@ -69,6 +73,7 @@ python -m pytest -q tests
 ```
 
 ## Docker
+
 ```powershell
 cd diabetify-cf
 docker build -t diabetify-cf:dev .
@@ -76,6 +81,7 @@ docker run --rm --env-file .env diabetify-cf:dev
 ```
 
 ## Research and Experiment Layout
+
 - `src/` berisi kode service yang dipakai modul Diabetify.
 - `experiments/notebooks/` berisi notebook eksplorasi counterfactual engine.
 - `experiments/scripts/` disiapkan untuk benchmark dan evaluasi metrik.
@@ -83,16 +89,20 @@ docker run --rm --env-file .env diabetify-cf:dev
 - Model XGBoost utama tetap berasal dari repo saudara `diabetify-ml` melalui `CF_MODEL_PATH` dan `CF_COLUMNS_PATH`.
 
 ## Experiment Commands
+
 ```powershell
 python experiments/scripts/check_engine_availability.py
-python experiments/scripts/run_benchmark.py --config experiments/configs/dice.json
+python experiments/scripts/run_benchmark.py --engine-config experiments/configs/engines/dice.json --scenario-config experiments/configs/scenarios/all_mutable.json
 python experiments/scripts/summarize_results.py experiments/results/<run-folder>
 python experiments/scripts/run_scenarios.py
-python experiments/scripts/evaluate_stability.py --config experiments/configs/dice.json --repeat-count 10
+python experiments/scripts/evaluate_stability.py --engine-config experiments/configs/engines/dice.json --scenario-config experiments/configs/scenarios/stability.json --repeat-count 10
 python experiments/scripts/collect_results.py
+python experiments/scripts/run_dice_baseline.py --scenario-limit 10 --stability-limit 10 --repeat-count 10
+python experiments/scripts/print_baseline_report.py experiments/results/<baseline-folder>
 ```
 
 ## Notes
+
 - Service selalu menjalankan engine DiCE real dan membutuhkan `CF_MODEL_PATH` dan `CF_COLUMNS_PATH` valid.
 - Default `CF_REFERENCE_DATA_PATH` mengarah ke `artifacts/reference/reference_data.parquet`.
 - Input `instance.features` wajib berisi seluruh fitur model pada `x_columns.pkl`.

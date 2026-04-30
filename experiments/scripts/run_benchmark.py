@@ -30,7 +30,8 @@ from experiments.engines.factory import build_experiment_engine  # noqa: E402
 from experiments.evaluation import evaluate_candidate  # noqa: E402
 from experiments.scripts.run_metadata import build_run_metadata  # noqa: E402
 
-DEFAULT_CONFIG_PATH = Path("experiments/configs/dice.json")
+DEFAULT_ENGINE_CONFIG_PATH = Path("experiments/configs/engines/dice.json")
+DEFAULT_SCENARIO_CONFIG_PATH = Path("experiments/configs/scenarios/all_mutable.json")
 DEFAULT_OUTPUT_ROOT = Path("experiments/results")
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -38,6 +39,17 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 def load_config(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def merge_configs(engine_config: dict[str, Any], scenario_config: dict[str, Any]) -> dict[str, Any]:
+    return {**scenario_config, **engine_config}
+
+
+def load_effective_config(engine_config_path: Path, scenario_config_path: Path) -> dict[str, Any]:
+    return merge_configs(
+        engine_config=load_config(engine_config_path),
+        scenario_config=load_config(scenario_config_path),
+    )
 
 
 def _default_mutable_allowed(registry: FeatureRegistry, feature_columns: list[str]) -> list[str]:
@@ -289,15 +301,27 @@ def run_benchmark(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run counterfactual engine benchmark.")
-    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH)
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="Merged effective config. Prefer --engine-config and --scenario-config.",
+    )
+    parser.add_argument("--engine-config", type=Path, default=DEFAULT_ENGINE_CONFIG_PATH)
+    parser.add_argument("--scenario-config", type=Path, default=DEFAULT_SCENARIO_CONFIG_PATH)
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
     args = parser.parse_args()
 
-    config = load_config(args.config)
+    config_path = args.config or args.scenario_config
+    if args.config is not None:
+        config = load_config(args.config)
+    else:
+        config = load_effective_config(args.engine_config, args.scenario_config)
+
     output_dir = run_benchmark(
         config=config,
         output_root=args.output_root,
-        config_path=args.config,
+        config_path=config_path,
     )
     print(f"Benchmark output written to {output_dir}")
 

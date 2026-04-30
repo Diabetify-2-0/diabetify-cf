@@ -12,7 +12,6 @@ def build_planner(settings: Settings) -> PrescriptivePlanner | None:
 
     template_planner = TemplatePrescriptivePlanner(
         max_steps=settings.planner_max_steps,
-        intended_user=settings.planner_intended_user,
     )
     provider = settings.planner_provider.strip().lower()
 
@@ -26,7 +25,6 @@ def build_planner(settings: Settings) -> PrescriptivePlanner | None:
             timeout_ms=settings.planner_timeout_ms,
             temperature=settings.planner_temperature,
             endpoint=settings.openai_endpoint,
-            intended_user=settings.planner_intended_user,
         )
         return FallbackPrescriptivePlanner(primary=openai_planner, fallback=template_planner)
 

@@ -7,6 +7,25 @@ name = "diabetify-cf"
 version = "0.1.0"
 description = "Counterfactual recommendation microservice for Diabetify"
 requires-python = ">=3.10"
+dependencies = [
+  "pydantic==2.11.4",
+  "pika==1.3.2",
+  "python-dotenv==1.0.1",
+  "dice-ml==0.12",
+  "numpy==2.2.6",
+  "pandas==2.2.3",
+  "pyarrow==20.0.0",
+  "scikit-learn==1.6.1",
+  "xgboost==3.0.1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "black>=24.0.0,<25.0.0",
+  "mypy>=1.8.0,<2.0.0",
+  "pytest>=8.0.0,<9.0.0",
+  "ruff>=0.8.0,<1.0.0",
+]
 
 [tool.setuptools]
 package-dir = {"" = "src"}

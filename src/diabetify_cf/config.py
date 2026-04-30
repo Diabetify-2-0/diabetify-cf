@@ -57,7 +57,6 @@ class Settings:
     max_lof_score: float = float(os.getenv("CF_MAX_LOF_SCORE", "2.5"))
     planner_enabled: bool = _bool_env("CF_PLANNER_ENABLED", True)
     planner_provider: str = os.getenv("CF_PLANNER_PROVIDER", "template")
-    planner_intended_user: str = os.getenv("CF_PLANNER_INTENDED_USER", "clinician")
     planner_model: str = os.getenv("CF_PLANNER_MODEL", "gpt-4o-mini")
     planner_timeout_ms: int = int(os.getenv("CF_PLANNER_TIMEOUT_MS", "4000"))
     planner_temperature: float = float(os.getenv("CF_PLANNER_TEMPERATURE", "0.2"))
@@ -69,7 +68,6 @@ class Settings:
 
     model_path: str = _env_or_default("CF_MODEL_PATH", _default_path_for("CF_MODEL_PATH"))
     columns_path: str = _env_or_default("CF_COLUMNS_PATH", _default_path_for("CF_COLUMNS_PATH"))
-    preprocessor_path: str = os.getenv("CF_PREPROCESSOR_PATH", "")
     reference_data_path: str = _env_or_default(
         "CF_REFERENCE_DATA_PATH", _default_path_for("CF_REFERENCE_DATA_PATH")
     )

@@ -20,7 +20,7 @@ def _read_csv(path: Path) -> list[dict[str, str]]:
 def test_collect_results_combines_scenario_and_stability_summaries(tmp_path: Path) -> None:
     _write_csv(
         tmp_path / "run_a" / "scenario_summary.csv",
-        [{"scenario": "dice_all_mutable", "feasible_rate": "1.0"}],
+        [{"scenario": "all_mutable", "feasible_rate": "1.0"}],
     )
     _write_csv(
         tmp_path / "run_b" / "stability_aggregate.csv",
@@ -37,7 +37,7 @@ def test_collect_results_combines_scenario_and_stability_summaries(tmp_path: Pat
     stability_rows = _read_csv(outputs["stability_summary"])
     candidate_rows = _read_csv(outputs["candidates"])
 
-    assert scenario_rows[0]["scenario"] == "dice_all_mutable"
+    assert scenario_rows[0]["scenario"] == "all_mutable"
     assert scenario_rows[0]["feasible_rate"] == "1.0"
     assert stability_rows[0]["case_count"] == "2"
     assert stability_rows[0]["mean_stability_std_norm"] == "0.1"

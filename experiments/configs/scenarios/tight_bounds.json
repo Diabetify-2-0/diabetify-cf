@@ -1,17 +1,16 @@
 {
-  "engine": "dice",
+  "name": "tight_bounds",
   "limit": 10,
   "only_high_risk": true,
   "target_class": "low_risk",
   "min_target_probability": 0.5,
   "total_cfs": 3,
-  "generation_method": "dice_genetic",
   "random_seed": 42,
   "timeout_ms": 5000,
   "mutable_allowed": ["BMI"],
   "immutable_features": [],
   "feature_bounds": {
-    "BMI": { "min": 18.5, "max": 35.0 }
+    "BMI": { "min": 28.0, "max": 30.0 }
   },
   "use_default_mutable": false,
   "use_default_immutable": true,
