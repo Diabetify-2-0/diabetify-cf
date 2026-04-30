@@ -94,12 +94,15 @@ docker run --rm --env-file .env diabetify-cf:dev
 python experiments/scripts/check_engine_availability.py
 python experiments/scripts/run_benchmark.py --engine-config experiments/configs/engines/dice.json --scenario-config experiments/configs/scenarios/all_mutable.json
 python experiments/scripts/summarize_results.py experiments/results/<run-folder>
-python experiments/scripts/run_scenarios.py
-python experiments/scripts/evaluate_stability.py --engine-config experiments/configs/engines/dice.json --scenario-config experiments/configs/scenarios/stability.json --repeat-count 10
+python experiments/scripts/run_scenarios.py --limit 1 --timeout-seconds 60
+python experiments/scripts/evaluate_stability.py --engine-config experiments/configs/engines/dice.json --scenario-config experiments/configs/scenarios/stability.json --limit 1 --repeat-count 2
 python experiments/scripts/collect_results.py
-python experiments/scripts/run_dice_baseline.py --scenario-limit 10 --stability-limit 10 --repeat-count 10
+python experiments/scripts/run_baseline.py --engine-config experiments/configs/engines/dice.json --scenario-limit 1 --stability-limit 1 --repeat-count 2 --scenario-timeout-seconds 60 --stability-timeout-seconds 60
 python experiments/scripts/print_baseline_report.py experiments/results/<baseline-folder>
 ```
+
+Baseline runs create a readable `report.md` in the baseline folder and update
+`experiments/results/latest/baseline.txt`.
 
 ## Notes
 

@@ -3,24 +3,19 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
-
-def _bootstrap_path() -> None:
-    repo_root = Path(__file__).resolve().parents[2]
-    src_path = repo_root / "src"
-    for path in (repo_root, src_path):
-        path_str = str(path)
-        if path_str not in sys.path:
-            sys.path.insert(0, path_str)
+try:
+    from experiments.scripts._bootstrap import bootstrap_path
+except ModuleNotFoundError:  # pragma: no cover - direct script execution
+    from _bootstrap import bootstrap_path
 
 
-_bootstrap_path()
+REPO_ROOT = bootstrap_path(__file__)
 
 from diabetify_cf.config import Settings  # noqa: E402
 from diabetify_cf.engine.feature_registry import FeatureRegistry  # noqa: E402
@@ -33,7 +28,6 @@ from experiments.scripts.run_metadata import build_run_metadata  # noqa: E402
 DEFAULT_ENGINE_CONFIG_PATH = Path("experiments/configs/engines/dice.json")
 DEFAULT_SCENARIO_CONFIG_PATH = Path("experiments/configs/scenarios/all_mutable.json")
 DEFAULT_OUTPUT_ROOT = Path("experiments/results")
-REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def load_config(path: Path) -> dict[str, Any]:
@@ -122,7 +116,7 @@ def build_request_payload(
         },
         "generation": {
             "total_cfs": int(config.get("total_cfs", 3)),
-            "method": str(config.get("generation_method", "dice_genetic")),
+            "method": str(config.get("generation_method", "default")),
             "random_seed": int(config.get("random_seed", 42)) + index,
             "timeout_ms": int(config.get("timeout_ms", 5000)),
         },
@@ -218,7 +212,7 @@ def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
 
 def _make_output_dir(output_root: Path, engine_name: str) -> Path:
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    output_dir = output_root / f"{timestamp}_{engine_name}"
+    output_dir = output_root / "benchmarks" / engine_name / timestamp
     output_dir.mkdir(parents=True, exist_ok=False)
     return output_dir
 
@@ -231,12 +225,12 @@ def run_benchmark(
     settings = Settings()
     engine_name = str(config.get("engine", "dice")).lower()
     adapter = build_experiment_engine(engine_name, settings=settings)
-    if adapter.engine.artifacts is None:
+    if not adapter.is_ready or adapter.artifacts is None:
         raise RuntimeError(
-            adapter.engine.initialization_error or f"{engine_name} artifacts are not ready."
+            adapter.initialization_error or f"{engine_name} artifacts are not ready."
         )
 
-    artifacts = adapter.engine.artifacts
+    artifacts = adapter.artifacts
     limit = int(config.get("limit", 10))
     random_seed = int(config.get("random_seed", 42))
     output_dir = _make_output_dir(output_root, engine_name)

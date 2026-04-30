@@ -574,7 +574,7 @@ class ExperimentPostprocessor:
     def _lof_score(self, candidate_df: pd.DataFrame) -> float:
         if self.artifacts.lof_model is None:
             return 1.0
-        score = float(self.artifacts.lof_model.score_samples(candidate_df)[0])
+        score = float(self.artifacts.lof_model.score_samples(candidate_df.to_numpy())[0])
         return float(max(1e-6, -score))
 
     def _objective_score(

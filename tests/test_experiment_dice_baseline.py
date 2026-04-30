@@ -2,7 +2,7 @@ import csv
 import json
 from pathlib import Path
 
-from experiments.scripts.run_dice_baseline import apply_limit, run_baseline_scenarios
+from experiments.scripts.run_baseline import apply_limit, run_baseline_scenarios
 
 
 def test_apply_limit_overrides_limit_when_present() -> None:
@@ -71,7 +71,7 @@ def test_run_baseline_scenarios_records_completed_subprocess(
         }
 
     monkeypatch.setattr(
-        "experiments.scripts.run_dice_baseline._run_subprocess",
+        "experiments.scripts.run_baseline._run_subprocess",
         fake_run_subprocess,
     )
 
@@ -117,7 +117,7 @@ def test_run_baseline_scenarios_records_timeout_without_stopping(
         }
 
     monkeypatch.setattr(
-        "experiments.scripts.run_dice_baseline._run_subprocess",
+        "experiments.scripts.run_baseline._run_subprocess",
         fake_run_subprocess,
     )
 

@@ -849,7 +849,7 @@ class DiceCounterfactualEngine(CounterfactualEngine):
 
         # sklearn score_samples for LOF (novelty=True) is the opposite of LOF score.
         # Convert back so inliers are close to 1.0 and outliers are > 1.0.
-        score = float(self.artifacts.lof_model.score_samples(candidate_df)[0])
+        score = float(self.artifacts.lof_model.score_samples(candidate_df.to_numpy())[0])
         return float(max(1e-6, -score))
 
     def _objective_score(

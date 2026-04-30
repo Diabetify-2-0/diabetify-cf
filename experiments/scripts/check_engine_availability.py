@@ -3,24 +3,19 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
-import sys
 from pathlib import Path
 from typing import Any
 
-
-def _bootstrap_path() -> None:
-    repo_root = Path(__file__).resolve().parents[2]
-    src_path = repo_root / "src"
-    for path in (repo_root, src_path):
-        path_str = str(path)
-        if path_str not in sys.path:
-            sys.path.insert(0, path_str)
+try:
+    from experiments.scripts._bootstrap import bootstrap_path
+except ModuleNotFoundError:  # pragma: no cover - direct script execution
+    from _bootstrap import bootstrap_path
 
 
-_bootstrap_path()
+bootstrap_path(__file__)
 
 from diabetify_cf.config import Settings  # noqa: E402
-from experiments.engines.dice_adapter import DiceExperimentAdapter  # noqa: E402
+from experiments.engines.factory import SUPPORTED_ENGINES, build_experiment_engine  # noqa: E402
 
 ENGINE_IMPORTS = {
     "dice": ["dice_ml"],
@@ -38,19 +33,17 @@ def check_availability(settings: Settings) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for engine_name, module_names in ENGINE_IMPORTS.items():
         missing = [name for name in module_names if not _module_available(name)]
-        rows.append(
-            {
-                "engine": engine_name,
-                "available": not missing,
-                "missing_modules": missing,
-            }
-        )
-
-    dice_row = next(row for row in rows if row["engine"] == "dice")
-    if dice_row["available"]:
-        adapter = DiceExperimentAdapter(settings=settings)
-        dice_row["artifact_ready"] = adapter.engine.artifacts is not None
-        dice_row["initialization_error"] = adapter.engine.initialization_error
+        row = {
+            "engine": engine_name,
+            "implemented": engine_name in SUPPORTED_ENGINES,
+            "available": not missing,
+            "missing_modules": missing,
+        }
+        if row["implemented"] and row["available"]:
+            adapter = build_experiment_engine(engine_name, settings=settings)
+            row["artifact_ready"] = adapter.is_ready
+            row["initialization_error"] = adapter.initialization_error
+        rows.append(row)
 
     rows.append(
         {
@@ -89,6 +82,8 @@ def main() -> None:
         detail = ""
         if row.get("missing_modules"):
             detail = f" missing={','.join(row['missing_modules'])}"
+        if not row.get("implemented", False):
+            detail += " implemented=False"
         if "artifact_ready" in row:
             detail += f" artifact_ready={row['artifact_ready']}"
         print(f"{row['engine']}: {state}{detail}")

@@ -3,21 +3,16 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import sys
 from collections import Counter
 from pathlib import Path
 
-
-def _bootstrap_path() -> None:
-    repo_root = Path(__file__).resolve().parents[2]
-    src_path = repo_root / "src"
-    for path in (repo_root, src_path):
-        path_str = str(path)
-        if path_str not in sys.path:
-            sys.path.insert(0, path_str)
+try:
+    from experiments.scripts._bootstrap import bootstrap_path
+except ModuleNotFoundError:  # pragma: no cover - direct script execution
+    from _bootstrap import bootstrap_path
 
 
-_bootstrap_path()
+bootstrap_path(__file__)
 
 from experiments.scripts.collect_results import collect_results  # noqa: E402
 
@@ -54,6 +49,12 @@ def _scenario_from_summary_path(path: Path) -> str:
 
 
 def _scenario_rows(baseline_root: Path) -> list[dict[str, str]]:
+    combined = baseline_root / "combined" / "scenario_summary.csv"
+    if combined.exists():
+        rows = _read_csv(combined)
+        if rows:
+            return rows
+
     combined = baseline_root / "combined_scenario_summary.csv"
     if combined.exists():
         rows = _read_csv(combined)
@@ -74,6 +75,12 @@ def _scenario_rows(baseline_root: Path) -> list[dict[str, str]]:
 
 
 def _stability_rows(baseline_root: Path) -> list[dict[str, str]]:
+    combined = baseline_root / "combined" / "stability_summary.csv"
+    if combined.exists():
+        rows = _read_csv(combined)
+        if rows:
+            return rows
+
     combined = baseline_root / "combined_stability_summary.csv"
     if combined.exists():
         rows = _read_csv(combined)
@@ -87,6 +94,12 @@ def _stability_rows(baseline_root: Path) -> list[dict[str, str]]:
 
 
 def _candidate_rows(baseline_root: Path) -> list[dict[str, str]]:
+    combined = baseline_root / "combined" / "candidates.csv"
+    if combined.exists():
+        rows = _read_csv(combined)
+        if rows:
+            return rows
+
     combined = baseline_root / "combined_candidates.csv"
     if combined.exists():
         rows = _read_csv(combined)
@@ -95,6 +108,18 @@ def _candidate_rows(baseline_root: Path) -> list[dict[str, str]]:
     return [
         row for path in sorted(baseline_root.rglob("candidates.csv")) for row in _read_csv(path)
     ]
+
+
+def _manifest_engine(baseline_root: Path) -> str | None:
+    manifest_path = baseline_root / "baseline_manifest.json"
+    if not manifest_path.exists():
+        return None
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    engine = manifest.get("engine")
+    return str(engine) if engine else None
 
 
 def _top_changed_features(candidates: list[dict[str, str]], top_n: int) -> list[tuple[str, int]]:
@@ -110,6 +135,123 @@ def _top_changed_features(candidates: list[dict[str, str]], top_n: int) -> list[
         for feature_name in delta:
             counts[str(feature_name)] += 1
     return counts.most_common(top_n)
+
+
+def _scenario_status_counts(rows: list[dict[str, str]]) -> Counter[str]:
+    counts: Counter[str] = Counter()
+    for row in rows:
+        counts[row.get("step_status") or "completed"] += 1
+    return counts
+
+
+def build_markdown_report(baseline_root: Path, top_n: int = 10) -> str:
+    if not baseline_root.exists():
+        raise FileNotFoundError(f"Baseline root not found: {baseline_root}")
+
+    collect_results(baseline_root)
+    engine = _manifest_engine(baseline_root) or "unknown"
+    scenario_rows = _scenario_rows(baseline_root)
+    stability_rows = _stability_rows(baseline_root)
+    candidate_rows = _candidate_rows(baseline_root)
+    status_counts = _scenario_status_counts(scenario_rows)
+
+    lines = [
+        "# Baseline Report",
+        "",
+        f"- Baseline root: `{baseline_root}`",
+        f"- Engine: `{engine}`",
+        f"- Scenario rows: {len(scenario_rows)}",
+        f"- Candidate rows: {len(candidate_rows)}",
+        f"- Scenario statuses: `{dict(status_counts)}`",
+        "",
+        "## Scenario Summary",
+        "",
+    ]
+    if scenario_rows:
+        lines.append(
+            "| Scenario | Status | Feasible | Target | Immutable | Mutable | Bounds | "
+            "Direction | Runtime ms | LOF |"
+        )
+        lines.append("| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+        for row in scenario_rows:
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        row.get("scenario", "-"),
+                        row.get("step_status") or "completed",
+                        _percent(_as_float(row, "feasible_rate")),
+                        _percent(_as_float(row, "target_success_rate")),
+                        _percent(_as_float(row, "immutable_violation_rate")),
+                        _percent(_as_float(row, "mutable_violation_rate")),
+                        _percent(_as_float(row, "bounds_violation_rate")),
+                        _percent(_as_float(row, "directional_violation_rate")),
+                        _number(_as_float(row, "mean_runtime_ms")),
+                        _number(_as_float(row, "mean_lof_score")),
+                    ]
+                )
+                + " |"
+            )
+    else:
+        lines.append("No scenario summary rows found.")
+
+    lines.extend(["", "## Stability Summary", ""])
+    if stability_rows:
+        lines.append(
+            "| Case count | Mean feasible | Mean changed-feature Jaccard | "
+            "Mean stability std norm |"
+        )
+        lines.append("| ---: | ---: | ---: | ---: |")
+        for row in stability_rows:
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        row.get("case_count", "0"),
+                        _percent(_as_float(row, "mean_feasible_rate")),
+                        _number(_as_float(row, "mean_jaccard_changed_features")),
+                        _number(_as_float(row, "mean_stability_std_norm")),
+                    ]
+                )
+                + " |"
+            )
+    else:
+        lines.append("No stability summary rows found.")
+
+    lines.extend(["", "## Top Changed Features", ""])
+    top_features = _top_changed_features(candidate_rows, top_n)
+    if top_features:
+        lines.append("| Feature | Count |")
+        lines.append("| --- | ---: |")
+        for feature_name, count in top_features:
+            lines.append(f"| {feature_name} | {count} |")
+    else:
+        lines.append("No candidate deltas found.")
+
+    lines.extend(
+        [
+            "",
+            "## Important Files",
+            "",
+            "- `baseline_manifest.json`",
+            "- `combined/scenario_summary.csv`",
+            "- `combined/stability_summary.csv`",
+            "- `combined/candidates.csv`",
+            "- `scenarios/scenario_step_results.json`",
+            "- `stability/stability_step_result.json`",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def write_markdown_report(baseline_root: Path, top_n: int = 10) -> Path:
+    report_path = baseline_root / "report.md"
+    report_path.write_text(
+        build_markdown_report(baseline_root, top_n=top_n),
+        encoding="utf-8",
+    )
+    return report_path
 
 
 def _print_scenarios(rows: list[dict[str, str]]) -> None:
@@ -185,13 +327,16 @@ def print_report(baseline_root: Path, top_n: int) -> None:
 
     collect_results(baseline_root)
     print(f"Baseline root: {baseline_root}")
+    engine = _manifest_engine(baseline_root)
+    if engine is not None:
+        print(f"Engine: {engine}")
     _print_scenarios(_scenario_rows(baseline_root))
     _print_stability(_stability_rows(baseline_root))
     _print_top_features(_candidate_rows(baseline_root), top_n=top_n)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Print a readable DiCE baseline report.")
+    parser = argparse.ArgumentParser(description="Print a readable baseline report.")
     parser.add_argument("baseline_root", type=Path)
     parser.add_argument("--top-n", type=int, default=10)
     args = parser.parse_args()

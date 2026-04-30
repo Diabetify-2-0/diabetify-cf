@@ -33,6 +33,10 @@ def test_collect_results_combines_scenario_and_stability_summaries(tmp_path: Pat
 
     outputs = collect_results(tmp_path)
 
+    assert outputs["scenario_summary"] == tmp_path / "combined" / "scenario_summary.csv"
+    assert outputs["stability_summary"] == tmp_path / "combined" / "stability_summary.csv"
+    assert outputs["candidates"] == tmp_path / "combined" / "candidates.csv"
+
     scenario_rows = _read_csv(outputs["scenario_summary"])
     stability_rows = _read_csv(outputs["stability_summary"])
     candidate_rows = _read_csv(outputs["candidates"])

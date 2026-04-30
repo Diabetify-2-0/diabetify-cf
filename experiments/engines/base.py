@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
 
+from diabetify_cf.engine.artifacts import ModelArtifacts
 from diabetify_cf.schemas import CounterfactualRequest
 
 
@@ -34,6 +35,20 @@ class EngineRunResult:
 
 class ExperimentEngine(ABC):
     name: str
+
+    @property
+    @abstractmethod
+    def artifacts(self) -> ModelArtifacts | None:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def initialization_error(self) -> str | None:
+        raise NotImplementedError
+
+    @property
+    def is_ready(self) -> bool:
+        return self.artifacts is not None
 
     @abstractmethod
     def generate(self, request: CounterfactualRequest) -> EngineRunResult:

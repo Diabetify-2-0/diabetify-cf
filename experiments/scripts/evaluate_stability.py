@@ -2,24 +2,21 @@ from __future__ import annotations
 
 import argparse
 import csv
+import io
 import json
 import statistics
-import sys
+from contextlib import redirect_stderr
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-
-def _bootstrap_path() -> None:
-    repo_root = Path(__file__).resolve().parents[2]
-    src_path = repo_root / "src"
-    for path in (repo_root, src_path):
-        path_str = str(path)
-        if path_str not in sys.path:
-            sys.path.insert(0, path_str)
+try:
+    from experiments.scripts._bootstrap import bootstrap_path
+except ModuleNotFoundError:  # pragma: no cover - direct script execution
+    from _bootstrap import bootstrap_path
 
 
-_bootstrap_path()
+bootstrap_path(__file__)
 
 from diabetify_cf.config import Settings  # noqa: E402
 from diabetify_cf.schemas import CounterfactualRequest  # noqa: E402
@@ -38,7 +35,7 @@ from experiments.scripts.run_metadata import build_run_metadata  # noqa: E402
 
 def _make_output_dir(output_root: Path, engine_name: str) -> Path:
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    output_dir = output_root / f"{timestamp}_{engine_name}_stability"
+    output_dir = output_root / "stability" / engine_name / timestamp
     output_dir.mkdir(parents=True, exist_ok=False)
     return output_dir
 
@@ -100,16 +97,17 @@ def evaluate_stability(
     output_root: Path,
     repeat_count: int,
     config_path: Path | None = None,
+    suppress_engine_output: bool = True,
 ) -> Path:
     settings = Settings()
     engine_name = str(config.get("engine", "dice")).lower()
     adapter = build_experiment_engine(engine_name, settings=settings)
-    if adapter.engine.artifacts is None:
+    if not adapter.is_ready or adapter.artifacts is None:
         raise RuntimeError(
-            adapter.engine.initialization_error or f"{engine_name} artifacts are not ready."
+            adapter.initialization_error or f"{engine_name} artifacts are not ready."
         )
 
-    artifacts = adapter.engine.artifacts
+    artifacts = adapter.artifacts
     output_dir = _make_output_dir(output_root, engine_name)
     selected = select_evaluation_rows(
         reference_data=artifacts.reference_data,
@@ -122,10 +120,16 @@ def evaluate_stability(
 
     run_rows: list[dict[str, Any]] = []
     summary_rows: list[dict[str, Any]] = []
+    print(
+        f"Evaluating stability for {len(selected)} case(s), "
+        f"{repeat_count} repeat(s) each.",
+        flush=True,
+    )
     for case_index, (_, row) in enumerate(selected.iterrows(), start=1):
         deltas: list[dict[str, float]] = []
         changed_sets: list[set[str]] = []
         feasible_count = 0
+        print(f"Running stability case {case_index}/{len(selected)}...", flush=True)
 
         for repeat_index in range(repeat_count):
             run_config = dict(config)
@@ -138,7 +142,11 @@ def evaluate_stability(
                 config=run_config,
             )
             request = CounterfactualRequest.model_validate(payload)
-            result = adapter.generate(request)
+            if suppress_engine_output:
+                with redirect_stderr(io.StringIO()):
+                    result = adapter.generate(request)
+            else:
+                result = adapter.generate(request)
             top_candidate = result.candidates[0] if result.candidates else {}
             delta = top_candidate.get("delta", {}) if isinstance(top_candidate, dict) else {}
             if not isinstance(delta, dict):
@@ -174,6 +182,11 @@ def evaluate_stability(
                 "mean_jaccard_changed_features": sum(jaccards) / len(jaccards) if jaccards else 1.0,
                 "stability_std_norm": _delta_std_norm(deltas, artifacts.feature_registry),
             }
+        )
+        print(
+            f"Finished stability case {case_index}/{len(selected)} "
+            f"with feasible_rate={summary_rows[-1]['feasible_rate']:.3f}.",
+            flush=True,
         )
 
     run_config = {
@@ -219,6 +232,12 @@ def main() -> None:
     )
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
     parser.add_argument("--repeat-count", type=int, default=10)
+    parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument(
+        "--show-engine-output",
+        action="store_true",
+        help="Show raw engine stderr/progress output while stability runs.",
+    )
     args = parser.parse_args()
 
     config_path = args.config or args.scenario_config
@@ -226,12 +245,16 @@ def main() -> None:
         config = load_config(args.config)
     else:
         config = load_effective_config(args.engine_config, args.scenario_config)
+    if args.limit is not None:
+        config = dict(config)
+        config["limit"] = args.limit
 
     output_dir = evaluate_stability(
         config=config,
         output_root=args.output_root,
         repeat_count=args.repeat_count,
         config_path=config_path,
+        suppress_engine_output=not args.show_engine_output,
     )
     print(f"Stability output written to {output_dir}")
 

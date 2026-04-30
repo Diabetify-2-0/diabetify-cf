@@ -12,6 +12,7 @@ counterfactual workflow instead of file and fallback handling.
 from __future__ import annotations
 
 import pickle
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -52,7 +53,13 @@ def load_artifacts(
         raise FileNotFoundError(f"columns file not found: {columns_file}")
 
     with model_file.open("rb") as f:
-        model = pickle.load(f)
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message=".*If you are loading a serialized model.*",
+                category=UserWarning,
+            )
+            model = pickle.load(f)
     with columns_file.open("rb") as f:
         feature_columns = list(pickle.load(f))
 
@@ -131,5 +138,5 @@ def _build_lof_model(reference_data: pd.DataFrame) -> LocalOutlierFactor | None:
         return None
 
     lof = LocalOutlierFactor(n_neighbors=min(20, len(reference_data) - 1), novelty=True)
-    lof.fit(reference_data)
+    lof.fit(reference_data.to_numpy())
     return lof

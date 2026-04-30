@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from time import perf_counter
+from typing import Any
 
 import pandas as pd
 
@@ -30,6 +31,7 @@ class DiceCandidateGenerator:
     ) -> None:
         self.artifacts: ModelArtifacts | None = None
         self.initialization_error: str | None = None
+        self._dice_data_cache: Any | None = None
         try:
             self.artifacts = load_artifacts(
                 model_path=model_path,
@@ -50,7 +52,7 @@ class DiceCandidateGenerator:
         assert self.artifacts is not None
         import dice_ml
 
-        dice_data = self._build_dice_data(postprocessor)
+        dice_data = self._get_dice_data(postprocessor)
         dice_model = dice_ml.Model(
             model=self.artifacts.model,
             backend="sklearn",
@@ -91,6 +93,11 @@ class DiceCandidateGenerator:
             return pd.DataFrame()
         return raw[present]
 
+    def _get_dice_data(self, postprocessor: ExperimentPostprocessor) -> object:
+        if self._dice_data_cache is None:
+            self._dice_data_cache = self._build_dice_data(postprocessor)
+        return self._dice_data_cache
+
     def _build_dice_data(self, postprocessor: ExperimentPostprocessor) -> object:
         assert self.artifacts is not None
         import dice_ml
@@ -122,12 +129,20 @@ class DiceExperimentAdapter(ExperimentEngine):
             feature_registry_path=self.settings.feature_registry_path,
         )
 
+    @property
+    def artifacts(self) -> ModelArtifacts | None:
+        return self.engine.artifacts
+
+    @property
+    def initialization_error(self) -> str | None:
+        return self.engine.initialization_error
+
     def generate(self, request: CounterfactualRequest) -> EngineRunResult:
         started = perf_counter()
-        if self.engine.artifacts is None:
+        if self.artifacts is None:
             message = "Experiment DiCE generator is not fully configured yet."
-            if self.engine.initialization_error:
-                message += f" Initialization error: {self.engine.initialization_error}"
+            if self.initialization_error:
+                message += f" Initialization error: {self.initialization_error}"
             return self._to_run_result(
                 request=request,
                 result=ExperimentPostprocessResult(
@@ -146,7 +161,7 @@ class DiceExperimentAdapter(ExperimentEngine):
             )
 
         postprocessor = ExperimentPostprocessor(
-            artifacts=self.engine.artifacts,
+            artifacts=self.artifacts,
             max_lof_score=self.settings.max_lof_score,
         )
         try:
