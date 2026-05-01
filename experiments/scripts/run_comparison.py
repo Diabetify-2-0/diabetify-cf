@@ -217,10 +217,11 @@ def build_comparison_report(comparison_root: Path, top_n: int = 10) -> str:
     lines.extend(["", "## Stability", ""])
     if stability_by_engine:
         lines.append(
-            "| Engine | Case count | Mean feasible | Mean changed-feature Jaccard | "
-            "Mean stability std norm |"
+            "| Engine | Case count | Mean feasible | Fully feasible cases | "
+            "Stability evaluable cases | Feasible-only Jaccard | "
+            "Feasible-only std norm | All-repeat Jaccard |"
         )
-        lines.append("| --- | ---: | ---: | ---: | ---: |")
+        lines.append("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
         for engine, rows in stability_by_engine.items():
             case_count = sum(int(_as_float(row, "case_count")) for row in rows)
             lines.append(
@@ -230,10 +231,34 @@ def build_comparison_report(comparison_root: Path, top_n: int = 10) -> str:
                         engine,
                         str(case_count),
                         _percent(_mean([_as_float(row, "mean_feasible_rate") for row in rows])),
+                        _percent(
+                            _mean([_as_float(row, "fully_feasible_case_rate") for row in rows])
+                        ),
+                        _percent(
+                            _mean([_as_float(row, "stability_evaluable_case_rate") for row in rows])
+                        ),
+                        _number(
+                            _mean(
+                                [
+                                    _as_float(
+                                        row,
+                                        "mean_feasible_only_jaccard_changed_features",
+                                    )
+                                    for row in rows
+                                ]
+                            )
+                        ),
+                        _number(
+                            _mean(
+                                [
+                                    _as_float(row, "mean_feasible_only_stability_std_norm")
+                                    for row in rows
+                                ]
+                            )
+                        ),
                         _number(
                             _mean([_as_float(row, "mean_jaccard_changed_features") for row in rows])
                         ),
-                        _number(_mean([_as_float(row, "mean_stability_std_norm") for row in rows])),
                     ]
                 )
                 + " |"
@@ -263,6 +288,8 @@ def build_comparison_report(comparison_root: Path, top_n: int = 10) -> str:
             "and timeouts.",
             "- `completed` means the subprocess finished; success is measured by feasible "
             "rate and violations.",
+            "- Feasible-only stability is computed only from repeats that produced "
+            "FEASIBLE counterfactuals.",
             "- Small limits are smoke-level evidence. Increase limits before drawing final "
             "research claims.",
             "",

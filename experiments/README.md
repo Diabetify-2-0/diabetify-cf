@@ -121,6 +121,13 @@ File penting:
 - `stability_aggregate.csv`: ringkasan stability global.
 - `run_config.json`: config dan metadata run.
 
+Stability report memisahkan:
+
+- all-repeat stability: kestabilan semua repeat, termasuk repeat yang gagal/infeasible,
+- feasible-only stability: kestabilan hanya dari repeat yang menghasilkan counterfactual `FEASIBLE`,
+- fully feasible case rate: proporsi case yang feasible pada semua repeat,
+- stability evaluable case rate: proporsi case yang punya minimal dua repeat feasible.
+
 Gunakan `--show-engine-output` hanya jika perlu debug output mentah dari engine. Secara default, progress bar internal engine disembunyikan agar terminal tetap bersih.
 
 ## 6. Jalankan Baseline Engine Lengkap
@@ -221,7 +228,7 @@ Report menampilkan:
 - immutable/mutable/bounds/directional violation rate,
 - mean runtime,
 - mean LOF,
-- stability aggregate,
+- stability aggregate, termasuk feasible-only stability,
 - top changed features.
 
 Script ini juga bisa membaca baseline yang belum selesai sepenuhnya, selama sudah ada `summary.csv` atau `candidates.csv` parsial.

@@ -70,8 +70,12 @@ def test_build_comparison_report_contains_engine_summary(tmp_path: Path) -> None
             {
                 "case_count": "1",
                 "mean_feasible_rate": "1.0",
+                "fully_feasible_case_rate": "1.0",
+                "stability_evaluable_case_rate": "1.0",
                 "mean_jaccard_changed_features": "1.0",
                 "mean_stability_std_norm": "0.0",
+                "mean_feasible_only_jaccard_changed_features": "1.0",
+                "mean_feasible_only_stability_std_norm": "0.0",
             }
         ],
     )
@@ -93,7 +97,7 @@ def test_build_comparison_report_contains_engine_summary(tmp_path: Path) -> None
     assert "| dice | 1 | 1 | 0 | 0 | 100.0% | 1 |" in report
     assert "| ocean | 1 | 1 | 0 | 0 | 50.0% | 0 |" in report
     assert "Scenario Matrix" in report
-    assert "Stability" in report
+    assert "Feasible-only Jaccard" in report
     assert "BMI" in report
 
 

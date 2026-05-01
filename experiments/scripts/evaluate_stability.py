@@ -68,6 +68,14 @@ def _delta_std_norm(deltas: list[dict[str, float]], registry: Any) -> float:
     return sum(std_values) / len(std_values)
 
 
+def _changed_feature_jaccard(changed_sets: list[set[str]]) -> float | None:
+    if len(changed_sets) < 2:
+        return None
+    reference_changed = changed_sets[0]
+    jaccards = [_jaccard(reference_changed, item) for item in changed_sets[1:]]
+    return sum(jaccards) / len(jaccards) if jaccards else 1.0
+
+
 def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
     if not rows:
         path.write_text("", encoding="utf-8")
@@ -84,11 +92,35 @@ def _mean(rows: list[dict[str, Any]], key: str) -> float:
 
 
 def _aggregate_summary(summary_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    fully_feasible_case_count = sum(
+        1
+        for row in summary_rows
+        if int(row.get("feasible_count") or 0) == int(row.get("repeat_count") or 0)
+    )
+    stability_evaluable_case_count = sum(
+        1 for row in summary_rows if bool(row.get("stability_evaluable"))
+    )
     return {
         "case_count": len(summary_rows),
         "mean_feasible_rate": _mean(summary_rows, "feasible_rate"),
+        "fully_feasible_case_count": fully_feasible_case_count,
+        "fully_feasible_case_rate": (
+            fully_feasible_case_count / len(summary_rows) if summary_rows else 0.0
+        ),
+        "stability_evaluable_case_count": stability_evaluable_case_count,
+        "stability_evaluable_case_rate": (
+            stability_evaluable_case_count / len(summary_rows) if summary_rows else 0.0
+        ),
         "mean_jaccard_changed_features": _mean(summary_rows, "mean_jaccard_changed_features"),
         "mean_stability_std_norm": _mean(summary_rows, "stability_std_norm"),
+        "mean_feasible_only_jaccard_changed_features": _mean(
+            summary_rows,
+            "feasible_only_mean_jaccard_changed_features",
+        ),
+        "mean_feasible_only_stability_std_norm": _mean(
+            summary_rows,
+            "feasible_only_stability_std_norm",
+        ),
     }
 
 
@@ -121,13 +153,14 @@ def evaluate_stability(
     run_rows: list[dict[str, Any]] = []
     summary_rows: list[dict[str, Any]] = []
     print(
-        f"Evaluating stability for {len(selected)} case(s), "
-        f"{repeat_count} repeat(s) each.",
+        f"Evaluating stability for {len(selected)} case(s), " f"{repeat_count} repeat(s) each.",
         flush=True,
     )
     for case_index, (_, row) in enumerate(selected.iterrows(), start=1):
         deltas: list[dict[str, float]] = []
         changed_sets: list[set[str]] = []
+        feasible_deltas: list[dict[str, float]] = []
+        feasible_changed_sets: list[set[str]] = []
         feasible_count = 0
         print(f"Running stability case {case_index}/{len(selected)}...", flush=True)
 
@@ -157,6 +190,8 @@ def evaluate_stability(
             changed_sets.append(changed)
             if result.status == "FEASIBLE":
                 feasible_count += 1
+                feasible_deltas.append(delta_float)
+                feasible_changed_sets.append(changed)
 
             run_rows.append(
                 {
@@ -171,16 +206,27 @@ def evaluate_stability(
                 }
             )
 
-        reference_changed = changed_sets[0] if changed_sets else set()
-        jaccards = [_jaccard(reference_changed, item) for item in changed_sets[1:]]
+        all_repeat_jaccard = _changed_feature_jaccard(changed_sets)
+        feasible_only_jaccard = _changed_feature_jaccard(feasible_changed_sets)
+        stability_evaluable = feasible_count >= 2
         summary_rows.append(
             {
                 "case_id": f"case-{case_index:05d}",
                 "repeat_count": repeat_count,
                 "feasible_count": feasible_count,
                 "feasible_rate": feasible_count / repeat_count if repeat_count else 0.0,
-                "mean_jaccard_changed_features": sum(jaccards) / len(jaccards) if jaccards else 1.0,
+                "stability_evaluable": stability_evaluable,
+                "fully_feasible": feasible_count == repeat_count,
+                "mean_jaccard_changed_features": (
+                    all_repeat_jaccard if all_repeat_jaccard is not None else 1.0
+                ),
                 "stability_std_norm": _delta_std_norm(deltas, artifacts.feature_registry),
+                "feasible_only_mean_jaccard_changed_features": feasible_only_jaccard,
+                "feasible_only_stability_std_norm": (
+                    _delta_std_norm(feasible_deltas, artifacts.feature_registry)
+                    if stability_evaluable
+                    else None
+                ),
             }
         )
         print(

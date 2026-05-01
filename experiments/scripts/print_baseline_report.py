@@ -198,10 +198,10 @@ def build_markdown_report(baseline_root: Path, top_n: int = 10) -> str:
     lines.extend(["", "## Stability Summary", ""])
     if stability_rows:
         lines.append(
-            "| Case count | Mean feasible | Mean changed-feature Jaccard | "
-            "Mean stability std norm |"
+            "| Case count | Mean feasible | Fully feasible cases | Stability evaluable cases | "
+            "Feasible-only Jaccard | Feasible-only std norm | All-repeat Jaccard |"
         )
-        lines.append("| ---: | ---: | ---: | ---: |")
+        lines.append("| ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
         for row in stability_rows:
             lines.append(
                 "| "
@@ -209,8 +209,11 @@ def build_markdown_report(baseline_root: Path, top_n: int = 10) -> str:
                     [
                         row.get("case_count", "0"),
                         _percent(_as_float(row, "mean_feasible_rate")),
+                        _percent(_as_float(row, "fully_feasible_case_rate")),
+                        _percent(_as_float(row, "stability_evaluable_case_rate")),
+                        _number(_as_float(row, "mean_feasible_only_jaccard_changed_features")),
+                        _number(_as_float(row, "mean_feasible_only_stability_std_norm")),
                         _number(_as_float(row, "mean_jaccard_changed_features")),
-                        _number(_as_float(row, "mean_stability_std_norm")),
                     ]
                 )
                 + " |"
@@ -305,9 +308,15 @@ def _print_stability(rows: list[dict[str, str]]) -> None:
             "  "
             f"case_count={row.get('case_count', '0')} | "
             f"mean_feasible_rate={_percent(_as_float(row, 'mean_feasible_rate'))} | "
-            "mean_jaccard_changed_features="
-            f"{_number(_as_float(row, 'mean_jaccard_changed_features'))} | "
-            f"mean_stability_std_norm={_number(_as_float(row, 'mean_stability_std_norm'))}"
+            "fully_feasible_case_rate="
+            f"{_percent(_as_float(row, 'fully_feasible_case_rate'))} | "
+            "stability_evaluable_case_rate="
+            f"{_percent(_as_float(row, 'stability_evaluable_case_rate'))} | "
+            "feasible_only_jaccard="
+            f"{_number(_as_float(row, 'mean_feasible_only_jaccard_changed_features'))} | "
+            "feasible_only_std_norm="
+            f"{_number(_as_float(row, 'mean_feasible_only_stability_std_norm'))} | "
+            f"all_repeat_jaccard={_number(_as_float(row, 'mean_jaccard_changed_features'))}"
         )
 
 

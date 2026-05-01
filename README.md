@@ -113,6 +113,9 @@ Baseline runs create a readable `report.md` in the baseline folder and update
 `experiments/results/latest/baseline.txt`.
 Comparison runs create `comparison_report.md` and update
 `experiments/results/latest/comparison.txt`.
+Stability reports separate all-repeat stability from feasible-only stability, so
+an engine that consistently fails is not treated as a stable counterfactual
+generator.
 
 ## Notes
 

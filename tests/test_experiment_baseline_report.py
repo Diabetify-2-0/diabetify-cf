@@ -64,8 +64,12 @@ def test_build_markdown_report_contains_scenario_and_stability_sections(tmp_path
             {
                 "case_count": "1",
                 "mean_feasible_rate": "1.0",
+                "fully_feasible_case_rate": "1.0",
+                "stability_evaluable_case_rate": "1.0",
                 "mean_jaccard_changed_features": "1.0",
                 "mean_stability_std_norm": "0.0",
+                "mean_feasible_only_jaccard_changed_features": "1.0",
+                "mean_feasible_only_stability_std_norm": "0.0",
             }
         ],
     )
@@ -78,7 +82,7 @@ def test_build_markdown_report_contains_scenario_and_stability_sections(tmp_path
 
     assert "# Baseline Report" in report
     assert "all_mutable" in report
-    assert "Stability Summary" in report
+    assert "Feasible-only Jaccard" in report
     assert "BMI" in report
 
 
