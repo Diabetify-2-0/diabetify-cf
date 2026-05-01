@@ -12,7 +12,7 @@ Gunakan Python dari virtual environment project:
 .\.venv\Scripts\python.exe
 ```
 
-Untuk engine eksperimen selain DiCE, install extra eksperimen:
+Untuk OCEAN, install extra eksperimen:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -e ".[dev,experiments]"
@@ -32,8 +32,12 @@ Command ini mengecek:
 - kesiapan reference data,
 - kesiapan feature registry.
 
-Untuk saat ini, engine yang aktif adalah DiCE. CARLA, OCEAN, dan FOCUS akan muncul sebagai missing sampai dependency-nya dipasang.
+Untuk saat ini, engine yang aktif tanpa extra adalah DiCE. CARLA, OCEAN, dan FOCUS akan muncul sebagai missing sampai dependency-nya dipasang.
 Dengan extra `experiments`, OCEAN akan muncul sebagai available.
+
+Catatan: CARLA belum diaktifkan karena `carla-recourse==0.0.5` mengunci `numpy==1.19.4`, sedangkan project ini memakai `numpy==2.2.6`. Memaksa downgrade NumPy akan berisiko merusak stack `pandas`, `scikit-learn`, dan `xgboost`.
+
+Catatan OCEAN: adapter OCEAN memakai constraint scenario saat membangun search space. Fitur yang tidak mutable dikunci pada nilai baseline, sedangkan fitur mutable dibatasi oleh permitted range dari feature registry dan scenario config. Postprocessor tetap menjadi evaluator akhir untuk target, bounds, directional rules, dan plausibility.
 
 ## 2. Jalankan Satu Benchmark DiCE
 
@@ -212,6 +216,14 @@ Comparison runner juga menulis pointer hasil terbaru:
 ```text
 experiments/results/latest/comparison.txt
 ```
+
+Audit hasil comparison terbaru:
+
+```powershell
+.\.venv\Scripts\python.exe experiments\scripts\audit_comparison.py
+```
+
+Audit ini memeriksa file wajib, engine wajib, failed step, violation rate, dan stability evaluability. Timeout dan infeasible case dicatat sebagai warning agar tetap terlihat sebagai temuan eksperimen, bukan crash pipeline.
 
 Gunakan command ini sebagai jalur utama ketika tujuan eksperimen adalah membandingkan beberapa library.
 

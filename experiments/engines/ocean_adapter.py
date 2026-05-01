@@ -61,7 +61,7 @@ class OceanCandidateGenerator:
 
         from ocean import ConstraintProgrammingExplainer
 
-        mapper = self._build_mapper()
+        mapper = self._build_mapper(prepared)
         explainer = ConstraintProgrammingExplainer(self.artifacts.model, mapper=mapper)
         x = prepared.query_df[self.artifacts.feature_columns].iloc[0].to_numpy(dtype=float)
         target_class = self._target_class(request.target.target_class)
@@ -84,14 +84,14 @@ class OceanCandidateGenerator:
         )
         return postprocessor.as_model_input_df(raw)
 
-    def _build_mapper(self) -> Any:
+    def _build_mapper(self, prepared: PreparedExperimentRequest) -> Any:
         assert self.artifacts is not None
 
         from ocean.abc import Mapper
         from ocean.feature import Feature
 
         mapping = {
-            column: self._to_ocean_feature(column, Feature)
+            column: self._to_ocean_feature(column, Feature, prepared)
             for column in self.artifacts.feature_columns
         }
         columns = pd.MultiIndex.from_tuples(
@@ -99,48 +99,80 @@ class OceanCandidateGenerator:
         )
         return Mapper(mapping, columns=columns)
 
-    def _to_ocean_feature(self, column: str, feature_cls: Any) -> Any:
+    def _to_ocean_feature(
+        self,
+        column: str,
+        feature_cls: Any,
+        prepared: PreparedExperimentRequest,
+    ) -> Any:
         assert self.artifacts is not None
         feature = self.artifacts.feature_registry.get(column)
+        lower, upper = self._request_bounds(column, feature, prepared)
+        if lower == upper:
+            return feature_cls(feature_cls.Type.DISCRETE, levels=[lower])
+
         if feature is not None and feature.is_binary:
             return feature_cls(feature_cls.Type.BINARY)
         if feature is not None and feature.feature_type == "ordinal":
             return feature_cls(
                 feature_cls.Type.DISCRETE,
-                levels=self._discrete_levels(column, feature),
+                levels=self._discrete_levels(column, feature, lower=lower, upper=upper),
             )
         return feature_cls(
             feature_cls.Type.CONTINUOUS,
-            levels=self._continuous_bounds(column, feature),
+            levels=[lower, upper],
         )
 
-    def _continuous_bounds(
+    def _request_bounds(
         self,
         column: str,
         feature: FeatureDefinition | None,
-    ) -> list[float]:
-        assert self.artifacts is not None
-        if (
+        prepared: PreparedExperimentRequest,
+    ) -> tuple[float, float]:
+        baseline = float(prepared.instance_features[column])
+        if column not in prepared.mutable_allowed:
+            return baseline, baseline
+
+        if column in prepared.permitted_range:
+            lower, upper = prepared.permitted_range[column]
+        elif (
             feature is not None
             and feature.global_min is not None
             and feature.global_max is not None
         ):
-            return [float(feature.global_min), float(feature.global_max)]
-        series = self.artifacts.reference_data[column]
-        return [float(series.min()), float(series.max())]
+            lower, upper = float(feature.global_min), float(feature.global_max)
+        else:
+            series = self.artifacts.reference_data[column]
+            lower, upper = float(series.min()), float(series.max())
 
-    def _discrete_levels(self, column: str, feature: FeatureDefinition) -> list[float]:
+        lower = float(lower)
+        upper = float(upper)
+        if lower > upper:
+            return baseline, baseline
+        return lower, upper
+
+    def _discrete_levels(
+        self,
+        column: str,
+        feature: FeatureDefinition,
+        *,
+        lower: float,
+        upper: float,
+    ) -> list[float]:
         assert self.artifacts is not None
         if (
             feature.global_min is not None
             and feature.global_max is not None
             and float(feature.global_max - feature.global_min) <= 100
         ):
-            start = int(feature.global_min)
-            stop = int(feature.global_max)
+            start = math.ceil(max(float(feature.global_min), lower))
+            stop = math.floor(min(float(feature.global_max), upper))
+            if start > stop:
+                return [float(round(lower))]
             return [float(value) for value in range(start, stop + 1)]
         values = self.artifacts.reference_data[column].dropna().unique()
-        return sorted(float(value) for value in values)
+        levels = sorted(float(value) for value in values if lower <= float(value) <= upper)
+        return levels or [float(lower)]
 
     @staticmethod
     def _target_class(target_class: str) -> int:

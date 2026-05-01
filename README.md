@@ -106,6 +106,7 @@ python experiments/scripts/evaluate_stability.py --engine-config experiments/con
 python experiments/scripts/collect_results.py
 python experiments/scripts/run_baseline.py --engine-config experiments/configs/engines/dice.json --scenario-limit 1 --stability-limit 1 --repeat-count 2 --scenario-timeout-seconds 60 --stability-timeout-seconds 60
 python experiments/scripts/run_comparison.py --scenario-limit 5 --stability-limit 5 --repeat-count 3 --scenario-timeout-seconds 120 --stability-timeout-seconds 120
+python experiments/scripts/audit_comparison.py
 python experiments/scripts/print_baseline_report.py experiments/results/<baseline-folder>
 ```
 
@@ -113,6 +114,7 @@ Baseline runs create a readable `report.md` in the baseline folder and update
 `experiments/results/latest/baseline.txt`.
 Comparison runs create `comparison_report.md` and update
 `experiments/results/latest/comparison.txt`.
+Comparison audits create `audit_report.json` in the comparison folder.
 Stability reports separate all-repeat stability from feasible-only stability, so
 an engine that consistently fails is not treated as a stable counterfactual
 generator.
@@ -124,3 +126,4 @@ generator.
 - Input `instance.features` wajib berisi seluruh fitur model pada `x_columns.pkl`.
 - `CF_MAX_LOF_SCORE` mengatur batas maksimum skor LOF kandidat (semakin kecil semakin ketat).
 - Planner default `CF_PLANNER_PROVIDER=template`; set `openai` + `OPENAI_API_KEY` untuk narasi LLM.
+- CARLA is not enabled because `carla-recourse==0.0.5` pins `numpy==1.19.4`, which conflicts with this project's `numpy==2.2.6` stack.
