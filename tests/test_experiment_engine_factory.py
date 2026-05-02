@@ -32,6 +32,21 @@ def test_build_experiment_engine_returns_ocean_adapter() -> None:
     assert isinstance(adapter, OceanExperimentAdapter)
 
 
+def test_build_experiment_engine_passes_config_to_ocean_adapter() -> None:
+    adapter = build_experiment_engine(
+        "ocean",
+        settings=Settings(
+            model_path="missing-model.pkl",
+            columns_path="missing-columns.pkl",
+        ),
+        config={"engine_options": {"attempt_count": 2, "norm": 1}},
+    )
+
+    assert isinstance(adapter, OceanExperimentAdapter)
+    assert adapter.engine.solver_options.attempt_count == 2
+    assert adapter.engine.solver_options.norm == 1
+
+
 def test_build_experiment_engine_rejects_unsupported_engine() -> None:
     with pytest.raises(ValueError, match="Unsupported experiment engine"):
         build_experiment_engine(

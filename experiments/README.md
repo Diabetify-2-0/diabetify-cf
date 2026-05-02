@@ -39,6 +39,14 @@ Catatan: CARLA belum diaktifkan karena `carla-recourse==0.0.5` mengunci `numpy==
 
 Catatan OCEAN: adapter OCEAN memakai constraint scenario saat membangun search space. Fitur yang tidak mutable dikunci pada nilai baseline, sedangkan fitur mutable dibatasi oleh permitted range dari feature registry dan scenario config. Postprocessor tetap menjadi evaluator akhir untuk target, bounds, directional rules, dan plausibility.
 
+OCEAN juga mendukung opsi tuning khusus eksperimen lewat `engine_options` di `experiments/configs/engines/ocean.json`:
+
+- `norm`: norm objektif yang dikirim ke `ConstraintProgrammingExplainer`.
+- `attempt_count`: jumlah attempt deterministic dengan seed berbeda untuk satu request.
+- `seed_step`: jarak seed antar attempt.
+- `max_time_per_attempt_seconds`: batas waktu per attempt; jika `null`, budget `timeout_ms` dibagi ke jumlah attempt.
+- `num_workers`: jumlah worker OCEAN; `null` memakai default library.
+
 ## 2. Jalankan Satu Benchmark DiCE
 
 ```powershell
@@ -88,6 +96,7 @@ Untuk smoke test cepat, batasi jumlah case dan pasang timeout per scenario:
 Default scenario yang dijalankan:
 
 - `all_mutable.json`
+- `lifestyle_combo.json`
 - `bmi_only.json`
 - `activity_only.json`
 - `tight_bounds.json`
@@ -227,7 +236,67 @@ Audit ini memeriksa file wajib, engine wajib, failed step, violation rate, dan s
 
 Gunakan command ini sebagai jalur utama ketika tujuan eksperimen adalah membandingkan beberapa library.
 
-## 8. Tampilkan Quick Report Baseline
+## 8. Jalankan Checkpoint Terkunci
+
+Untuk menjalankan comparison dan langsung mengaudit hasilnya dalam satu command:
+
+```powershell
+.\.venv\Scripts\python.exe experiments\scripts\run_checkpoint.py --scenario-limit 5 --stability-limit 5 --repeat-count 3 --scenario-timeout-seconds 120 --stability-timeout-seconds 120
+```
+
+Checkpoint runner melakukan:
+
+- menjalankan `run_comparison.py`,
+- mengumpulkan output comparison,
+- menjalankan `audit_comparison.py`,
+- menulis `checkpoint_report.md`,
+- menulis `checkpoint_manifest.json`,
+- keluar dengan exit code non-zero jika audit gagal.
+
+Gunakan command ini saat ingin mengunci satu hasil eksperimen sebagai checkpoint teknis yang siap dibandingkan.
+
+## 9. Diagnosa OCEAN
+
+Setelah comparison atau checkpoint selesai, jalankan diagnosa OCEAN:
+
+```powershell
+.\.venv\Scripts\python.exe experiments\scripts\diagnose_ocean.py
+```
+
+Secara default script ini membaca comparison terbaru dari:
+
+```text
+experiments/results/latest/comparison.txt
+```
+
+Output akan ditulis di folder comparison yang sama:
+
+```text
+ocean_diagnostics.md
+ocean_diagnostics.json
+```
+
+Diagnosa ini membantu membaca:
+
+- scenario mana yang feasibility OCEAN-nya rendah,
+- scenario mana yang OCEAN-nya lebih buruk dari DiCE,
+- reason counts OCEAN per scenario,
+- overlap case antara OCEAN dan DiCE,
+- fitur yang paling sering diubah oleh OCEAN.
+
+Untuk membandingkan varian tuning OCEAN, gunakan beberapa engine config dalam satu checkpoint:
+
+```powershell
+.\.venv\Scripts\python.exe experiments\scripts\run_checkpoint.py --engine-configs experiments\configs\engines\dice.json experiments\configs\engines\ocean.json experiments\configs\engines\ocean_attempt4.json --scenario-limit 5 --stability-limit 5 --repeat-count 3 --scenario-timeout-seconds 180 --stability-timeout-seconds 180 --required-engines dice ocean ocean_attempt4
+```
+
+Lalu diagnosa varian tuning tersebut:
+
+```powershell
+.\.venv\Scripts\python.exe experiments\scripts\diagnose_ocean.py --target-engine ocean_attempt4 --baseline-engine ocean
+```
+
+## 10. Tampilkan Quick Report Baseline
 
 ```powershell
 .\.venv\Scripts\python.exe experiments\scripts\print_baseline_report.py experiments\results\<timestamp>_<engine>_baseline
@@ -245,7 +314,7 @@ Report menampilkan:
 
 Script ini juga bisa membaca baseline yang belum selesai sepenuhnya, selama sudah ada `summary.csv` atau `candidates.csv` parsial.
 
-## 9. Gabungkan Semua Hasil Eksperimen
+## 11. Gabungkan Semua Hasil Eksperimen
 
 ```powershell
 .\.venv\Scripts\python.exe experiments\scripts\collect_results.py
@@ -259,12 +328,14 @@ experiments/results/combined/stability_summary.csv
 experiments/results/combined/candidates.csv
 ```
 
-## 10. Config yang Tersedia
+## 12. Config yang Tersedia
 
 ```text
 experiments/configs/engines/dice.json
 experiments/configs/engines/ocean.json
+experiments/configs/engines/ocean_attempt4.json
 experiments/configs/scenarios/all_mutable.json
+experiments/configs/scenarios/lifestyle_combo.json
 experiments/configs/scenarios/bmi_only.json
 experiments/configs/scenarios/activity_only.json
 experiments/configs/scenarios/tight_bounds.json
@@ -274,7 +345,19 @@ experiments/configs/scenarios/stability.json
 
 Engine config menentukan generator counterfactual yang dipakai. Scenario config menentukan constraint dan kasus uji. Runner akan menggabungkan keduanya sebelum benchmark berjalan.
 
-## 11. Output dan Git
+Engine config juga dibuat eksplisit untuk parameter generation dasar:
+
+- DiCE memakai `dice_genetic`, `total_cfs=3`, `timeout_ms=5000`.
+- OCEAN memakai `ocean_cp`, `total_cfs=1`, `timeout_ms=15000`, dan deterministic multi-attempt lewat `engine_options`.
+- `ocean_attempt4.json` memakai adapter OCEAN yang sama, tetapi dilabeli `ocean_attempt4`, dengan `attempt_count=4` dan `timeout_ms=30000` untuk tuning eksploratif.
+
+Nilai engine config menimpa nilai scenario config ketika keduanya mendefinisikan field yang sama. Karena itu, perubahan parameter generation per engine sebaiknya dibuat sebagai config engine baru, bukan mengubah scenario.
+
+`engine` adalah nama adapter yang dijalankan. `engine_label` adalah nama hasil eksperimen di folder output dan report. Gunakan `engine_label` saat membandingkan beberapa konfigurasi dari adapter yang sama, misalnya `ocean` vs `ocean_attempt4`.
+
+Scenario config dijaga engine-neutral. Scenario tidak mendefinisikan `generation_method`, `total_cfs`, atau `timeout_ms`; field tersebut tinggal di engine config.
+
+## 13. Output dan Git
 
 Semua hasil eksperimen berada di:
 
@@ -297,7 +380,7 @@ experiments/results/
   latest/
 ```
 
-## 12. Notebook
+## 14. Notebook
 
 Notebook berada di:
 

@@ -156,6 +156,7 @@ class ExperimentPostprocessor:
         evaluated: list[_CandidateEvaluation] = []
         immutable_violation_seen = False
         mutable_violation_seen = False
+        bounds_violation_seen = False
         medical_violation_seen = False
         directional_violation_seen = False
         target_violation_seen = False
@@ -175,6 +176,11 @@ class ExperimentPostprocessor:
                 prepared.instance_features,
                 set(prepared.mutable_allowed),
             )
+            bounds_ok = self._bounds_ok(
+                candidate_features,
+                request,
+                prepared.registry,
+            )
             directional_ok = self._directional_ok(
                 candidate=candidate_features,
                 baseline=prepared.instance_features,
@@ -187,12 +193,14 @@ class ExperimentPostprocessor:
                 immutable_violation_seen = True
             if not mutable_ok:
                 mutable_violation_seen = True
+            if not bounds_ok:
+                bounds_violation_seen = True
             if not directional_ok:
                 directional_violation_seen = True
                 medical_violation_seen = True
             if not medical_ok:
                 medical_violation_seen = True
-            if not (immutable_ok and mutable_ok and directional_ok and medical_ok):
+            if not (immutable_ok and mutable_ok and bounds_ok and directional_ok and medical_ok):
                 continue
 
             candidate_df = pd.DataFrame([candidate_features], columns=prepared.model_columns)
@@ -254,6 +262,7 @@ class ExperimentPostprocessor:
                 medical_violation_seen
                 and not immutable_violation_seen
                 and not mutable_violation_seen
+                and not bounds_violation_seen
             ):
                 reason_code = ReasonCode.MEDICAL_RULE_VIOLATION_ONLY
                 message = "Candidates exist but fail medical plausibility constraints."
@@ -261,14 +270,22 @@ class ExperimentPostprocessor:
                 directional_violation_seen
                 and not immutable_violation_seen
                 and not mutable_violation_seen
+                and not bounds_violation_seen
             ):
                 reason_code = ReasonCode.MEDICAL_RULE_VIOLATION_ONLY
                 message = "Candidates exist but violate directional medical constraints."
+            if (
+                bounds_violation_seen
+                and not immutable_violation_seen
+                and not mutable_violation_seen
+            ):
+                message = "Candidates generated but violate request feature bounds."
             if (
                 target_violation_seen
                 and not immutable_violation_seen
                 and not mutable_violation_seen
                 and not medical_violation_seen
+                and not bounds_violation_seen
             ):
                 message = "Candidates generated but none satisfied target class/probability."
 
@@ -283,7 +300,8 @@ class ExperimentPostprocessor:
                     immutable_violation=immutable_violation_seen,
                     mutable_compliance=not mutable_violation_seen,
                     medical_rules_passed=(not medical_violation_seen)
-                    and (not target_violation_seen),
+                    and (not target_violation_seen)
+                    and (not bounds_violation_seen),
                 ),
             )
 
@@ -464,6 +482,26 @@ class ExperimentPostprocessor:
             if feature not in baseline:
                 continue
             if not self._equal(value, baseline[feature]) and feature not in mutable_set:
+                return False
+        return True
+
+    def _bounds_ok(
+        self,
+        candidate: dict[str, JSONFeatureValue],
+        request: CounterfactualRequest,
+        registry: FeatureRegistry,
+    ) -> bool:
+        for raw_name, bound in request.constraints.feature_bounds.items():
+            feature_name = registry.resolve_name(raw_name)
+            if feature_name not in candidate:
+                continue
+            try:
+                value = float(candidate[feature_name])
+            except (TypeError, ValueError):
+                return False
+            if bound.min is not None and value < bound.min:
+                return False
+            if bound.max is not None and value > bound.max:
                 return False
         return True
 

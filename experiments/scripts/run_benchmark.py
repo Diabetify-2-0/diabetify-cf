@@ -46,6 +46,15 @@ def load_effective_config(engine_config_path: Path, scenario_config_path: Path) 
     )
 
 
+def engine_adapter_name(config: dict[str, Any]) -> str:
+    return str(config.get("engine", "dice")).strip().lower() or "dice"
+
+
+def engine_output_label(config: dict[str, Any]) -> str:
+    label = str(config.get("engine_label") or engine_adapter_name(config)).strip().lower()
+    return label or engine_adapter_name(config)
+
+
 def _default_mutable_allowed(registry: FeatureRegistry, feature_columns: list[str]) -> list[str]:
     out: list[str] = []
     for feature_name in feature_columns:
@@ -163,6 +172,22 @@ def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
             f.write(json.dumps(row, ensure_ascii=True) + "\n")
 
 
+def _with_engine_label(result: EngineRunResult, engine_label: str) -> EngineRunResult:
+    if result.engine_name == engine_label:
+        return result
+    return EngineRunResult(
+        engine_name=engine_label,
+        request_id=result.request_id,
+        status=result.status,
+        reason_code=result.reason_code,
+        message=result.message,
+        runtime_ms=result.runtime_ms,
+        candidate_count=result.candidate_count,
+        candidates=result.candidates,
+        raw_error=result.raw_error,
+    )
+
+
 def _candidate_rows(
     *,
     result: EngineRunResult,
@@ -223,8 +248,9 @@ def run_benchmark(
     config_path: Path | None = None,
 ) -> Path:
     settings = Settings()
-    engine_name = str(config.get("engine", "dice")).lower()
-    adapter = build_experiment_engine(engine_name, settings=settings)
+    engine_name = engine_adapter_name(config)
+    output_engine_name = engine_output_label(config)
+    adapter = build_experiment_engine(engine_name, settings=settings, config=config)
     if not adapter.is_ready or adapter.artifacts is None:
         raise RuntimeError(
             adapter.initialization_error or f"{engine_name} artifacts are not ready."
@@ -233,7 +259,7 @@ def run_benchmark(
     artifacts = adapter.artifacts
     limit = int(config.get("limit", 10))
     random_seed = int(config.get("random_seed", 42))
-    output_dir = _make_output_dir(output_root, engine_name)
+    output_dir = _make_output_dir(output_root, output_engine_name)
 
     selected = select_evaluation_rows(
         reference_data=artifacts.reference_data,
@@ -255,7 +281,7 @@ def run_benchmark(
             config=config,
         )
         request = CounterfactualRequest.model_validate(payload)
-        result = adapter.generate(request)
+        result = _with_engine_label(adapter.generate(request), output_engine_name)
         case_records.append(result.to_case_record())
         candidate_records.extend(
             _candidate_rows(
@@ -275,6 +301,10 @@ def run_benchmark(
             engine_name=engine_name,
             config_path=config_path,
         ),
+        "engine": {
+            "adapter": engine_name,
+            "label": output_engine_name,
+        },
         "settings": {
             "model_path": settings.model_path,
             "columns_path": settings.columns_path,

@@ -25,7 +25,10 @@ from experiments.scripts.run_benchmark import (  # noqa: E402
     DEFAULT_ENGINE_CONFIG_PATH,
     DEFAULT_OUTPUT_ROOT,
     REPO_ROOT,
+    _with_engine_label,
     build_request_payload,
+    engine_adapter_name,
+    engine_output_label,
     load_config,
     load_effective_config,
     select_evaluation_rows,
@@ -132,15 +135,16 @@ def evaluate_stability(
     suppress_engine_output: bool = True,
 ) -> Path:
     settings = Settings()
-    engine_name = str(config.get("engine", "dice")).lower()
-    adapter = build_experiment_engine(engine_name, settings=settings)
+    engine_name = engine_adapter_name(config)
+    output_engine_name = engine_output_label(config)
+    adapter = build_experiment_engine(engine_name, settings=settings, config=config)
     if not adapter.is_ready or adapter.artifacts is None:
         raise RuntimeError(
             adapter.initialization_error or f"{engine_name} artifacts are not ready."
         )
 
     artifacts = adapter.artifacts
-    output_dir = _make_output_dir(output_root, engine_name)
+    output_dir = _make_output_dir(output_root, output_engine_name)
     selected = select_evaluation_rows(
         reference_data=artifacts.reference_data,
         model=artifacts.model,
@@ -177,9 +181,12 @@ def evaluate_stability(
             request = CounterfactualRequest.model_validate(payload)
             if suppress_engine_output:
                 with redirect_stderr(io.StringIO()):
-                    result = adapter.generate(request)
+                    result = _with_engine_label(
+                        adapter.generate(request),
+                        output_engine_name,
+                    )
             else:
-                result = adapter.generate(request)
+                result = _with_engine_label(adapter.generate(request), output_engine_name)
             top_candidate = result.candidates[0] if result.candidates else {}
             delta = top_candidate.get("delta", {}) if isinstance(top_candidate, dict) else {}
             if not isinstance(delta, dict):
@@ -244,6 +251,10 @@ def evaluate_stability(
             engine_name=engine_name,
             config_path=config_path,
         ),
+        "engine": {
+            "adapter": engine_name,
+            "label": output_engine_name,
+        },
         "settings": {
             "model_path": settings.model_path,
             "columns_path": settings.columns_path,

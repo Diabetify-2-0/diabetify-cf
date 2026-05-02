@@ -23,7 +23,11 @@ from experiments.scripts.run_baseline import (  # noqa: E402
     DEFAULT_STABILITY_TIMEOUT_SECONDS,
     run_engine_baseline,
 )
-from experiments.scripts.run_benchmark import DEFAULT_OUTPUT_ROOT, load_config  # noqa: E402
+from experiments.scripts.run_benchmark import (  # noqa: E402
+    DEFAULT_OUTPUT_ROOT,
+    engine_output_label,
+    load_config,
+)
 from experiments.scripts.run_scenarios import DEFAULT_SCENARIO_CONFIGS  # noqa: E402
 
 DEFAULT_ENGINE_CONFIGS = [
@@ -45,7 +49,7 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 
 def _engine_name_from_config(engine_config_path: Path) -> str:
     config = load_config(engine_config_path)
-    return str(config.get("engine", "unknown")).strip().lower() or "unknown"
+    return engine_output_label(config) or "unknown"
 
 
 def _make_comparison_root(output_root: Path) -> Path:

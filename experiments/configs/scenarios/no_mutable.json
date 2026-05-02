@@ -4,13 +4,17 @@
   "only_high_risk": true,
   "target_class": "low_risk",
   "min_target_probability": 0.5,
-  "total_cfs": 3,
   "random_seed": 42,
-  "timeout_ms": 5000,
   "mutable_allowed": [],
   "immutable_features": [],
   "feature_bounds": {},
   "use_default_mutable": false,
   "use_default_immutable": true,
-  "use_default_feature_bounds": false
+  "use_default_feature_bounds": false,
+  "expected_outcome": {
+    "category": "expected_infeasible_control",
+    "feasible": false,
+    "reason_codes": ["NO_MUTABLE_FEATURE"],
+    "notes": "Control scenario: no features are mutable, so infeasibility is expected."
+  }
 }

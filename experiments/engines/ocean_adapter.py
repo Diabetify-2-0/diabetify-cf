@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 from time import perf_counter
 from typing import Any
 
@@ -20,6 +21,58 @@ from experiments.postprocessing import (
 )
 
 
+@dataclass(frozen=True)
+class OceanSolverOptions:
+    norm: int = 1
+    attempt_count: int = 1
+    seed_step: int = 997
+    max_time_per_attempt_seconds: int | None = None
+    num_workers: int | None = None
+
+    @classmethod
+    def from_config(cls, config: dict[str, Any] | None) -> OceanSolverOptions:
+        raw = (config or {}).get("engine_options") or {}
+        if not isinstance(raw, dict):
+            raise ValueError("engine_options must be an object.")
+
+        norm = int(raw.get("norm", cls.norm))
+        if norm < 0:
+            raise ValueError("OCEAN engine option 'norm' must be >= 0.")
+
+        attempt_count = int(raw.get("attempt_count", cls.attempt_count))
+        if attempt_count < 1:
+            raise ValueError("OCEAN engine option 'attempt_count' must be >= 1.")
+
+        seed_step = int(raw.get("seed_step", cls.seed_step))
+        if seed_step < 1:
+            raise ValueError("OCEAN engine option 'seed_step' must be >= 1.")
+
+        max_time_raw = raw.get("max_time_per_attempt_seconds")
+        max_time_per_attempt_seconds = (
+            None if max_time_raw is None else int(max_time_raw)
+        )
+        if (
+            max_time_per_attempt_seconds is not None
+            and max_time_per_attempt_seconds < 1
+        ):
+            raise ValueError(
+                "OCEAN engine option 'max_time_per_attempt_seconds' must be >= 1."
+            )
+
+        num_workers_raw = raw.get("num_workers")
+        num_workers = None if num_workers_raw is None else int(num_workers_raw)
+        if num_workers is not None and num_workers < 1:
+            raise ValueError("OCEAN engine option 'num_workers' must be >= 1.")
+
+        return cls(
+            norm=norm,
+            attempt_count=attempt_count,
+            seed_step=seed_step,
+            max_time_per_attempt_seconds=max_time_per_attempt_seconds,
+            num_workers=num_workers,
+        )
+
+
 class OceanCandidateGenerator:
     """OCEAN CP candidate generator for tree-ensemble counterfactual comparisons."""
 
@@ -31,9 +84,11 @@ class OceanCandidateGenerator:
         columns_path: str,
         reference_data_path: str,
         feature_registry_path: str,
+        solver_options: OceanSolverOptions | None = None,
     ) -> None:
         self.artifacts: ModelArtifacts | None = None
         self.initialization_error: str | None = None
+        self.solver_options = solver_options or OceanSolverOptions()
         try:
             self.artifacts = load_artifacts(
                 model_path=model_path,
@@ -65,24 +120,54 @@ class OceanCandidateGenerator:
         explainer = ConstraintProgrammingExplainer(self.artifacts.model, mapper=mapper)
         x = prepared.query_df[self.artifacts.feature_columns].iloc[0].to_numpy(dtype=float)
         target_class = self._target_class(request.target.target_class)
-        max_time = max(1, math.ceil(request.generation.timeout_ms / 1000))
+        max_time = self._max_time_per_attempt(request)
 
-        explanation = explainer.explain(
-            x,
-            y=target_class,
-            norm=1,
-            max_time=max_time,
-            random_seed=request.generation.random_seed,
-            verbose=False,
-        )
-        if explanation is None:
+        raw_candidates: list[pd.DataFrame] = []
+        try:
+            for attempt_index in range(self.solver_options.attempt_count):
+                explanation = explainer.explain(
+                    x,
+                    y=target_class,
+                    norm=self.solver_options.norm,
+                    max_time=max_time,
+                    random_seed=self._attempt_seed(request, attempt_index),
+                    verbose=False,
+                    **self._worker_kwargs(),
+                )
+                if explanation is None:
+                    continue
+
+                raw_candidates.append(
+                    pd.DataFrame(
+                        [np.asarray(explanation.x, dtype=float)],
+                        columns=self.artifacts.feature_columns,
+                    )
+                )
+        except IndexError:
             return pd.DataFrame()
 
-        raw = pd.DataFrame(
-            [np.asarray(explanation.x, dtype=float)],
-            columns=self.artifacts.feature_columns,
-        )
+        if not raw_candidates:
+            return pd.DataFrame()
+
+        raw = pd.concat(raw_candidates, ignore_index=True).drop_duplicates()
         return postprocessor.as_model_input_df(raw)
+
+    def _max_time_per_attempt(self, request: CounterfactualRequest) -> int:
+        total_budget = max(1, math.ceil(request.generation.timeout_ms / 1000))
+        configured = self.solver_options.max_time_per_attempt_seconds
+        if configured is not None:
+            return max(1, min(configured, total_budget))
+        return max(1, math.ceil(total_budget / self.solver_options.attempt_count))
+
+    def _attempt_seed(self, request: CounterfactualRequest, attempt_index: int) -> int:
+        return request.generation.random_seed + (
+            attempt_index * self.solver_options.seed_step
+        )
+
+    def _worker_kwargs(self) -> dict[str, int]:
+        if self.solver_options.num_workers is None:
+            return {}
+        return {"num_workers": self.solver_options.num_workers}
 
     def _build_mapper(self, prepared: PreparedExperimentRequest) -> Any:
         assert self.artifacts is not None
@@ -187,13 +272,18 @@ class OceanCandidateGenerator:
 class OceanExperimentAdapter(ExperimentEngine):
     name = "ocean"
 
-    def __init__(self, settings: Settings | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        config: dict[str, Any] | None = None,
+    ) -> None:
         self.settings = settings or Settings()
         self.engine = OceanCandidateGenerator(
             model_path=self.settings.model_path,
             columns_path=self.settings.columns_path,
             reference_data_path=self.settings.reference_data_path,
             feature_registry_path=self.settings.feature_registry_path,
+            solver_options=OceanSolverOptions.from_config(config),
         )
 
     @property

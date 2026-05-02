@@ -23,6 +23,7 @@ from experiments.scripts.print_baseline_report import write_markdown_report  # n
 from experiments.scripts.run_benchmark import (  # noqa: E402
     DEFAULT_ENGINE_CONFIG_PATH,
     DEFAULT_OUTPUT_ROOT,
+    engine_output_label,
     load_config,
     merge_configs,
 )
@@ -36,7 +37,7 @@ DEFAULT_STABILITY_TIMEOUT_SECONDS = 300
 
 def _engine_name_from_config(engine_config_path: Path) -> str:
     config = load_config(engine_config_path)
-    return str(config.get("engine", "unknown")).strip().lower() or "unknown"
+    return engine_output_label(config) or "unknown"
 
 
 def _make_baseline_root(output_root: Path, engine_name: str) -> Path:

@@ -1,5 +1,12 @@
+import json
+from pathlib import Path
+
+from diabetify_cf.engine.feature_registry import FeatureRegistry
 from experiments.scripts.evaluate_stability import _aggregate_summary
 from experiments.scripts.run_scenarios import _flatten_summary
+
+SCENARIO_DIR = Path("experiments/configs/scenarios")
+GENERATION_FIELDS = {"generation_method", "total_cfs", "timeout_ms"}
 
 
 def test_aggregate_stability_summary_computes_means() -> None:
@@ -54,3 +61,43 @@ def test_flatten_summary_serializes_nested_counts() -> None:
     assert row["scenario"] == "test_scenario"
     assert row["total_cases"] == 2
     assert row["status_counts"] == '{"FEASIBLE": 1, "INFEASIBLE": 1}'
+
+
+def test_scenario_configs_do_not_define_engine_generation_fields() -> None:
+    for path in SCENARIO_DIR.glob("*.json"):
+        config = json.loads(path.read_text(encoding="utf-8"))
+
+        assert GENERATION_FIELDS.isdisjoint(config), path
+
+
+def test_lifestyle_combo_uses_actionable_registry_features() -> None:
+    registry = FeatureRegistry.from_file("configs/feature_registry.json")
+    config = json.loads((SCENARIO_DIR / "lifestyle_combo.json").read_text(encoding="utf-8"))
+
+    assert config["name"] == "lifestyle_combo"
+    assert config["mutable_allowed"] == [
+        "BMI",
+        "moderate_physical_activity_frequency",
+        "smoking_status",
+        "brinkman_index",
+        "is_hypertension",
+    ]
+    for feature_name in config["mutable_allowed"]:
+        feature = registry.get(feature_name)
+        assert feature is not None
+        assert feature.actionable
+        assert not feature.immutable
+        assert feature_name in config["feature_bounds"]
+
+
+def test_no_mutable_declares_expected_infeasible_control() -> None:
+    config = json.loads((SCENARIO_DIR / "no_mutable.json").read_text(encoding="utf-8"))
+
+    assert config["mutable_allowed"] == []
+    assert config["use_default_mutable"] is False
+    assert config["expected_outcome"] == {
+        "category": "expected_infeasible_control",
+        "feasible": False,
+        "reason_codes": ["NO_MUTABLE_FEATURE"],
+        "notes": "Control scenario: no features are mutable, so infeasibility is expected.",
+    }

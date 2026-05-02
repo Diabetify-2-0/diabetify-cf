@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pandas as pd
 
 from diabetify_cf.engine.feature_registry import FeatureDefinition
-from experiments.engines.ocean_adapter import OceanCandidateGenerator
+from experiments.engines.ocean_adapter import OceanCandidateGenerator, OceanSolverOptions
 
 
 def _feature(name: str, feature_type: str = "continuous") -> FeatureDefinition:
@@ -59,3 +59,40 @@ def test_ocean_discrete_levels_are_clipped_to_request_bounds() -> None:
     )
 
     assert levels == [2.0, 3.0, 4.0]
+
+
+def test_ocean_solver_options_are_loaded_from_engine_config() -> None:
+    options = OceanSolverOptions.from_config(
+        {
+            "engine_options": {
+                "norm": 2,
+                "attempt_count": 3,
+                "seed_step": 101,
+                "max_time_per_attempt_seconds": 4,
+                "num_workers": 2,
+            }
+        }
+    )
+
+    assert options.norm == 2
+    assert options.attempt_count == 3
+    assert options.seed_step == 101
+    assert options.max_time_per_attempt_seconds == 4
+    assert options.num_workers == 2
+
+
+def test_ocean_max_time_is_split_across_attempts() -> None:
+    generator = OceanCandidateGenerator.__new__(OceanCandidateGenerator)
+    generator.solver_options = OceanSolverOptions(attempt_count=3)
+    request = SimpleNamespace(generation=SimpleNamespace(timeout_ms=10000))
+
+    assert generator._max_time_per_attempt(request) == 4
+
+
+def test_ocean_attempt_seed_is_deterministic() -> None:
+    generator = OceanCandidateGenerator.__new__(OceanCandidateGenerator)
+    generator.solver_options = OceanSolverOptions(seed_step=100)
+    request = SimpleNamespace(generation=SimpleNamespace(random_seed=42))
+
+    assert generator._attempt_seed(request, 0) == 42
+    assert generator._attempt_seed(request, 2) == 242

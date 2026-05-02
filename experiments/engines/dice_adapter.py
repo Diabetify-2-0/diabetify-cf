@@ -120,7 +120,12 @@ class DiceCandidateGenerator:
 class DiceExperimentAdapter(ExperimentEngine):
     name = "dice"
 
-    def __init__(self, settings: Settings | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        config: dict[str, Any] | None = None,
+    ) -> None:
+        _ = config
         self.settings = settings or Settings()
         self.engine = DiceCandidateGenerator(
             model_path=self.settings.model_path,

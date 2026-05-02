@@ -1,0 +1,26 @@
+{
+  "name": "lifestyle_combo",
+  "limit": 10,
+  "only_high_risk": true,
+  "target_class": "low_risk",
+  "min_target_probability": 0.5,
+  "random_seed": 42,
+  "mutable_allowed": [
+    "BMI",
+    "moderate_physical_activity_frequency",
+    "smoking_status",
+    "brinkman_index",
+    "is_hypertension"
+  ],
+  "immutable_features": [],
+  "feature_bounds": {
+    "BMI": { "min": 18.5, "max": 35.0 },
+    "moderate_physical_activity_frequency": { "min": 0, "max": 14 },
+    "smoking_status": { "min": 0, "max": 2 },
+    "brinkman_index": { "min": 0, "max": 3 },
+    "is_hypertension": { "min": 0, "max": 1 }
+  },
+  "use_default_mutable": false,
+  "use_default_immutable": true,
+  "use_default_feature_bounds": false
+}
