@@ -12,5 +12,7 @@
   },
   "use_default_mutable": false,
   "use_default_immutable": true,
-  "use_default_feature_bounds": false
+  "use_default_feature_bounds": false,
+  "scenario_role": "single_feature_stress_test",
+  "notes": "Tests whether physical activity alone can move model risk under broad realistic bounds."
 }

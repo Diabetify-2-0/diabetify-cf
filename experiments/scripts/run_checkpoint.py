@@ -118,6 +118,7 @@ def build_checkpoint_report(audit_payload: dict[str, Any]) -> str:
             "- `checkpoint_report.md`",
             "- `combined/scenario_summary.csv`",
             "- `combined/stability_summary.csv`",
+            "- `combined/inputs.csv`",
             "- `combined/candidates.csv`",
             "",
         ]

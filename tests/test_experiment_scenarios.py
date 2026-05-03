@@ -101,3 +101,11 @@ def test_no_mutable_declares_expected_infeasible_control() -> None:
         "reason_codes": ["NO_MUTABLE_FEATURE"],
         "notes": "Control scenario: no features are mutable, so infeasibility is expected.",
     }
+
+
+def test_stress_scenarios_declare_scenario_role() -> None:
+    activity = json.loads((SCENARIO_DIR / "activity_only.json").read_text(encoding="utf-8"))
+    tight = json.loads((SCENARIO_DIR / "tight_bounds.json").read_text(encoding="utf-8"))
+
+    assert activity["scenario_role"] == "single_feature_stress_test"
+    assert tight["scenario_role"] == "tight_bounds_stress_test"

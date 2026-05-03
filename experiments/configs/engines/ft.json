@@ -1,0 +1,15 @@
+{
+  "engine": "ft",
+  "engine_label": "ft",
+  "generation_method": "feature_tweak_style",
+  "total_cfs": 3,
+  "timeout_ms": 15000,
+  "engine_options": {
+    "max_changed_features": 2,
+    "beam_width": 24,
+    "max_candidates_to_evaluate": 300,
+    "max_thresholds_per_feature": 16,
+    "threshold_epsilon": 0.0001,
+    "search_patience": 2
+  }
+}

@@ -75,21 +75,35 @@ def collect_candidates(results_root: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def collect_inputs(results_root: Path) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for path in sorted(results_root.rglob("inputs.csv")):
+        if _is_generated_combined_path(path):
+            continue
+        for row in _read_csv(path):
+            rows.append({"source_file": str(path), **row})
+    return rows
+
+
 def collect_results(results_root: Path) -> dict[str, Path]:
     scenario_rows = collect_scenario_summaries(results_root)
     stability_rows = collect_stability_summaries(results_root)
+    input_rows = collect_inputs(results_root)
     candidate_rows = collect_candidates(results_root)
 
     combined_root = results_root / "combined"
     scenario_path = combined_root / "scenario_summary.csv"
     stability_path = combined_root / "stability_summary.csv"
+    input_path = combined_root / "inputs.csv"
     candidate_path = combined_root / "candidates.csv"
     _write_csv(scenario_path, scenario_rows)
     _write_csv(stability_path, stability_rows)
+    _write_csv(input_path, input_rows)
     _write_csv(candidate_path, candidate_rows)
     return {
         "scenario_summary": scenario_path,
         "stability_summary": stability_path,
+        "inputs": input_path,
         "candidates": candidate_path,
     }
 

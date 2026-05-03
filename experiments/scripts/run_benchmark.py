@@ -172,6 +172,30 @@ def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
             f.write(json.dumps(row, ensure_ascii=True) + "\n")
 
 
+def _prediction_probability_low_risk(model: Any, frame: pd.DataFrame) -> float:
+    if hasattr(model, "predict_proba"):
+        probabilities = model.predict_proba(frame)
+        return float(probabilities[0, 0])
+    prediction = model.predict(frame)
+    return 1.0 if int(prediction[0]) == 0 else 0.0
+
+
+def _input_row(
+    *,
+    engine_name: str,
+    request: CounterfactualRequest,
+    baseline: dict[str, Any],
+    baseline_probability_low_risk: float,
+) -> dict[str, Any]:
+    return {
+        "engine_name": engine_name,
+        "request_id": request.request_id,
+        "baseline_probability_low_risk": baseline_probability_low_risk,
+        "baseline_probability_high_risk": 1.0 - baseline_probability_low_risk,
+        "features": json.dumps(baseline, ensure_ascii=True),
+    }
+
+
 def _with_engine_label(result: EngineRunResult, engine_label: str) -> EngineRunResult:
     if result.engine_name == engine_label:
         return result
@@ -271,10 +295,12 @@ def run_benchmark(
     )
 
     case_records: list[dict[str, Any]] = []
+    input_records: list[dict[str, Any]] = []
     candidate_records: list[dict[str, Any]] = []
     for case_index, (_, row) in enumerate(selected.iterrows(), start=1):
+        baseline = row.to_dict()
         payload = build_request_payload(
-            row=row.to_dict(),
+            row=baseline,
             index=case_index,
             feature_columns=artifacts.feature_columns,
             registry=artifacts.feature_registry,
@@ -283,11 +309,23 @@ def run_benchmark(
         request = CounterfactualRequest.model_validate(payload)
         result = _with_engine_label(adapter.generate(request), output_engine_name)
         case_records.append(result.to_case_record())
+        baseline_frame = pd.DataFrame([baseline], columns=artifacts.feature_columns)
+        input_records.append(
+            _input_row(
+                engine_name=output_engine_name,
+                request=request,
+                baseline=baseline,
+                baseline_probability_low_risk=_prediction_probability_low_risk(
+                    artifacts.model,
+                    baseline_frame,
+                ),
+            )
+        )
         candidate_records.extend(
             _candidate_rows(
                 result=result,
                 request=request,
-                baseline=row.to_dict(),
+                baseline=baseline,
                 registry=artifacts.feature_registry,
                 max_lof_score=settings.max_lof_score,
             )
@@ -318,6 +356,7 @@ def run_benchmark(
         encoding="utf-8",
     )
     _write_jsonl(output_dir / "cases.jsonl", case_records)
+    _write_csv(output_dir / "inputs.csv", input_records)
     _write_csv(output_dir / "candidates.csv", candidate_records)
 
     return output_dir

@@ -12,5 +12,7 @@
   },
   "use_default_mutable": false,
   "use_default_immutable": true,
-  "use_default_feature_bounds": false
+  "use_default_feature_bounds": false,
+  "scenario_role": "tight_bounds_stress_test",
+  "notes": "Stress test for narrow BMI constraints; reachability diagnostics should decide whether it is analytically usable."
 }

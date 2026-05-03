@@ -133,6 +133,27 @@ def test_ocean_engine_config_explicit_solver_options() -> None:
     }
 
 
+def test_ft_engine_config_explicit_search_options() -> None:
+    config = load_effective_config(
+        engine_config_path=Path("experiments/configs/engines/ft.json"),
+        scenario_config_path=Path("experiments/configs/scenarios/all_mutable.json"),
+    )
+
+    assert config["engine"] == "ft"
+    assert config["engine_label"] == "ft"
+    assert config["generation_method"] == "feature_tweak_style"
+    assert config["total_cfs"] == 3
+    assert config["timeout_ms"] == 15000
+    assert config["engine_options"] == {
+        "max_changed_features": 2,
+        "beam_width": 24,
+        "max_candidates_to_evaluate": 300,
+        "max_thresholds_per_feature": 16,
+        "threshold_epsilon": 0.0001,
+        "search_patience": 2,
+    }
+
+
 def test_engine_output_label_can_distinguish_same_adapter_variants() -> None:
     config = {
         "engine": "ocean",

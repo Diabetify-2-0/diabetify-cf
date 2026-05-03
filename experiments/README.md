@@ -62,6 +62,7 @@ experiments/results/benchmarks/dice/<timestamp>/
 Isi output utama:
 
 - `cases.jsonl`: status per request/case.
+- `inputs.csv`: baseline input per request, termasuk probabilitas awal dan fitur baseline.
 - `candidates.csv`: kandidat counterfactual dan metrik evaluasinya.
 - `run_config.json`: konfigurasi, path artifact, dan metadata run.
 
@@ -217,6 +218,7 @@ File penting:
 - `comparison_manifest.json`
 - `combined/scenario_summary.csv`
 - `combined/stability_summary.csv`
+- `combined/inputs.csv`
 - `combined/candidates.csv`
 - `baselines/<engine>/<timestamp>/report.md`
 
@@ -283,6 +285,7 @@ Diagnosa ini membantu membaca:
 - reason counts OCEAN per scenario,
 - overlap case antara OCEAN dan DiCE,
 - fitur yang paling sering diubah oleh OCEAN.
+- constraint/search-space summary untuk scenario problematic low-feasibility, jika `inputs.csv` tersedia dari run baru.
 
 Untuk membandingkan varian tuning OCEAN, gunakan beberapa engine config dalam satu checkpoint:
 
@@ -325,6 +328,7 @@ Output gabungan:
 ```text
 experiments/results/combined/scenario_summary.csv
 experiments/results/combined/stability_summary.csv
+experiments/results/combined/inputs.csv
 experiments/results/combined/candidates.csv
 ```
 

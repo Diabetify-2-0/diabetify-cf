@@ -303,6 +303,7 @@ def build_comparison_report(comparison_root: Path, top_n: int = 10) -> str:
             "- `comparison_report.md`",
             "- `combined/scenario_summary.csv`",
             "- `combined/stability_summary.csv`",
+            "- `combined/inputs.csv`",
             "- `combined/candidates.csv`",
             "- `baselines/<engine>/<timestamp>/report.md`",
             "",
