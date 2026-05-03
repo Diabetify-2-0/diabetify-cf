@@ -26,6 +26,8 @@ class FeatureTweakOptions:
     beam_width: int = 24
     max_candidates_to_evaluate: int = 300
     max_thresholds_per_feature: int = 16
+    reference_values_per_feature: int = 16
+    single_feature_grid_size: int = 25
     threshold_epsilon: float = 1e-4
     search_patience: int = 2
 
@@ -55,6 +57,18 @@ class FeatureTweakOptions:
         if max_thresholds_per_feature < 1:
             raise ValueError("FT engine option 'max_thresholds_per_feature' must be >= 1.")
 
+        reference_values_per_feature = int(
+            raw.get("reference_values_per_feature", cls.reference_values_per_feature)
+        )
+        if reference_values_per_feature < 1:
+            raise ValueError("FT engine option 'reference_values_per_feature' must be >= 1.")
+
+        single_feature_grid_size = int(
+            raw.get("single_feature_grid_size", cls.single_feature_grid_size)
+        )
+        if single_feature_grid_size < 2:
+            raise ValueError("FT engine option 'single_feature_grid_size' must be >= 2.")
+
         threshold_epsilon = float(raw.get("threshold_epsilon", cls.threshold_epsilon))
         if threshold_epsilon <= 0.0:
             raise ValueError("FT engine option 'threshold_epsilon' must be > 0.")
@@ -68,6 +82,8 @@ class FeatureTweakOptions:
             beam_width=beam_width,
             max_candidates_to_evaluate=max_candidates_to_evaluate,
             max_thresholds_per_feature=max_thresholds_per_feature,
+            reference_values_per_feature=reference_values_per_feature,
+            single_feature_grid_size=single_feature_grid_size,
             threshold_epsilon=threshold_epsilon,
             search_patience=search_patience,
         )
@@ -110,6 +126,13 @@ class FeatureTweakCandidateGenerator:
         postprocessor: ExperimentPostprocessor,
     ) -> pd.DataFrame:
         assert self.artifacts is not None
+
+        if len(prepared.mutable_allowed) == 1:
+            return self._single_feature_search(
+                request=request,
+                prepared=prepared,
+                postprocessor=postprocessor,
+            )
 
         base_state = {
             column: prepared.instance_features[column] for column in self.artifacts.feature_columns
@@ -177,6 +200,47 @@ class FeatureTweakCandidateGenerator:
             return pd.DataFrame()
 
         raw = pd.DataFrame(collected).drop_duplicates()
+        ordered = raw[self.artifacts.feature_columns]
+        return postprocessor.as_model_input_df(ordered)
+
+    def _single_feature_search(
+        self,
+        *,
+        request: CounterfactualRequest,
+        prepared: PreparedExperimentRequest,
+        postprocessor: ExperimentPostprocessor,
+    ) -> pd.DataFrame:
+        assert self.artifacts is not None
+
+        feature_name = prepared.mutable_allowed[0]
+        feature = self.artifacts.feature_registry.get(feature_name)
+        lower, upper = self._bounds_for_feature(feature_name, feature, prepared)
+        baseline_value = float(prepared.instance_features[feature_name])
+        candidate_values = self._candidate_values_for_feature(
+            feature_name=feature_name,
+            feature=feature,
+            baseline_value=baseline_value,
+            lower=lower,
+            upper=upper,
+            exhaustive=True,
+        )
+        if not candidate_values:
+            return pd.DataFrame()
+
+        states: list[dict[str, Any]] = []
+        for candidate_value in candidate_values[: self.options.max_candidates_to_evaluate]:
+            state = dict(prepared.instance_features)
+            state[feature_name] = self._coerce_feature_value(
+                candidate_value=candidate_value,
+                feature_name=feature_name,
+                feature=feature,
+            )
+            states.append(state)
+
+        if not states:
+            return pd.DataFrame()
+
+        raw = pd.DataFrame(states).drop_duplicates()
         ordered = raw[self.artifacts.feature_columns]
         return postprocessor.as_model_input_df(ordered)
 
@@ -267,6 +331,7 @@ class FeatureTweakCandidateGenerator:
         baseline_value: float,
         lower: float,
         upper: float,
+        exhaustive: bool = False,
     ) -> list[float]:
         values: list[float] = []
         if feature is not None and feature.is_binary:
@@ -284,6 +349,7 @@ class FeatureTweakCandidateGenerator:
                 baseline_value=baseline_value,
                 lower=lower,
                 upper=upper,
+                exhaustive=exhaustive,
             )
 
         deduped: list[float] = []
@@ -295,7 +361,12 @@ class FeatureTweakCandidateGenerator:
                 continue
             deduped.append(rounded)
             seen.add(rounded)
-        return deduped[: self.options.max_thresholds_per_feature]
+        limit = (
+            self.options.max_candidates_to_evaluate
+            if exhaustive
+            else self.options.max_thresholds_per_feature
+        )
+        return deduped[:limit]
 
     def _continuous_candidate_values(
         self,
@@ -304,6 +375,7 @@ class FeatureTweakCandidateGenerator:
         baseline_value: float,
         lower: float,
         upper: float,
+        exhaustive: bool,
     ) -> list[float]:
         values = [lower, upper]
         for threshold in self._feature_thresholds.get(feature_name, []):
@@ -313,8 +385,75 @@ class FeatureTweakCandidateGenerator:
                 values.append(threshold + self.options.threshold_epsilon)
             if threshold <= baseline_value:
                 values.append(threshold - self.options.threshold_epsilon)
+        values.extend(
+            self._reference_continuous_values(
+                feature_name=feature_name,
+                lower=lower,
+                upper=upper,
+                exhaustive=exhaustive,
+            )
+        )
+        values.extend(
+            self._grid_continuous_values(
+                lower=lower,
+                upper=upper,
+                exhaustive=exhaustive,
+            )
+        )
         values.sort(key=lambda value: (abs(value - baseline_value), value))
         return values
+
+    def _reference_continuous_values(
+        self,
+        *,
+        feature_name: str,
+        lower: float,
+        upper: float,
+        exhaustive: bool,
+    ) -> list[float]:
+        artifacts = getattr(self, "artifacts", None)
+        if artifacts is None:
+            return []
+        series = pd.to_numeric(
+            artifacts.reference_data[feature_name],
+            errors="coerce",
+        ).dropna()
+        if series.empty:
+            return []
+
+        clipped = series[(series >= lower) & (series <= upper)]
+        if clipped.empty:
+            return []
+
+        values = sorted(float(value) for value in clipped.unique())
+        if exhaustive and len(values) <= self.options.max_candidates_to_evaluate:
+            return values
+
+        sample_size = min(len(values), self.options.reference_values_per_feature)
+        if sample_size >= len(values):
+            return values
+
+        quantiles = [
+            index / (sample_size - 1)
+            for index in range(sample_size)
+        ] if sample_size > 1 else [0.5]
+        sampled = clipped.quantile(quantiles).tolist()
+        return [float(value) for value in sampled]
+
+    def _grid_continuous_values(
+        self,
+        *,
+        lower: float,
+        upper: float,
+        exhaustive: bool,
+    ) -> list[float]:
+        if not exhaustive:
+            return []
+        if upper <= lower:
+            return [lower]
+        step_count = self.options.single_feature_grid_size
+        step = (upper - lower) / float(step_count - 1)
+        return [lower + (index * step) for index in range(step_count)]
 
     def _ordinal_candidate_values(
         self,

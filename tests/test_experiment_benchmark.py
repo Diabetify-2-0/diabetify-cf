@@ -149,6 +149,8 @@ def test_ft_engine_config_explicit_search_options() -> None:
         "beam_width": 24,
         "max_candidates_to_evaluate": 300,
         "max_thresholds_per_feature": 16,
+        "reference_values_per_feature": 16,
+        "single_feature_grid_size": 25,
         "threshold_epsilon": 0.0001,
         "search_patience": 2,
     }
