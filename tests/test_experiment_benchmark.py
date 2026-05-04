@@ -178,6 +178,25 @@ def test_ft_engine_config_explicit_search_options() -> None:
     }
 
 
+def test_nn_engine_config_explicit_search_options() -> None:
+    config = load_effective_config(
+        engine_config_path=Path("experiments/configs/engines/nn.json"),
+        scenario_config_path=Path("experiments/configs/scenarios/all_mutable.json"),
+    )
+
+    assert config["engine"] == "nn"
+    assert config["engine_label"] == "nn"
+    assert config["generation_method"] == "nearest_neighbor_projection"
+    assert config["total_cfs"] == 3
+    assert config["timeout_ms"] == 5000
+    assert config["engine_options"] == {
+        "candidate_pool_size": 256,
+        "max_neighbors": 64,
+        "max_changed_features": 3,
+        "min_reference_low_risk_probability": None,
+    }
+
+
 def test_engine_output_label_can_distinguish_same_adapter_variants() -> None:
     config = {
         "engine": "ocean",

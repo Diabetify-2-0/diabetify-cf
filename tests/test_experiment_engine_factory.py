@@ -5,6 +5,7 @@ from experiments.engines import (
     DaceExperimentAdapter,
     DiceExperimentAdapter,
     FeatureTweakExperimentAdapter,
+    NearestNeighborExperimentAdapter,
     OceanExperimentAdapter,
     build_experiment_engine,
 )
@@ -58,6 +59,18 @@ def test_build_experiment_engine_returns_ft_adapter() -> None:
     assert isinstance(adapter, FeatureTweakExperimentAdapter)
 
 
+def test_build_experiment_engine_returns_nn_adapter() -> None:
+    adapter = build_experiment_engine(
+        "nn",
+        settings=Settings(
+            model_path="missing-model.pkl",
+            columns_path="missing-columns.pkl",
+        ),
+    )
+
+    assert isinstance(adapter, NearestNeighborExperimentAdapter)
+
+
 def test_build_experiment_engine_passes_config_to_ocean_adapter() -> None:
     adapter = build_experiment_engine(
         "ocean",
@@ -86,6 +99,21 @@ def test_build_experiment_engine_passes_config_to_ft_adapter() -> None:
     assert isinstance(adapter, FeatureTweakExperimentAdapter)
     assert adapter.engine.options.max_changed_features == 3
     assert adapter.engine.options.beam_width == 8
+
+
+def test_build_experiment_engine_passes_config_to_nn_adapter() -> None:
+    adapter = build_experiment_engine(
+        "nn",
+        settings=Settings(
+            model_path="missing-model.pkl",
+            columns_path="missing-columns.pkl",
+        ),
+        config={"engine_options": {"max_neighbors": 12, "max_changed_features": 2}},
+    )
+
+    assert isinstance(adapter, NearestNeighborExperimentAdapter)
+    assert adapter.engine.options.max_neighbors == 12
+    assert adapter.engine.options.max_changed_features == 2
 
 
 def test_build_experiment_engine_passes_config_to_dace_adapter() -> None:
