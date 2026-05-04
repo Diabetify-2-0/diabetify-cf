@@ -2,6 +2,7 @@ import pytest
 
 from diabetify_cf.config import Settings
 from experiments.engines import (
+    DaceExperimentAdapter,
     DiceExperimentAdapter,
     FeatureTweakExperimentAdapter,
     OceanExperimentAdapter,
@@ -19,6 +20,18 @@ def test_build_experiment_engine_returns_dice_adapter() -> None:
     )
 
     assert isinstance(adapter, DiceExperimentAdapter)
+
+
+def test_build_experiment_engine_returns_dace_adapter() -> None:
+    adapter = build_experiment_engine(
+        "dace",
+        settings=Settings(
+            model_path="missing-model.pkl",
+            columns_path="missing-columns.pkl",
+        ),
+    )
+
+    assert isinstance(adapter, DaceExperimentAdapter)
 
 
 def test_build_experiment_engine_returns_ocean_adapter() -> None:
@@ -73,6 +86,21 @@ def test_build_experiment_engine_passes_config_to_ft_adapter() -> None:
     assert isinstance(adapter, FeatureTweakExperimentAdapter)
     assert adapter.engine.options.max_changed_features == 3
     assert adapter.engine.options.beam_width == 8
+
+
+def test_build_experiment_engine_passes_config_to_dace_adapter() -> None:
+    adapter = build_experiment_engine(
+        "dace",
+        settings=Settings(
+            model_path="missing-model.pkl",
+            columns_path="missing-columns.pkl",
+        ),
+        config={"engine_options": {"surrogate_n_estimators": 20, "max_changed_features": 2}},
+    )
+
+    assert isinstance(adapter, DaceExperimentAdapter)
+    assert adapter.engine.options.surrogate_n_estimators == 20
+    assert adapter.engine.options.max_changed_features == 2
 
 
 def test_build_experiment_engine_rejects_unsupported_engine() -> None:

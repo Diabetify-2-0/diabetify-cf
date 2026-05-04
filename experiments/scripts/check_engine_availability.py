@@ -18,6 +18,7 @@ from diabetify_cf.config import Settings  # noqa: E402
 from experiments.engines.factory import SUPPORTED_ENGINES, build_experiment_engine  # noqa: E402
 
 ENGINE_IMPORTS = {
+    "dace": ["pulp"],
     "dice": ["dice_ml"],
     "carla": ["carla"],
     "ft": ["xgboost"],
