@@ -1,0 +1,57 @@
+{
+  "name": "core_benchmark_v1",
+  "description": "Native one-environment benchmark scope for the thesis comparison pipeline.",
+  "core_engines": [
+    {
+      "engine": "dice",
+      "config_path": "experiments/configs/engines/dice.json",
+      "category": "external_library",
+      "notes": "General-purpose counterfactual library integrated natively in the main environment."
+    },
+    {
+      "engine": "ocean",
+      "config_path": "experiments/configs/engines/ocean.json",
+      "category": "external_library",
+      "notes": "Tree-ensemble optimization method compatible with the main XGBoost model."
+    },
+    {
+      "engine": "ft",
+      "config_path": "experiments/configs/engines/ft.json",
+      "category": "custom_baseline",
+      "notes": "FeatureTweak-inspired tree-threshold search baseline implemented for the main pipeline."
+    },
+    {
+      "engine": "nn",
+      "config_path": "experiments/configs/engines/nn.json",
+      "category": "custom_baseline",
+      "notes": "Nearest-neighbor projection baseline implemented for the main pipeline."
+    }
+  ],
+  "excluded_candidates": [
+    {
+      "engine": "dace",
+      "status": "experimental_not_ready",
+      "reason": "Current adapter relies on a random-forest surrogate and does not yet produce usable feasible candidates."
+    },
+    {
+      "engine": "carla",
+      "status": "audited_not_integrated",
+      "reason": "Official stack is tied to legacy Python and package versions that are incompatible with the main environment."
+    },
+    {
+      "engine": "focus",
+      "status": "audited_not_integrated",
+      "reason": "Official implementation requires a legacy software stack and solver dependencies that are not suitable for the main environment."
+    },
+    {
+      "engine": "oae",
+      "status": "audited_not_integrated",
+      "reason": "Available implementation targets scikit-learn random forest rather than the native XGBoost model."
+    },
+    {
+      "engine": "mace",
+      "status": "audited_not_integrated",
+      "reason": "Available implementation targets legacy scikit-learn model families rather than the native XGBoost model."
+    }
+  ]
+}
