@@ -84,6 +84,7 @@ def build_checkpoint_command(
         ]
     )
     command.extend(core_engine_names(scope))
+    command.append("--fail-on-timeout")
     return command
 
 

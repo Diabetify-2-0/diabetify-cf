@@ -170,6 +170,7 @@ def run_checkpoint(
     stability_timeout_seconds: int | None,
     required_engines: list[str],
     max_allowed_violation_rate: float,
+    fail_on_timeout: bool,
 ) -> dict[str, Any]:
     comparison_root = run_comparison(
         output_root=output_root,
@@ -187,6 +188,7 @@ def run_checkpoint(
         comparison_root,
         required_engines=required_engines,
         max_allowed_violation_rate=max_allowed_violation_rate,
+        fail_on_timeout=fail_on_timeout,
     )
     report_path = write_checkpoint_report(comparison_root, audit_payload)
     manifest_path = write_checkpoint_manifest(
@@ -204,6 +206,7 @@ def run_checkpoint(
             "stability_timeout_seconds": stability_timeout_seconds,
             "required_engines": required_engines,
             "max_allowed_violation_rate": max_allowed_violation_rate,
+            "fail_on_timeout": fail_on_timeout,
         },
     )
     return {
@@ -260,6 +263,11 @@ def main() -> None:
         default=0.0,
         help="Maximum accepted constraint violation rate before failing the checkpoint.",
     )
+    parser.add_argument(
+        "--fail-on-timeout",
+        action="store_true",
+        help="Treat scenario timeouts as checkpoint failures.",
+    )
     args = parser.parse_args()
 
     result = run_checkpoint(
@@ -275,6 +283,7 @@ def main() -> None:
         stability_timeout_seconds=args.stability_timeout_seconds,
         required_engines=list(args.required_engines),
         max_allowed_violation_rate=args.max_allowed_violation_rate,
+        fail_on_timeout=args.fail_on_timeout,
     )
 
     audit_payload = result["audit"]

@@ -96,6 +96,20 @@ def test_audit_comparison_passes_with_timeout_warning(tmp_path: Path) -> None:
     assert (tmp_path / "audit_report.json").exists()
 
 
+def test_audit_comparison_can_fail_on_timeout(tmp_path: Path) -> None:
+    _write_minimal_comparison(tmp_path)
+
+    payload = audit_comparison(
+        tmp_path,
+        required_engines=["dice", "ocean"],
+        max_allowed_violation_rate=0.0,
+        fail_on_timeout=True,
+    )
+
+    assert payload["ok"] is False
+    assert "ocean/all_mutable timed out." in payload["errors"]
+
+
 def test_audit_comparison_fails_on_constraint_violation(tmp_path: Path) -> None:
     _write_minimal_comparison(tmp_path)
     _write_csv(

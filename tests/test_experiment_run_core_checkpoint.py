@@ -46,7 +46,10 @@ def test_build_checkpoint_command_uses_core_scope_and_required_engines() -> None
 
     assert "--engine-configs" in command
     assert "--required-engines" in command
-    assert command[-4:] == ["dice", "ocean", "ft", "nn"]
+    assert "--fail-on-timeout" in command
+    required_index = command.index("--required-engines")
+    strict_index = command.index("--fail-on-timeout")
+    assert command[required_index + 1 : strict_index] == ["dice", "ocean", "ft", "nn"]
     path_names = {Path(value).name for value in command if value.endswith(".json")}
     assert "dice.json" in path_names
     assert "nn.json" in path_names

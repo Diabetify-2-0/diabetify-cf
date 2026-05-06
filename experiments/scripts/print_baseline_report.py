@@ -236,6 +236,7 @@ def build_markdown_report(baseline_root: Path, top_n: int = 10) -> str:
             "",
             "## Important Files",
             "",
+            "- Primary rates in this report use the top-ranked candidate per request.",
             "- `baseline_manifest.json`",
             "- `combined/scenario_summary.csv`",
             "- `combined/stability_summary.csv`",

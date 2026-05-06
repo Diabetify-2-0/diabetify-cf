@@ -123,6 +123,7 @@ def audit_comparison(
     *,
     required_engines: list[str],
     max_allowed_violation_rate: float,
+    fail_on_timeout: bool = False,
 ) -> dict[str, Any]:
     collect_results(comparison_root)
     scenario_path = comparison_root / "combined" / "scenario_summary.csv"
@@ -160,7 +161,11 @@ def audit_comparison(
         if status == "failed":
             errors.append(f"{engine}/{scenario} failed.")
         if status == "timeout":
-            warnings.append(f"{engine}/{scenario} timed out.")
+            message = f"{engine}/{scenario} timed out."
+            if fail_on_timeout:
+                errors.append(message)
+            else:
+                warnings.append(message)
         for field in VIOLATION_RATE_FIELDS:
             value = _as_float(row, field)
             if value > max_allowed_violation_rate:
@@ -186,6 +191,7 @@ def audit_comparison(
         "errors": errors,
         "warnings": warnings,
         "required_engines": required_engines,
+        "fail_on_timeout": fail_on_timeout,
         "observed_engines": sorted(engines),
         "row_counts": {
             "scenario": len(scenario_rows),
@@ -264,6 +270,11 @@ def main() -> None:
         default=0.0,
         help="Maximum accepted constraint violation rate before failing the audit.",
     )
+    parser.add_argument(
+        "--fail-on-timeout",
+        action="store_true",
+        help="Treat scenario timeouts as audit failures.",
+    )
     parser.add_argument("--json", action="store_true", help="Print machine-readable JSON.")
     args = parser.parse_args()
 
@@ -272,6 +283,7 @@ def main() -> None:
         comparison_root,
         required_engines=list(args.required_engines),
         max_allowed_violation_rate=args.max_allowed_violation_rate,
+        fail_on_timeout=args.fail_on_timeout,
     )
 
     if args.json:

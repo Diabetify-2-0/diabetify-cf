@@ -292,6 +292,8 @@ def build_comparison_report(comparison_root: Path, top_n: int = 10) -> str:
             "and timeouts.",
             "- `completed` means the subprocess finished; success is measured by feasible "
             "rate and violations.",
+            "- Scenario summary rates are computed from the top-ranked candidate per request; "
+            "all-candidate statistics remain available in raw CSV outputs.",
             "- Feasible-only stability is computed only from repeats that produced "
             "FEASIBLE counterfactuals.",
             "- Small limits are smoke-level evidence. Increase limits before drawing final "
