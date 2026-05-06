@@ -103,7 +103,7 @@ class OceanCandidateGenerator:
 
     @staticmethod
     def _check_ocean_available() -> None:
-        import ocean  # noqa: F401
+        import ocean  
 
     def generate_raw(
         self,

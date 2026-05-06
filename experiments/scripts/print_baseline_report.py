@@ -8,13 +8,13 @@ from pathlib import Path
 
 try:
     from experiments.scripts._bootstrap import bootstrap_path
-except ModuleNotFoundError:  # pragma: no cover - direct script execution
+except ModuleNotFoundError:  
     from _bootstrap import bootstrap_path
 
 
 bootstrap_path(__file__)
 
-from experiments.scripts.collect_results import collect_results  # noqa: E402
+from experiments.scripts.collect_results import collect_results  
 
 
 def _read_csv(path: Path) -> list[dict[str, str]]:

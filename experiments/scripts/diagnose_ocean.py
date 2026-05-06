@@ -11,18 +11,18 @@ import pandas as pd
 
 try:
     from experiments.scripts._bootstrap import bootstrap_path
-except ModuleNotFoundError:  # pragma: no cover - direct script execution
+except ModuleNotFoundError:  
     from _bootstrap import bootstrap_path
 
 
 bootstrap_path(__file__)
 
-from diabetify_cf.config import Settings  # noqa: E402
-from diabetify_cf.engine.artifacts import ModelArtifacts, load_artifacts  # noqa: E402
-from experiments.scripts.audit_comparison import _latest_comparison_root  # noqa: E402
-from experiments.scripts.collect_results import collect_results  # noqa: E402
-from experiments.scripts.run_benchmark import DEFAULT_OUTPUT_ROOT  # noqa: E402
-from experiments.scripts.run_comparison import engine_from_source_file  # noqa: E402
+from diabetify_cf.config import Settings  
+from diabetify_cf.engine.artifacts import ModelArtifacts, load_artifacts  
+from experiments.scripts.audit_comparison import _latest_comparison_root  
+from experiments.scripts.collect_results import collect_results  
+from experiments.scripts.run_benchmark import DEFAULT_OUTPUT_ROOT  
+from experiments.scripts.run_comparison import engine_from_source_file 
 
 
 def _read_csv(path: Path) -> list[dict[str, str]]:

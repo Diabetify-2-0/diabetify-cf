@@ -12,21 +12,21 @@ from typing import Any
 
 try:
     from experiments.scripts._bootstrap import bootstrap_path
-except ModuleNotFoundError:  # pragma: no cover - direct script execution
+except ModuleNotFoundError:  
     from _bootstrap import bootstrap_path
 
 
 bootstrap_path(__file__)
 
-from experiments.scripts.run_benchmark import (  # noqa: E402
+from experiments.scripts.run_benchmark import ( 
     DEFAULT_ENGINE_CONFIG_PATH,
     DEFAULT_OUTPUT_ROOT,
     REPO_ROOT,
     load_config,
     merge_configs,
 )
-from experiments.scripts.run_metadata import build_run_metadata  # noqa: E402
-from experiments.scripts.summarize_results import summarize_run, write_summary_csv  # noqa: E402
+from experiments.scripts.run_metadata import build_run_metadata 
+from experiments.scripts.summarize_results import summarize_run, write_summary_csv 
 
 DEFAULT_SCENARIO_CONFIGS = [
     Path("experiments/configs/scenarios/all_mutable.json"),

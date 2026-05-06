@@ -8,15 +8,15 @@ from typing import Any
 
 try:
     from experiments.scripts._bootstrap import bootstrap_path
-except ModuleNotFoundError:  # pragma: no cover - direct script execution
+except ModuleNotFoundError:  
     from _bootstrap import bootstrap_path
 
 
 bootstrap_path(__file__)
 
-from experiments.scripts.collect_results import collect_results  # noqa: E402
-from experiments.scripts.run_benchmark import DEFAULT_OUTPUT_ROOT  # noqa: E402
-from experiments.scripts.run_comparison import engine_from_source_file  # noqa: E402
+from experiments.scripts.collect_results import collect_results  
+from experiments.scripts.run_benchmark import DEFAULT_OUTPUT_ROOT  
+from experiments.scripts.run_comparison import engine_from_source_file  
 
 DEFAULT_REQUIRED_ENGINES = ["dice", "ocean"]
 VIOLATION_RATE_FIELDS = [

@@ -18,6 +18,15 @@ Untuk OCEAN, install extra eksperimen:
 .\.venv\Scripts\python.exe -m pip install -e ".[dev,experiments]"
 ```
 
+Benchmark inti final di repo ini adalah:
+
+- `dice`
+- `ocean`
+- `ft`
+- `nn`
+
+Untuk eksperimen final TA, gunakan jalur `run_core_checkpoint.py`. Script lain tetap tersedia untuk benchmark satu engine, baseline terpisah, atau audit/debug.
+
 ## 1. Cek Kesiapan Environment
 
 ```powershell
@@ -32,8 +41,13 @@ Command ini mengecek:
 - kesiapan reference data,
 - kesiapan feature registry.
 
-Untuk saat ini, engine yang aktif tanpa extra adalah DiCE. CARLA, OCEAN, dan FOCUS akan muncul sebagai missing sampai dependency-nya dipasang.
-Dengan extra `experiments`, OCEAN akan muncul sebagai available.
+Tanpa extra `experiments`, engine native yang tetap bisa dicek adalah:
+
+- `dice`
+- `ft`
+- `nn`
+
+Dengan extra `experiments`, `ocean` juga akan muncul sebagai available.
 
 Catatan: CARLA belum diaktifkan karena `carla-recourse==0.0.5` mengunci `numpy==1.19.4`, sedangkan project ini memakai `numpy==2.2.6`. Memaksa downgrade NumPy akan berisiko merusak stack `pandas`, `scikit-learn`, dan `xgboost`.
 
@@ -193,7 +207,7 @@ Catatan: pada beberapa scenario constraint, engine tertentu bisa berjalan lama. 
 
 ## 7. Jalankan Comparison Experiment
 
-Untuk membandingkan DiCE dan OCEAN dengan desain eksperimen yang sama:
+Untuk membandingkan beberapa engine dengan desain eksperimen yang sama:
 
 ```powershell
 .\.venv\Scripts\python.exe experiments\scripts\run_comparison.py --scenario-limit 5 --stability-limit 5 --repeat-count 3 --scenario-timeout-seconds 120 --stability-timeout-seconds 120
@@ -236,11 +250,25 @@ Audit hasil comparison terbaru:
 
 Audit ini memeriksa file wajib, engine wajib, failed step, violation rate, dan stability evaluability. Timeout dan infeasible case dicatat sebagai warning agar tetap terlihat sebagai temuan eksperimen, bukan crash pipeline.
 
-Gunakan command ini sebagai jalur utama ketika tujuan eksperimen adalah membandingkan beberapa library.
+Gunakan command ini jika kamu ingin comparison yang fleksibel dan menentukan sendiri daftar engine/config yang dipakai.
 
-## 8. Jalankan Checkpoint Terkunci
+## 8. Jalankan Core Checkpoint
 
-Untuk menjalankan comparison dan langsung mengaudit hasilnya dalam satu command:
+Untuk benchmark inti final yang sudah dikunci (`dice`, `ocean`, `ft`, `nn`), gunakan:
+
+```powershell
+.\.venv\Scripts\python.exe experiments\scripts\run_core_checkpoint.py --scenario-limit 10 --stability-limit 10 --repeat-count 5 --scenario-timeout-seconds 180 --stability-timeout-seconds 180
+```
+
+Runner ini:
+
+- membaca scope benchmark inti dari `experiments/configs/benchmark_scope/core_benchmark.json`,
+- menjalankan comparison untuk empat engine inti,
+- menjalankan audit checkpoint,
+- menulis `comparison_report.md`, `checkpoint_report.md`, dan manifest terkait,
+- keluar dengan exit code non-zero jika audit gagal.
+
+Untuk menjalankan comparison generik dan langsung mengaudit hasilnya dalam satu command:
 
 ```powershell
 .\.venv\Scripts\python.exe experiments\scripts\run_checkpoint.py --scenario-limit 5 --stability-limit 5 --repeat-count 3 --scenario-timeout-seconds 120 --stability-timeout-seconds 120
@@ -257,12 +285,12 @@ Checkpoint runner melakukan:
 
 Gunakan command ini saat ingin mengunci satu hasil eksperimen sebagai checkpoint teknis yang siap dibandingkan.
 
-## 9. Diagnosa OCEAN
+## 9. Diagnosa Engine
 
-Setelah comparison atau checkpoint selesai, jalankan diagnosa OCEAN:
+Setelah comparison atau checkpoint selesai, jalankan diagnosis generik per engine:
 
 ```powershell
-.\.venv\Scripts\python.exe experiments\scripts\diagnose_ocean.py
+.\.venv\Scripts\python.exe experiments\scripts\diagnose_engine.py --target-engine ocean --baseline-engine dice
 ```
 
 Secara default script ini membaca comparison terbaru dari:
@@ -274,30 +302,18 @@ experiments/results/latest/comparison.txt
 Output akan ditulis di folder comparison yang sama:
 
 ```text
-ocean_diagnostics.md
-ocean_diagnostics.json
+<target_engine>_diagnostics.md
+<target_engine>_diagnostics.json
 ```
 
-Diagnosa ini membantu membaca:
+Diagnosis ini membantu membaca:
 
-- scenario mana yang feasibility OCEAN-nya rendah,
-- scenario mana yang OCEAN-nya lebih buruk dari DiCE,
-- reason counts OCEAN per scenario,
-- overlap case antara OCEAN dan DiCE,
-- fitur yang paling sering diubah oleh OCEAN.
+- scenario mana yang feasibility engine target-nya rendah,
+- scenario mana yang engine target lebih buruk dari baseline,
+- reason counts per scenario,
+- overlap case antara target dan baseline,
+- fitur yang paling sering diubah oleh engine target,
 - constraint/search-space summary untuk scenario problematic low-feasibility, jika `inputs.csv` tersedia dari run baru.
-
-Untuk membandingkan varian tuning OCEAN, gunakan beberapa engine config dalam satu checkpoint:
-
-```powershell
-.\.venv\Scripts\python.exe experiments\scripts\run_checkpoint.py --engine-configs experiments\configs\engines\dice.json experiments\configs\engines\ocean.json experiments\configs\engines\ocean_attempt4.json --scenario-limit 5 --stability-limit 5 --repeat-count 3 --scenario-timeout-seconds 180 --stability-timeout-seconds 180 --required-engines dice ocean ocean_attempt4
-```
-
-Lalu diagnosa varian tuning tersebut:
-
-```powershell
-.\.venv\Scripts\python.exe experiments\scripts\diagnose_ocean.py --target-engine ocean_attempt4 --baseline-engine ocean
-```
 
 ## 10. Tampilkan Quick Report Baseline
 
@@ -332,12 +348,21 @@ experiments/results/combined/inputs.csv
 experiments/results/combined/candidates.csv
 ```
 
+Gunakan script ini hanya untuk root hasil yang memang satu scope, misalnya:
+
+- satu `comparison_root`, atau
+- satu `baseline_root`
+
+Jangan arahkan langsung ke `experiments/results/` yang berisi banyak run lama, karena hasil gabungan bisa mencampur eksperimen dengan desain berbeda.
+
 ## 12. Config yang Tersedia
 
 ```text
 experiments/configs/engines/dice.json
 experiments/configs/engines/ocean.json
-experiments/configs/engines/ocean_attempt4.json
+experiments/configs/engines/ft.json
+experiments/configs/engines/nn.json
+experiments/configs/engines/dace.json
 experiments/configs/scenarios/all_mutable.json
 experiments/configs/scenarios/lifestyle_combo.json
 experiments/configs/scenarios/bmi_only.json
@@ -353,11 +378,13 @@ Engine config juga dibuat eksplisit untuk parameter generation dasar:
 
 - DiCE memakai `dice_genetic`, `total_cfs=3`, `timeout_ms=5000`.
 - OCEAN memakai `ocean_cp`, `total_cfs=1`, `timeout_ms=15000`, dan deterministic multi-attempt lewat `engine_options`.
-- `ocean_attempt4.json` memakai adapter OCEAN yang sama, tetapi dilabeli `ocean_attempt4`, dengan `attempt_count=4` dan `timeout_ms=30000` untuk tuning eksploratif.
+- FT memakai `feature_tweak_style`, `total_cfs=3`, `timeout_ms=15000`.
+- NN memakai `nearest_neighbor_projection`, `total_cfs=3`, `timeout_ms=5000`.
+- DACE tetap tersedia sebagai adapter eksperimental, tetapi bukan bagian dari benchmark inti final.
 
 Nilai engine config menimpa nilai scenario config ketika keduanya mendefinisikan field yang sama. Karena itu, perubahan parameter generation per engine sebaiknya dibuat sebagai config engine baru, bukan mengubah scenario.
 
-`engine` adalah nama adapter yang dijalankan. `engine_label` adalah nama hasil eksperimen di folder output dan report. Gunakan `engine_label` saat membandingkan beberapa konfigurasi dari adapter yang sama, misalnya `ocean` vs `ocean_attempt4`.
+`engine` adalah nama adapter yang dijalankan. `engine_label` adalah nama hasil eksperimen di folder output dan report. Gunakan `engine_label` saat memang perlu membedakan beberapa konfigurasi dari adapter yang sama.
 
 Scenario config dijaga engine-neutral. Scenario tidak mendefinisikan `generation_method`, `total_cfs`, atau `timeout_ms`; field tersebut tinggal di engine config.
 

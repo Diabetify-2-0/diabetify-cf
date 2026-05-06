@@ -197,23 +197,11 @@ def test_nn_engine_config_explicit_search_options() -> None:
     }
 
 
-def test_engine_output_label_can_distinguish_same_adapter_variants() -> None:
+def test_engine_output_label_can_distinguish_explicit_variant_labels() -> None:
     config = {
         "engine": "ocean",
-        "engine_label": "ocean_attempt4",
+        "engine_label": "ocean_variant_a",
     }
 
     assert engine_adapter_name(config) == "ocean"
-    assert engine_output_label(config) == "ocean_attempt4"
-
-
-def test_ocean_attempt4_config_uses_ocean_adapter_with_distinct_label() -> None:
-    config = load_effective_config(
-        engine_config_path=Path("experiments/configs/engines/ocean_attempt4.json"),
-        scenario_config_path=Path("experiments/configs/scenarios/all_mutable.json"),
-    )
-
-    assert engine_adapter_name(config) == "ocean"
-    assert engine_output_label(config) == "ocean_attempt4"
-    assert config["timeout_ms"] == 30000
-    assert config["engine_options"]["attempt_count"] == 4
+    assert engine_output_label(config) == "ocean_variant_a"

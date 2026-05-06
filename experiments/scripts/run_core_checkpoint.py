@@ -9,7 +9,7 @@ from typing import Any
 
 try:
     from experiments.scripts._bootstrap import bootstrap_path
-except ModuleNotFoundError:  # pragma: no cover - direct script execution
+except ModuleNotFoundError: 
     from _bootstrap import bootstrap_path
 
 
@@ -98,18 +98,6 @@ def latest_comparison_root(latest_pointer: Path) -> Path:
     return REPO_ROOT / comparison_root
 
 
-def write_scope_manifest(scope: dict[str, Any], comparison_root: Path) -> Path:
-    manifest = {
-        "scope_name": scope.get("name", "core_benchmark"),
-        "description": scope.get("description", ""),
-        "core_engines": scope.get("core_engines", []),
-        "excluded_candidates": scope.get("excluded_candidates", []),
-    }
-    output_path = comparison_root / "core_benchmark_scope.json"
-    output_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=True), encoding="utf-8")
-    return output_path
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the locked core benchmark checkpoint.")
     parser.add_argument("--scope", type=Path, default=DEFAULT_SCOPE_PATH)
@@ -134,10 +122,7 @@ def main() -> None:
     subprocess.run(command, check=True, cwd=REPO_ROOT)
 
     comparison_root = latest_comparison_root(latest_comparison_pointer(args.output_root))
-    scope_manifest = write_scope_manifest(scope, comparison_root)
-
     print(f"Core benchmark comparison root: {comparison_root.relative_to(REPO_ROOT)}")
-    print(f"Core benchmark scope manifest: {scope_manifest.relative_to(REPO_ROOT)}")
 
 
 if __name__ == "__main__":
