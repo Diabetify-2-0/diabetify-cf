@@ -25,11 +25,10 @@ def _env_or_default(name: str, default: str) -> str:
 
 def _default_path_for(name: str) -> str:
     service_root = Path(__file__).resolve().parents[2]
-    program_root = Path(__file__).resolve().parents[3]
 
     defaults = {
-        "CF_MODEL_PATH": program_root / "diabetify-ml" / "xg_model.pkl",
-        "CF_COLUMNS_PATH": program_root / "diabetify-ml" / "x_columns.pkl",
+        "CF_MODEL_PATH": service_root / "artifacts" / "models" / "xg_model.pkl",
+        "CF_COLUMNS_PATH": service_root / "artifacts" / "models" / "x_columns.pkl",
         "CF_REFERENCE_DATA_PATH": service_root
         / "artifacts"
         / "reference"

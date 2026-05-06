@@ -21,7 +21,4 @@ experiments/
 README.md
 .gitignore
 
-artifacts/models/
-artifacts/results/
-
 .ipynb_checkpoints/

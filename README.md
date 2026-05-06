@@ -92,7 +92,7 @@ docker run --rm --env-file .env diabetify-cf:dev
 - `experiments/notebooks/` berisi notebook eksplorasi counterfactual engine.
 - `experiments/scripts/` disiapkan untuk benchmark dan evaluasi metrik.
 - `experiments/results/` disiapkan untuk output eksperimen lokal dan tidak ditujukan untuk Git.
-- Model XGBoost utama tetap berasal dari repo saudara `diabetify-ml` melalui `CF_MODEL_PATH` dan `CF_COLUMNS_PATH`.
+- Model XGBoost yang dipakai service dan benchmark dibekukan sebagai artefak lokal di `artifacts/models/`.
 
 ## Experiment Commands
 

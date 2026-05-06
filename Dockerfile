@@ -12,11 +12,11 @@ WORKDIR /app
 COPY pyproject.toml .
 COPY src ./src
 COPY configs ./configs
+COPY artifacts/models ./artifacts/models
 COPY artifacts/reference ./artifacts/reference
 
 RUN pip install --no-cache-dir .
 RUN adduser --disabled-password --gecos "" appuser \
-    && mkdir -p /app/artifacts/models \
     && chown -R appuser:appuser /app
 
 USER appuser

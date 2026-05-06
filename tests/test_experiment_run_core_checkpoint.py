@@ -4,6 +4,7 @@ from experiments.scripts.run_core_checkpoint import (
     build_checkpoint_command,
     core_engine_config_paths,
     core_engine_names,
+    latest_comparison_pointer,
     load_scope,
 )
 
@@ -46,5 +47,12 @@ def test_build_checkpoint_command_uses_core_scope_and_required_engines() -> None
     assert "--engine-configs" in command
     assert "--required-engines" in command
     assert command[-4:] == ["dice", "ocean", "ft", "nn"]
-    assert "experiments/configs/engines/dice.json" in " ".join(command)
-    assert "experiments/configs/engines/nn.json" in " ".join(command)
+    path_names = {Path(value).name for value in command if value.endswith(".json")}
+    assert "dice.json" in path_names
+    assert "nn.json" in path_names
+
+
+def test_latest_comparison_pointer_uses_requested_output_root() -> None:
+    pointer = latest_comparison_pointer(Path("custom_results_root"))
+
+    assert pointer == Path("custom_results_root/latest/comparison.txt")

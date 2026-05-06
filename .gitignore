@@ -21,11 +21,7 @@ htmlcov/
 build/
 dist/
 
-# Experiment outputs and local artifacts
-artifacts/models/*
-!artifacts/models/.gitkeep
-artifacts/results/*
-!artifacts/results/.gitkeep
+# Experiment outputs 
 experiments/results/*
 !experiments/results/.gitkeep
 

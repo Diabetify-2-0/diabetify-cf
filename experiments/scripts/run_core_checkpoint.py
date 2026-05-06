@@ -87,6 +87,10 @@ def build_checkpoint_command(
     return command
 
 
+def latest_comparison_pointer(output_root: Path) -> Path:
+    return output_root / "latest" / "comparison.txt"
+
+
 def latest_comparison_root(latest_pointer: Path) -> Path:
     comparison_root = latest_pointer.read_text(encoding="utf-8").strip()
     if not comparison_root:
@@ -129,7 +133,7 @@ def main() -> None:
     )
     subprocess.run(command, check=True, cwd=REPO_ROOT)
 
-    comparison_root = latest_comparison_root(DEFAULT_LATEST_COMPARISON)
+    comparison_root = latest_comparison_root(latest_comparison_pointer(args.output_root))
     scope_manifest = write_scope_manifest(scope, comparison_root)
 
     print(f"Core benchmark comparison root: {comparison_root.relative_to(REPO_ROOT)}")

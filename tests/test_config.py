@@ -15,12 +15,12 @@ def test_default_feature_registry_path_uses_configs_directory() -> None:
     assert path.parts[-3:] == ("diabetify-cf", "configs", "feature_registry.json")
 
 
-def test_default_model_artifacts_point_to_diabetify_ml_sibling_repo() -> None:
+def test_default_model_artifacts_use_local_artifacts_directory() -> None:
     model_path = Path(_default_path_for("CF_MODEL_PATH"))
     columns_path = Path(_default_path_for("CF_COLUMNS_PATH"))
 
-    assert model_path.parts[-2:] == ("diabetify-ml", "xg_model.pkl")
-    assert columns_path.parts[-2:] == ("diabetify-ml", "x_columns.pkl")
+    assert model_path.parts[-4:] == ("diabetify-cf", "artifacts", "models", "xg_model.pkl")
+    assert columns_path.parts[-4:] == ("diabetify-cf", "artifacts", "models", "x_columns.pkl")
 
 
 def test_empty_environment_value_falls_back_to_default(monkeypatch) -> None:
