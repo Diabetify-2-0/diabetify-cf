@@ -1,7 +1,7 @@
 {
   "engine": "dice",
   "engine_label": "dice",
-  "generation_method": "dice_genetic",
-  "total_cfs": 3,
+  "generation_method": "dice_random",
+  "total_cfs": 1,
   "timeout_ms": 5000
 }

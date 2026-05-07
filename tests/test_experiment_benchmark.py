@@ -108,8 +108,8 @@ def test_dice_engine_config_explicit_generation_defaults() -> None:
 
     assert config["engine"] == "dice"
     assert config["engine_label"] == "dice"
-    assert config["generation_method"] == "dice_genetic"
-    assert config["total_cfs"] == 3
+    assert config["generation_method"] == "dice_random"
+    assert config["total_cfs"] == 1
     assert config["timeout_ms"] == 5000
 
 

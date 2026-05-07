@@ -82,6 +82,10 @@ class DiceCandidateGenerator:
         except TypeError:
             kwargs.pop("random_seed", None)
             result = dice.generate_counterfactuals(**kwargs)
+        except Exception as exc:
+            if self._is_no_counterfactual_error(exc):
+                return pd.DataFrame()
+            raise
 
         cf_examples = result.cf_examples_list[0]
         if cf_examples.final_cfs_df is None:
@@ -92,6 +96,11 @@ class DiceCandidateGenerator:
         if not present:
             return pd.DataFrame()
         return raw[present]
+
+    @staticmethod
+    def _is_no_counterfactual_error(exc: Exception) -> bool:
+        message = str(exc).lower()
+        return "no counterfactuals found" in message
 
     def _get_dice_data(self, postprocessor: ExperimentPostprocessor) -> object:
         if self._dice_data_cache is None:
