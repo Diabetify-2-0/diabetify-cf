@@ -1,457 +1,61 @@
-"""DiCE-based counterfactual engine implementation.
-
-This module is the core of the service. It takes one validated request,
-generates candidate counterfactuals with DiCE, applies additional domain and
-plausibility checks, ranks the surviving candidates, and returns the final
-response payload expected by the messaging layer.
-"""
-
 from __future__ import annotations
 
-from dataclasses import dataclass
-from time import perf_counter
-
-import numpy as np
 import pandas as pd
 
-from diabetify_cf.engine.artifacts import ModelArtifacts, load_artifacts
-from diabetify_cf.engine.base import CounterfactualEngine
-from diabetify_cf.engine.feature_registry import FeatureRegistry
-from diabetify_cf.planner.base import PrescriptivePlanner
-from diabetify_cf.reason_codes import ReasonCode, Status
-from diabetify_cf.schemas import (
-    CandidateMetrics,
-    CounterfactualCandidate,
-    CounterfactualRequest,
-    CounterfactualResponse,
-    JSONFeatureValue,
-    PlannerInput,
-    PredictionInfo,
-    PrescriptivePlan,
-    ValidationSummary,
-)
+from diabetify_cf.engine.shared import ArtifactBackedCounterfactualEngine, PreparedRequest
+from diabetify_cf.schemas import CounterfactualRequest, PredictionInfo
 
 
-@dataclass
-class CandidateEvaluation:
-    """Pair a valid candidate with its aggregate objective score."""
+class DiceCounterfactualEngine(ArtifactBackedCounterfactualEngine):
+    engine_version = "dice_engine_v4"
 
-    candidate: CounterfactualCandidate
-    objective_score: float
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._dice_data_cache: object | None = None
 
-
-class DiceCounterfactualEngine(CounterfactualEngine):
-    """
-    DiCE-based counterfactual engine.
-
-    Responsibilities:
-    - load model-side artifacts during startup,
-    - translate request constraints into DiCE search boundaries,
-    - validate every generated candidate against additional hard constraints,
-    - rank feasible candidates and optionally build a prescriptive plan.
-
-    The engine requires model artifacts and never fabricates feasible
-    candidates. If no candidate survives validation, it returns an explicit
-    `INFEASIBLE` or `ERROR` response with a reason code.
-    """
-
-    def __init__(
+    def _generate_raw_candidates(
         self,
-        model_path: str = "",
-        columns_path: str = "",
-        reference_data_path: str = "",
-        feature_registry_path: str = "",
-        max_lof_score: float = 2.5,
-        planner: PrescriptivePlanner | None = None,
-    ) -> None:
-        self.max_lof_score = max(1.0, float(max_lof_score))
-        self.engine_version = "dice_engine_v3"
-        self.planner = planner
-
-        self.artifacts: ModelArtifacts | None = None
-        self.initialization_error: str | None = None
-
-        try:
-            self.artifacts = load_artifacts(
-                model_path=model_path,
-                columns_path=columns_path,
-                reference_data_path=reference_data_path,
-                feature_registry_path=feature_registry_path,
-            )
-        except Exception as exc:  
-            self.initialization_error = str(exc)
-
-    def generate(self, request: CounterfactualRequest) -> CounterfactualResponse:
-        """Generate a counterfactual response for a validated request."""
-        started = perf_counter()
-
-        mutable_allowed = request.constraints.mutable_allowed
-        if len(mutable_allowed) == 0:
-            return CounterfactualResponse(
-                request_id=request.request_id,
-                status=Status.INFEASIBLE,
-                reason_code=ReasonCode.NO_MUTABLE_FEATURE,
-                message="No mutable feature selected by user.",
-                model_version=request.model_version,
-                cf_engine_version=self.engine_version,
-                runtime_ms=self._elapsed_ms(started),
-                validation=ValidationSummary(
-                    immutable_violation=False,
-                    mutable_compliance=True,
-                    medical_rules_passed=True,
-                ),
-            )
-
-        if self.artifacts is None:
-            message = "DICE engine is not fully configured yet."
-            if self.initialization_error:
-                message += f" Initialization error: {self.initialization_error}"
-            return CounterfactualResponse(
-                request_id=request.request_id,
-                status=Status.ERROR,
-                reason_code=ReasonCode.ENGINE_NOT_READY,
-                message=message,
-                model_version=request.model_version,
-                cf_engine_version=self.engine_version,
-                runtime_ms=self._elapsed_ms(started),
-                validation=ValidationSummary(
-                    immutable_violation=False,
-                    mutable_compliance=True,
-                    medical_rules_passed=True,
-                ),
-            )
-
-        try:
-            return self._generate_real(request=request, started=started)
-        except ValueError as err:
-            return CounterfactualResponse(
-                request_id=request.request_id,
-                status=Status.ERROR,
-                reason_code=ReasonCode.INVALID_INPUT_SCHEMA,
-                message=str(err),
-                model_version=request.model_version,
-                cf_engine_version=self.engine_version,
-                runtime_ms=self._elapsed_ms(started),
-                validation=ValidationSummary(
-                    immutable_violation=False,
-                    mutable_compliance=False,
-                    medical_rules_passed=False,
-                ),
-            )
-        except Exception as err:  
-            return CounterfactualResponse(
-                request_id=request.request_id,
-                status=Status.ERROR,
-                reason_code=ReasonCode.INTERNAL_ERROR,
-                message=f"Unhandled counterfactual engine error: {err}",
-                model_version=request.model_version,
-                cf_engine_version=self.engine_version,
-                runtime_ms=self._elapsed_ms(started),
-                validation=ValidationSummary(
-                    immutable_violation=False,
-                    mutable_compliance=False,
-                    medical_rules_passed=False,
-                ),
-            )
-
-    def _generate_real(
-        self, request: CounterfactualRequest, started: float
-    ) -> CounterfactualResponse:
-        """Run the full DiCE workflow and post-process the candidates."""
-        assert self.artifacts is not None
-        registry = self.artifacts.feature_registry
-        model_columns = self.artifacts.feature_columns
-
-        # Normalize request payload keys before comparing them against model
-        # columns, because incoming payloads may use aliases such as `bmi`.
-        instance_features = registry.canonicalize_feature_map(request.instance.features)
-        immutable_input = registry.canonicalize_feature_names(
-            request.constraints.immutable_features
-        )
-        mutable_input = registry.canonicalize_feature_names(request.constraints.mutable_allowed)
-        must_not_change = registry.canonicalize_feature_names(request.constraints.must_not_change)
-
-        unknown_features = [name for name in instance_features if name not in model_columns]
-        if unknown_features:
-            unknown_str = ", ".join(sorted(unknown_features))
-            raise ValueError(f"Unknown feature(s) in instance payload: {unknown_str}")
-
-        missing_features = [name for name in model_columns if name not in instance_features]
-        if missing_features:
-            missing_str = ", ".join(missing_features)
-            raise ValueError(f"Missing required feature(s): {missing_str}")
-
-        # Effective immutability is the union of global policy and request-level
-        # restrictions (`immutable_features` + `must_not_change`).
-        immutable_set = (
-            set(registry.immutable_defaults()).union(immutable_input).union(must_not_change)
-        )
-        mutable_allowed = self._build_mutable_allowed(
-            mutable_input=mutable_input,
-            model_columns=model_columns,
-            immutable_set=immutable_set,
-            registry=registry,
-        )
-        if not mutable_allowed:
-            return CounterfactualResponse(
-                request_id=request.request_id,
-                status=Status.INFEASIBLE,
-                reason_code=ReasonCode.NO_MUTABLE_FEATURE,
-                message="No mutable feature selected after immutable/constraint reconciliation.",
-                model_version=request.model_version,
-                cf_engine_version=self.engine_version,
-                runtime_ms=self._elapsed_ms(started),
-                validation=ValidationSummary(
-                    immutable_violation=False,
-                    mutable_compliance=True,
-                    medical_rules_passed=True,
-                ),
-            )
-
-        instance_series = self._to_series(model_columns, instance_features, registry)
-        query_df = pd.DataFrame([instance_series], columns=model_columns)
-        base_prediction = self._predict_info(query_df)
-
-        # Build the DiCE search space after layering model metadata, user
-        # bounds, and directional constraints from the feature registry.
-        dice_data = self._build_dice_data()
-        method = self._normalize_dice_method(request.generation.method)
-        desired_class = self._target_to_dice_class(
-            target=request.target.target_class,
-            base_prediction=base_prediction,
-        )
-        permitted_range = self._build_permitted_range(
-            model_columns=model_columns,
-            mutable_allowed=mutable_allowed,
-            request=request,
-            registry=registry,
-            baseline_features=instance_features,
-        )
-
-        raw_candidates = self._run_dice(
-            dice_data=dice_data,
-            method=method,
-            query_df=query_df,
-            total_cfs=request.generation.total_cfs,
-            desired_class=desired_class,
-            features_to_vary=mutable_allowed,
-            permitted_range=permitted_range,
-            random_seed=request.generation.random_seed,
-        )
-        timed_out = self._elapsed_ms(started) > request.generation.timeout_ms
-        if raw_candidates.empty:
-            reason_code = ReasonCode.TARGET_UNREACHABLE_UNDER_CONSTRAINTS
-            message = "No counterfactual candidate generated under current constraints."
-            if timed_out:
-                reason_code = ReasonCode.TIMEOUT_NO_FEASIBLE_SOLUTION
-                message = "Counterfactual generation exceeded timeout with no feasible solution."
-            return CounterfactualResponse(
-                request_id=request.request_id,
-                status=Status.INFEASIBLE,
-                reason_code=reason_code,
-                message=message,
-                model_version=request.model_version,
-                cf_engine_version=self.engine_version,
-                runtime_ms=self._elapsed_ms(started),
-                input_prediction=base_prediction,
-                validation=ValidationSummary(
-                    immutable_violation=False,
-                    mutable_compliance=True,
-                    medical_rules_passed=True,
-                ),
-            )
-
-        evaluated: list[CandidateEvaluation] = []
-        immutable_violation_seen = False
-        mutable_violation_seen = False
-        medical_violation_seen = False
-        directional_violation_seen = False
-        target_violation_seen = False
-
-        for _, row in raw_candidates.iterrows():
-            # Candidates returned by DiCE are treated as proposals only. They
-            # still need to pass stricter service-level validation below.
-            candidate_features = self._coerce_candidate_features(
-                row=row,
-                model_columns=model_columns,
-                registry=registry,
-            )
-
-            immutable_ok = self._immutable_ok(candidate_features, instance_features, immutable_set)
-            mutable_ok = self._mutable_ok(
-                candidate_features, instance_features, set(mutable_allowed)
-            )
-            directional_ok = self._directional_ok(
-                candidate=candidate_features,
-                baseline=instance_features,
-                mutable_allowed=set(mutable_allowed),
-                registry=registry,
-            )
-            medical_ok = self._medical_ok(candidate_features, registry)
-
-            if not immutable_ok:
-                immutable_violation_seen = True
-            if not mutable_ok:
-                mutable_violation_seen = True
-            if not directional_ok:
-                directional_violation_seen = True
-                medical_violation_seen = True
-            if not medical_ok:
-                medical_violation_seen = True
-
-            if not (immutable_ok and mutable_ok and directional_ok and medical_ok):
-                continue
-
-            candidate_df = pd.DataFrame([candidate_features], columns=model_columns)
-            candidate_df = self._as_dice_input_df(candidate_df)
-            candidate_prediction = self._predict_info(candidate_df)
-            if not self._target_satisfied(
-                prediction=candidate_prediction,
-                target_class=request.target.target_class,
-                min_target_probability=request.target.min_target_probability,
-            ):
-                target_violation_seen = True
-                continue
-
-            delta = self._build_delta(candidate_features, instance_features, set(mutable_allowed))
-            distance_l1 = self._normalized_l1(candidate_features, instance_features, registry)
-            lof_score = self._lof_score(candidate_df)
-            if lof_score > self.max_lof_score:
-                medical_violation_seen = True
-                continue
-
-            candidate = CounterfactualCandidate(
-                candidate_id=f"cf_{len(evaluated) + 1}",
-                features=candidate_features,
-                delta=delta,
-                prediction=candidate_prediction,
-                metrics=CandidateMetrics(
-                    distance_l1=distance_l1,
-                    changed_feature_count=len(delta),
-                    lof_score=lof_score,
-                    constraint_violations=0,
-                ),
-            )
-            score = self._objective_score(
-                candidate=candidate,
-                preferences=request.preferences.objective_weights,
-                registry=registry,
-            )
-            evaluated.append(CandidateEvaluation(candidate=candidate, objective_score=score))
-
-        if not evaluated:
-            reason_code = ReasonCode.TARGET_UNREACHABLE_UNDER_CONSTRAINTS
-            message = "No valid counterfactual candidate after constraint validation."
-            if timed_out:
-                reason_code = ReasonCode.TIMEOUT_NO_FEASIBLE_SOLUTION
-                message = (
-                    "Counterfactual generation exceeded timeout before finding valid candidates."
-                )
-            if (
-                medical_violation_seen
-                and not immutable_violation_seen
-                and not mutable_violation_seen
-            ):
-                reason_code = ReasonCode.MEDICAL_RULE_VIOLATION_ONLY
-                message = "Candidates exist but fail medical plausibility constraints."
-            if (
-                directional_violation_seen
-                and not immutable_violation_seen
-                and not mutable_violation_seen
-            ):
-                reason_code = ReasonCode.MEDICAL_RULE_VIOLATION_ONLY
-                message = "Candidates exist but violate directional medical constraints."
-            if (
-                target_violation_seen
-                and not immutable_violation_seen
-                and not mutable_violation_seen
-                and not medical_violation_seen
-            ):
-                message = "Candidates generated but none satisfied target class/probability."
-
-            return CounterfactualResponse(
-                request_id=request.request_id,
-                status=Status.INFEASIBLE,
-                reason_code=reason_code,
-                message=message,
-                model_version=request.model_version,
-                cf_engine_version=self.engine_version,
-                runtime_ms=self._elapsed_ms(started),
-                input_prediction=base_prediction,
-                validation=ValidationSummary(
-                    immutable_violation=immutable_violation_seen,
-                    mutable_compliance=not mutable_violation_seen,
-                    medical_rules_passed=(not medical_violation_seen)
-                    and (not target_violation_seen),
-                ),
-            )
-
-        evaluated.sort(key=lambda item: item.objective_score)
-        candidates = [item.candidate for item in evaluated[: request.generation.total_cfs]]
-        top_candidate = candidates[0]
-
-        return CounterfactualResponse(
-            request_id=request.request_id,
-            status=Status.FEASIBLE,
-            reason_code=ReasonCode.OK,
-            message=f"Generated {len(candidates)} feasible counterfactual candidate(s).",
-            model_version=request.model_version,
-            cf_engine_version=self.engine_version,
-            runtime_ms=self._elapsed_ms(started),
-            input_prediction=base_prediction,
-            candidates=candidates,
-            validation=ValidationSummary(
-                immutable_violation=False,
-                mutable_compliance=True,
-                medical_rules_passed=True,
-            ),
-            planner_input=PlannerInput(
-                recommended_candidate_id=top_candidate.candidate_id,
-                target_deltas=top_candidate.delta,
-            ),
-            prescriptive_plan=self._build_prescriptive_plan(
-                request=request,
-                candidate=top_candidate,
-            ),
-        )
-
-    def _run_dice(
-        self,
-        dice_data: object,
-        method: str,
-        query_df: pd.DataFrame,
-        total_cfs: int,
-        desired_class: int | str,
-        features_to_vary: list[str],
-        permitted_range: dict[str, list[float]],
-        random_seed: int,
+        *,
+        request: CounterfactualRequest,
+        prepared: PreparedRequest,
     ) -> pd.DataFrame:
-        """Execute DiCE and return raw candidate rows in model column order."""
         assert self.artifacts is not None
         import dice_ml
 
+        dice_data = self._get_dice_data()
         dice_model = dice_ml.Model(
             model=self.artifacts.model, backend="sklearn", model_type="classifier"
         )
-        dice = dice_ml.Dice(dice_data, dice_model, method=method)
-        query_for_dice = self._as_dice_input_df(query_df)
+        dice = dice_ml.Dice(
+            dice_data,
+            dice_model,
+            method=self._normalize_dice_method(request.generation.method),
+        )
 
         kwargs = {
-            "query_instances": query_for_dice,
-            "total_CFs": total_cfs,
-            "desired_class": desired_class,
-            "features_to_vary": features_to_vary,
+            "query_instances": prepared.query_df,
+            "total_CFs": request.generation.total_cfs,
+            "desired_class": self._target_to_dice_class(
+                request.target.target_class,
+                prepared.base_prediction,
+            ),
+            "features_to_vary": prepared.mutable_allowed,
             "verbose": False,
-            "random_seed": random_seed,
+            "random_seed": request.generation.random_seed,
         }
-        if permitted_range:
-            kwargs["permitted_range"] = permitted_range
+        if prepared.permitted_range:
+            kwargs["permitted_range"] = prepared.permitted_range
 
         try:
             result = dice.generate_counterfactuals(**kwargs)
         except TypeError:
             kwargs.pop("random_seed", None)
             result = dice.generate_counterfactuals(**kwargs)
+        except Exception as exc:
+            if "no counterfactuals found" in str(exc).lower():
+                return pd.DataFrame()
+            raise
+
         cf_examples = result.cf_examples_list[0]
         if cf_examples.final_cfs_df is None:
             return pd.DataFrame()
@@ -463,20 +67,22 @@ class DiceCounterfactualEngine(CounterfactualEngine):
             return pd.DataFrame()
         return raw[present]
 
+    def _get_dice_data(self) -> object:
+        if self._dice_data_cache is None:
+            self._dice_data_cache = self._build_dice_data()
+        return self._dice_data_cache
+
     def _build_dice_data(self) -> object:
-        """Build the DiCE data wrapper from reference/background samples."""
         assert self.artifacts is not None
         import dice_ml
 
         outcome_name = "_cf_outcome"
         reference = self.artifacts.reference_data.copy()
-        reference = self._as_dice_input_df(reference)
+        reference = self._as_model_input_df(reference)
         reference[outcome_name] = self.artifacts.model.predict(
             reference[self.artifacts.feature_columns]
         )
-        reference = self._as_dice_input_df(reference)
-        # Treat every model feature as numeric continuous to avoid object/categorical
-        # dataframe dtypes that are incompatible with XGBoost in sklearn backend mode.
+        reference = self._as_model_input_df(reference)
         continuous = list(self.artifacts.feature_columns)
 
         return dice_ml.Data(
@@ -486,147 +92,9 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         )
 
     def _as_dice_input_df(self, frame: pd.DataFrame) -> pd.DataFrame:
-        """Coerce a dataframe to the numeric dtypes expected by model and DiCE."""
-        assert self.artifacts is not None
-        typed = frame.copy()
-        registry = self.artifacts.feature_registry
-
-        for column in self.artifacts.feature_columns:
-            if column not in typed.columns:
-                continue
-            numeric = pd.to_numeric(typed[column], errors="coerce")
-            if numeric.isna().any():
-                raise ValueError(
-                    f"Feature '{column}' contains non-numeric value(s) after coercion."
-                )
-
-            feature = registry.get(column)
-            if feature is not None and (feature.is_binary or feature.feature_type == "ordinal"):
-                typed[column] = numeric.round().astype("int64")
-            else:
-                typed[column] = numeric.astype("float64")
-
-        return typed
-
-    def _build_permitted_range(
-        self,
-        model_columns: list[str],
-        mutable_allowed: list[str],
-        request: CounterfactualRequest,
-        registry: FeatureRegistry,
-        baseline_features: dict[str, JSONFeatureValue],
-    ) -> dict[str, list[float]]:
-        """Build the feature ranges that DiCE is allowed to explore.
-
-        Range construction combines three sources:
-        - default domain bounds from the feature registry,
-        - explicit user-provided bounds from the request,
-        - directional constraints such as "BMI should not increase".
-        """
-        default_range = registry.default_permitted_range(mutable_allowed)
-        request_bounds = {}
-
-        for raw_name, bound in request.constraints.feature_bounds.items():
-            canonical_name = registry.resolve_name(raw_name)
-            if canonical_name not in model_columns:
-                continue
-            if canonical_name not in mutable_allowed:
-                continue
-
-            lower = bound.min
-            upper = bound.max
-            if lower is not None and upper is not None and lower > upper:
-                raise ValueError(f"Conflicting bounds for feature '{canonical_name}': min > max.")
-
-            if canonical_name in default_range:
-                current = default_range[canonical_name]
-                if lower is None:
-                    lower = current[0]
-                if upper is None:
-                    upper = current[1]
-            elif lower is None or upper is None:
-                continue
-
-            if lower is not None and upper is not None:
-                request_bounds[canonical_name] = [float(lower), float(upper)]
-
-        merged = dict(default_range)
-        merged.update(request_bounds)
-
-        for feature_name in mutable_allowed:
-            if feature_name not in merged:
-                continue
-            if feature_name not in baseline_features:
-                continue
-
-            feature = registry.get(feature_name)
-            if feature is None:
-                continue
-
-            direction = getattr(feature, "preferred_direction", "any")
-            if direction == "any":
-                continue
-
-            try:
-                baseline = float(baseline_features[feature_name])
-            except (TypeError, ValueError):
-                continue
-
-            lower, upper = merged[feature_name]
-            if direction == "increase":
-                lower = max(lower, baseline)
-            elif direction == "decrease":
-                upper = min(upper, baseline)
-
-            if lower > upper:
-                continue
-            merged[feature_name] = [float(lower), float(upper)]
-
-        return merged
-
-    def _predict_info(self, frame: pd.DataFrame) -> PredictionInfo:
-        """Convert model output into the service's normalized prediction format."""
-        assert self.artifacts is not None
-
-        if hasattr(self.artifacts.model, "predict_proba"):
-            probabilities = self.artifacts.model.predict_proba(frame)[0]
-            if len(probabilities) >= 2:
-                proba_high = float(probabilities[1])
-            else:
-                proba_high = float(probabilities[0])
-        else:
-            proba_high = float(self.artifacts.model.predict(frame)[0])
-
-        proba_high = float(np.clip(proba_high, 0.0, 1.0))
-        proba_low = float(np.clip(1.0 - proba_high, 0.0, 1.0))
-        class_name = "low_risk" if proba_low >= 0.5 else "high_risk"
-        return PredictionInfo.model_validate(
-            {"class": class_name, "probability_low_risk": proba_low}
-        )
-
-    def _target_satisfied(
-        self,
-        prediction: PredictionInfo,
-        target_class: str,
-        min_target_probability: float,
-    ) -> bool:
-        """Check whether a candidate really reaches the requested target."""
-        normalized = target_class.strip().lower()
-        if normalized in {"low", "low_risk", "non_diabetes", "0"}:
-            return (
-                prediction.class_name == "low_risk"
-                and prediction.probability_low_risk >= min_target_probability
-            )
-        if normalized in {"high", "high_risk", "diabetes", "1"}:
-            high_risk_probability = 1.0 - prediction.probability_low_risk
-            return (
-                prediction.class_name == "high_risk"
-                and high_risk_probability >= min_target_probability
-            )
-        return prediction.probability_low_risk >= min_target_probability
+        return self._as_model_input_df(frame)
 
     def _target_to_dice_class(self, target: str, base_prediction: PredictionInfo) -> int | str:
-        """Translate service target labels into the class format expected by DiCE."""
         normalized = target.strip().lower()
         if normalized in {"low", "low_risk", "non_diabetes", "0"}:
             return 0
@@ -637,7 +105,6 @@ class DiceCounterfactualEngine(CounterfactualEngine):
         return 0
 
     def _normalize_dice_method(self, method: str) -> str:
-        """Map service-level generation method names to DiCE backend names."""
         mapping = {
             "dice_genetic": "genetic",
             "genetic": "genetic",
@@ -647,266 +114,3 @@ class DiceCounterfactualEngine(CounterfactualEngine):
             "kdtree": "kdtree",
         }
         return mapping.get(method.lower(), "genetic")
-
-    def _build_mutable_allowed(
-        self,
-        mutable_input: list[str],
-        model_columns: list[str],
-        immutable_set: set[str],
-        registry: FeatureRegistry,
-    ) -> list[str]:
-        """Filter requested mutable features down to valid engine candidates."""
-        allowed: list[str] = []
-        seen: set[str] = set()
-        for name in mutable_input:
-            if name in seen:
-                continue
-            if name not in model_columns:
-                continue
-            if name in immutable_set:
-                continue
-
-            feature = registry.get(name)
-            if feature is not None and not feature.actionable:
-                continue
-
-            allowed.append(name)
-            seen.add(name)
-        return allowed
-
-    def _to_series(
-        self,
-        ordered_columns: list[str],
-        features: dict[str, JSONFeatureValue],
-        registry: FeatureRegistry,
-    ) -> dict[str, object]:
-        """Reorder and cast a raw feature map into model input order."""
-        series: dict[str, object] = {}
-        for column in ordered_columns:
-            value = features[column]
-            if isinstance(value, bool):
-                value = int(value)
-            coerced = registry.coerce_value(column, value)
-            series[column] = coerced
-        return series
-
-    def _coerce_candidate_features(
-        self,
-        row: pd.Series,
-        model_columns: list[str],
-        registry: FeatureRegistry,
-    ) -> dict[str, JSONFeatureValue]:
-        """Cast one raw DiCE row back into a typed feature dictionary."""
-        result: dict[str, JSONFeatureValue] = {}
-        for column in model_columns:
-            value = row[column]
-            if pd.isna(value):
-                value = 0.0
-            coerced = registry.coerce_value(column, value)
-            if not isinstance(coerced, (int, float, bool, str)):
-                coerced = float(str(coerced))
-            result[column] = coerced
-        return result
-
-    def _immutable_ok(
-        self,
-        candidate: dict[str, JSONFeatureValue],
-        baseline: dict[str, JSONFeatureValue],
-        immutable_set: set[str],
-    ) -> bool:
-        """Return True when immutable features remain unchanged."""
-        for feature in immutable_set:
-            if feature not in candidate or feature not in baseline:
-                continue
-            if not self._equal(candidate[feature], baseline[feature]):
-                return False
-        return True
-
-    def _mutable_ok(
-        self,
-        candidate: dict[str, JSONFeatureValue],
-        baseline: dict[str, JSONFeatureValue],
-        mutable_set: set[str],
-    ) -> bool:
-        """Return True when only user-allowed features changed."""
-        for feature, value in candidate.items():
-            if feature not in baseline:
-                continue
-            changed = not self._equal(value, baseline[feature])
-            if changed and feature not in mutable_set:
-                return False
-        return True
-
-    def _medical_ok(
-        self, candidate: dict[str, JSONFeatureValue], registry: FeatureRegistry
-    ) -> bool:
-        """Validate candidate values against registry-defined feature domains."""
-        for feature_name, value in candidate.items():
-            feature = registry.get(feature_name)
-            if feature is None:
-                continue
-
-            try:
-                val = float(value)
-            except (TypeError, ValueError):
-                return False
-            if np.isnan(val):
-                return False
-            if feature.global_min is not None and val < feature.global_min:
-                return False
-            if feature.global_max is not None and val > feature.global_max:
-                return False
-
-            if feature.is_binary and val not in {0.0, 1.0}:
-                return False
-        return True
-
-    def _directional_ok(
-        self,
-        candidate: dict[str, JSONFeatureValue],
-        baseline: dict[str, JSONFeatureValue],
-        mutable_allowed: set[str],
-        registry: FeatureRegistry,
-    ) -> bool:
-        """Validate preferred change direction for mutable features."""
-        for feature_name in mutable_allowed:
-            if feature_name not in candidate or feature_name not in baseline:
-                continue
-
-            feature = registry.get(feature_name)
-            if feature is None:
-                continue
-            direction = getattr(feature, "preferred_direction", "any")
-            if direction == "any":
-                continue
-
-            try:
-                delta = float(candidate[feature_name]) - float(baseline[feature_name])
-            except (TypeError, ValueError):
-                return False
-
-            if abs(delta) < 1e-9:
-                continue
-            if direction == "increase" and delta < 0:
-                return False
-            if direction == "decrease" and delta > 0:
-                return False
-        return True
-
-    def _build_delta(
-        self,
-        candidate: dict[str, JSONFeatureValue],
-        baseline: dict[str, JSONFeatureValue],
-        mutable_allowed: set[str],
-    ) -> dict[str, float]:
-        """Compute per-feature deltas for changed mutable features only."""
-        delta: dict[str, float] = {}
-        for feature in mutable_allowed:
-            if feature not in candidate or feature not in baseline:
-                continue
-            current = float(candidate[feature])
-            base = float(baseline[feature])
-            diff = current - base
-            if abs(diff) < 1e-9:
-                continue
-            delta[feature] = round(diff, 6)
-        return delta
-
-    def _normalized_l1(
-        self,
-        candidate: dict[str, JSONFeatureValue],
-        baseline: dict[str, JSONFeatureValue],
-        registry: FeatureRegistry,
-    ) -> float:
-        """Compute a normalized L1 distance between baseline and candidate."""
-        total = 0.0
-        count = 0
-
-        for feature_name, candidate_value in candidate.items():
-            if feature_name not in baseline:
-                continue
-            feature = registry.get(feature_name)
-            if feature is None:
-                continue
-
-            delta = abs(float(candidate_value) - float(baseline[feature_name]))
-            if feature.global_min is not None and feature.global_max is not None:
-                denom = max(feature.global_max - feature.global_min, 1e-6)
-            else:
-                denom = max(abs(float(baseline[feature_name])), 1.0)
-            total += delta / denom
-            count += 1
-
-        if count == 0:
-            return 0.0
-        return float(total / count)
-
-    def _lof_score(self, candidate_df: pd.DataFrame) -> float:
-        """Score candidate plausibility with Local Outlier Factor."""
-        assert self.artifacts is not None
-        if self.artifacts.lof_model is None:
-            return 1.0
-
-        # sklearn score_samples for LOF (novelty=True) is the opposite of LOF score.
-        # Convert back so inliers are close to 1.0 and outliers are > 1.0.
-        score = float(self.artifacts.lof_model.score_samples(candidate_df.to_numpy())[0])
-        return float(max(1e-6, -score))
-
-    def _objective_score(
-        self,
-        candidate: CounterfactualCandidate,
-        preferences: dict[str, float],
-        registry: FeatureRegistry,
-    ) -> float:
-        """Aggregate ranking score for already-valid candidates.
-
-        Lower scores are better. This ranking does not decide feasibility; it
-        only decides which feasible candidate is preferred.
-        """
-        w_proximity = float(preferences.get("proximity", 0.30))
-        w_sparsity = float(preferences.get("sparsity", 0.20))
-        w_plausibility = float(preferences.get("plausibility", 0.20))
-        w_action_cost = float(preferences.get("action_cost", 0.20))
-
-        changed = max(candidate.metrics.changed_feature_count, 1)
-        sparse_score = float(changed)
-        proximity_score = candidate.metrics.distance_l1
-        plausibility_score = abs(candidate.metrics.lof_score - 1.0)
-
-        action_cost_score = 0.0
-        for feature_name, diff in candidate.delta.items():
-            feature = registry.get(feature_name)
-            weight = 1.0 if feature is None else feature.cost_weight
-            action_cost_score += abs(float(diff)) * weight
-
-        return (
-            w_proximity * proximity_score
-            + w_sparsity * sparse_score
-            + w_plausibility * plausibility_score
-            + w_action_cost * action_cost_score
-        )
-
-    def _build_prescriptive_plan(
-        self,
-        request: CounterfactualRequest,
-        candidate: CounterfactualCandidate,
-    ) -> PrescriptivePlan | None:
-        """Ask the planner to translate the best candidate into an action plan."""
-        if self.planner is None:
-            return None
-        try:
-            return self.planner.build_plan(request=request, candidate=candidate)
-        except Exception:  
-            return None
-
-    @staticmethod
-    def _equal(a: object, b: object) -> bool:
-        """Numeric-aware equality helper for feature comparisons."""
-        if isinstance(a, (int, float)) and isinstance(b, (int, float)):
-            return abs(float(a) - float(b)) < 1e-9
-        return a == b
-
-    @staticmethod
-    def _elapsed_ms(started: float) -> int:
-        """Return elapsed wall time in milliseconds."""
-        return int((perf_counter() - started) * 1000)

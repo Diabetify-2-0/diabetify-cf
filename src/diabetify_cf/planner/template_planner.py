@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from diabetify_cf.planner.policy import build_policy_result, normalize_intended_user
 from diabetify_cf.planner.base import PrescriptivePlanner
-from diabetify_cf.schemas import CounterfactualCandidate, CounterfactualRequest, PrescriptivePlan
+from diabetify_cf.schemas import (
+    CounterfactualCandidate,
+    CounterfactualRequest,
+    PlannerInput,
+    PrescriptivePlan,
+)
 
 
 class TemplatePrescriptivePlanner(PrescriptivePlanner):
@@ -14,10 +19,12 @@ class TemplatePrescriptivePlanner(PrescriptivePlanner):
         self,
         request: CounterfactualRequest,
         candidate: CounterfactualCandidate,
+        planner_input: PlannerInput,
     ) -> PrescriptivePlan:
         policy = build_policy_result(
             request=request,
             candidate=candidate,
+            planner_input=planner_input,
             intended_user=self.intended_user,
         )
 

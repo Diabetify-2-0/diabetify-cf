@@ -11,6 +11,7 @@ from diabetify_cf.schemas import (
     CandidateMetrics,
     CounterfactualCandidate,
     CounterfactualRequest,
+    PlannerInput,
     PredictionInfo,
     PrescriptivePlan,
 )
@@ -302,7 +303,9 @@ class _DummyPlanner(PrescriptivePlanner):
         self,
         request: CounterfactualRequest,
         candidate,
+        planner_input: PlannerInput,
     ) -> PrescriptivePlan:
+        assert planner_input.recommended_candidate_id == candidate.candidate_id
         return PrescriptivePlan(
             generation_mode="template",
             provider="dummy_test",
@@ -338,7 +341,15 @@ def test_prescriptive_plan_builder_uses_configured_planner() -> None:
         ),
     )
 
-    result = engine._build_prescriptive_plan(request=req, candidate=candidate)
+    planner_input = PlannerInput(
+        recommended_candidate_id="cf_1",
+        target_deltas={"bmi": -3.2},
+    )
+    result = engine._build_prescriptive_plan(
+        request=req,
+        candidate=candidate,
+        planner_input=planner_input,
+    )
 
     assert result is not None
     assert result.provider == "dummy_test"

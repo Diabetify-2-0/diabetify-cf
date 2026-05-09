@@ -5,7 +5,7 @@ import signal
 import sys
 
 from diabetify_cf.config import Settings
-from diabetify_cf.engine import DiceCounterfactualEngine
+from diabetify_cf.engine import build_counterfactual_engine
 from diabetify_cf.messaging.rabbitmq_service import RabbitMQCFService
 from diabetify_cf.planner import build_planner
 
@@ -22,15 +22,7 @@ def main() -> None:
     configure_logging(settings.log_level.upper())
     logger = logging.getLogger("diabetify_cf")
     planner = build_planner(settings)
-
-    engine = DiceCounterfactualEngine(
-        model_path=settings.model_path,
-        columns_path=settings.columns_path,
-        reference_data_path=settings.reference_data_path,
-        feature_registry_path=settings.feature_registry_path,
-        max_lof_score=settings.max_lof_score,
-        planner=planner,
-    )
+    engine = build_counterfactual_engine(settings, planner=planner)
     service = RabbitMQCFService(settings=settings, engine=engine)
 
     def _handle_shutdown(signum: int, _frame: object) -> None:

@@ -29,11 +29,6 @@
   ],
   "excluded_candidates": [
     {
-      "engine": "dace",
-      "status": "experimental_not_ready",
-      "reason": "Current adapter relies on a random-forest surrogate and does not yet produce usable feasible candidates."
-    },
-    {
       "engine": "carla",
       "status": "audited_not_integrated",
       "reason": "Official stack is tied to legacy Python and package versions that are incompatible with the main environment."

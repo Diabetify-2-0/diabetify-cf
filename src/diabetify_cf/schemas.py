@@ -132,11 +132,28 @@ class ValidationSummary(BaseModel):
     medical_rules_passed: bool
 
 
+class PlannerFeatureChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    feature_name: str
+    baseline_value: JSONFeatureValue
+    candidate_value: JSONFeatureValue
+    delta: JSONNumber
+    direction: str
+
+
 class PlannerInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     recommended_candidate_id: str | None = None
     target_deltas: dict[str, JSONNumber] = Field(default_factory=dict)
+    input_prediction: PredictionInfo | None = None
+    candidate_prediction: PredictionInfo | None = None
+    candidate_metrics: CandidateMetrics | None = None
+    changed_features: list[PlannerFeatureChange] = Field(default_factory=list)
+    mutable_allowed: list[str] = Field(default_factory=list)
+    immutable_features: list[str] = Field(default_factory=list)
+    must_not_change: list[str] = Field(default_factory=list)
 
 
 class PrescriptivePlan(BaseModel):

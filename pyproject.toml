@@ -22,7 +22,6 @@ dependencies = [
 [project.optional-dependencies]
 experiments = [
   "oceanpy==2.0.7",
-  "pulp>=2.8.0,<3.0.0",
 ]
 dev = [
   "black>=24.0.0,<25.0.0",

@@ -105,7 +105,7 @@ python experiments/scripts/run_scenarios.py --limit 1 --timeout-seconds 60
 python experiments/scripts/evaluate_stability.py --engine-config experiments/configs/engines/dice.json --scenario-config experiments/configs/scenarios/stability.json --limit 1 --repeat-count 2
 python experiments/scripts/collect_results.py
 python experiments/scripts/run_baseline.py --engine-config experiments/configs/engines/dice.json --scenario-limit 1 --stability-limit 1 --repeat-count 2 --scenario-timeout-seconds 60 --stability-timeout-seconds 60
-python experiments/scripts/run_comparison.py --scenario-limit 5 --stability-limit 5 --repeat-count 3 --scenario-timeout-seconds 120 --stability-timeout-seconds 120
+python experiments/scripts/run_comparison.py --scenario-limit 20 --stability-limit 10 --repeat-count 5 --scenario-timeout-seconds 180 --stability-timeout-seconds 180
 python experiments/scripts/audit_comparison.py
 python experiments/scripts/print_baseline_report.py experiments/results/<baseline-folder>
 ```

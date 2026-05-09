@@ -7,7 +7,12 @@ from typing import cast
 
 from diabetify_cf.planner.base import PrescriptivePlanner
 from diabetify_cf.planner.policy import build_policy_result, normalize_intended_user
-from diabetify_cf.schemas import CounterfactualCandidate, CounterfactualRequest, PrescriptivePlan
+from diabetify_cf.schemas import (
+    CounterfactualCandidate,
+    CounterfactualRequest,
+    PlannerInput,
+    PrescriptivePlan,
+)
 
 
 class OpenAIPrescriptivePlanner(PrescriptivePlanner):
@@ -34,13 +39,20 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
         self,
         request: CounterfactualRequest,
         candidate: CounterfactualCandidate,
+        planner_input: PlannerInput,
     ) -> PrescriptivePlan:
         policy = build_policy_result(
             request=request,
             candidate=candidate,
+            planner_input=planner_input,
             intended_user=self.intended_user,
         )
-        prompt = self._build_prompt(request=request, candidate=candidate, policy=policy)
+        prompt = self._build_prompt(
+            request=request,
+            candidate=candidate,
+            planner_input=planner_input,
+            policy=policy,
+        )
         raw_text = self._call_openai(prompt)
         payload = self._parse_json(raw_text)
 
@@ -76,6 +88,7 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
         self,
         request: CounterfactualRequest,
         candidate: CounterfactualCandidate,
+        planner_input: PlannerInput,
         policy: object,
     ) -> str:
         compact = {
@@ -83,10 +96,18 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
             "clinical_scope": getattr(policy, "clinical_scope"),
             "target_class": request.target.target_class,
             "min_target_probability": request.target.min_target_probability,
+            "input_prediction": (
+                planner_input.input_prediction.to_wire()
+                if planner_input.input_prediction is not None
+                else None
+            ),
             "candidate_prediction": candidate.prediction.to_wire(),
-            "target_deltas": candidate.delta,
-            "mutable_allowed": request.constraints.mutable_allowed,
-            "immutable_features": request.constraints.immutable_features,
+            "candidate_metrics": candidate.metrics.model_dump(),
+            "target_deltas": planner_input.target_deltas,
+            "changed_features": [item.model_dump() for item in planner_input.changed_features],
+            "mutable_allowed": planner_input.mutable_allowed,
+            "immutable_features": planner_input.immutable_features,
+            "must_not_change": planner_input.must_not_change,
             "policy_summary": getattr(policy, "summary"),
             "policy_goals": getattr(policy, "goals"),
             "policy_action_steps": getattr(policy, "action_steps"),
@@ -99,6 +120,8 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
         return (
             "Anda adalah asisten untuk merapikan output decision-support kesehatan. "
             "Jangan membuat instruksi terapi baru. Jangan menambah target numerik baru. "
+            "Jangan menyebut fitur sebagai berubah jika fitur itu tidak muncul pada changed_features. "
+            "Gunakan before/after dari changed_features jika menjelaskan arah perubahan. "
             "Gunakan policy_summary dan policy_action_steps sebagai batas keras. "
             "Jika intended_user=patient, gunakan bahasa edukatif dan non-direktif. "
             "Jika intended_user=clinician, gunakan bahasa decision-support yang menekankan perlunya penilaian profesional. "
@@ -147,11 +170,16 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
         return content
 
     def _parse_json(self, text: str) -> dict[str, object]:
+        cleaned = text.strip()
+        if cleaned.startswith("```"):
+            cleaned = cleaned.removeprefix("```json").removeprefix("```").strip()
+            if cleaned.endswith("```"):
+                cleaned = cleaned[:-3].strip()
         try:
-            return cast(dict[str, object], json.loads(text))
+            return cast(dict[str, object], json.loads(cleaned))
         except json.JSONDecodeError as err:
-            start = text.find("{")
-            end = text.rfind("}")
+            start = cleaned.find("{")
+            end = cleaned.rfind("}")
             if start != -1 and end != -1 and end > start:
-                return cast(dict[str, object], json.loads(text[start : end + 1]))
+                return cast(dict[str, object], json.loads(cleaned[start : end + 1]))
             raise RuntimeError("Planner output is not valid JSON.") from err

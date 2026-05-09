@@ -113,28 +113,6 @@ def test_dice_engine_config_explicit_generation_defaults() -> None:
     assert config["timeout_ms"] == 5000
 
 
-def test_dace_engine_config_explicit_solver_options() -> None:
-    config = load_effective_config(
-        engine_config_path=Path("experiments/configs/engines/dace.json"),
-        scenario_config_path=Path("experiments/configs/scenarios/all_mutable.json"),
-    )
-
-    assert config["engine"] == "dace"
-    assert config["engine_label"] == "dace"
-    assert config["generation_method"] == "dace_rf_surrogate"
-    assert config["total_cfs"] == 3
-    assert config["timeout_ms"] == 15000
-    assert config["engine_options"] == {
-        "surrogate_n_estimators": 64,
-        "surrogate_max_depth": 6,
-        "max_changed_features": 3,
-        "max_candidates_per_feature": 24,
-        "threshold_epsilon": 0.0001,
-        "solver": "PULP_CBC_CMD",
-        "relative_gap": None,
-    }
-
-
 def test_ocean_engine_config_explicit_solver_options() -> None:
     config = load_effective_config(
         engine_config_path=Path("experiments/configs/engines/ocean.json"),

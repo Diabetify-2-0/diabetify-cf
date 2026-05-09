@@ -4,14 +4,12 @@ from typing import Any
 
 from diabetify_cf.config import Settings
 from experiments.engines.base import ExperimentEngine
-from experiments.engines.dace_adapter import DaceExperimentAdapter
 from experiments.engines.dice_adapter import DiceExperimentAdapter
 from experiments.engines.ft_adapter import FeatureTweakExperimentAdapter
 from experiments.engines.nn_adapter import NearestNeighborExperimentAdapter
 from experiments.engines.ocean_adapter import OceanExperimentAdapter
 
 ENGINE_ADAPTERS = {
-    "dace": DaceExperimentAdapter,
     "dice": DiceExperimentAdapter,
     "ft": FeatureTweakExperimentAdapter,
     "nn": NearestNeighborExperimentAdapter,

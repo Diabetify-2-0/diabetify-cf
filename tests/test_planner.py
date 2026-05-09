@@ -2,11 +2,14 @@ from datetime import datetime, timezone
 
 from diabetify_cf.config import Settings
 from diabetify_cf.planner.factory import build_planner
+from diabetify_cf.planner.openai_planner import OpenAIPrescriptivePlanner
 from diabetify_cf.planner.template_planner import TemplatePrescriptivePlanner
 from diabetify_cf.schemas import (
     CandidateMetrics,
     CounterfactualCandidate,
     CounterfactualRequest,
+    PlannerFeatureChange,
+    PlannerInput,
     PredictionInfo,
 )
 
@@ -43,11 +46,42 @@ def _candidate() -> CounterfactualCandidate:
     )
 
 
+def _planner_input() -> PlannerInput:
+    return PlannerInput(
+        recommended_candidate_id="cf_1",
+        target_deltas={"BMI": -3.4},
+        input_prediction=PredictionInfo(class_name="high_risk", probability_low_risk=0.31),
+        candidate_prediction=PredictionInfo(class_name="low_risk", probability_low_risk=0.74),
+        candidate_metrics=CandidateMetrics(
+            distance_l1=0.18,
+            changed_feature_count=1,
+            lof_score=1.05,
+            constraint_violations=0,
+        ),
+        changed_features=[
+            PlannerFeatureChange(
+                feature_name="BMI",
+                baseline_value=31.2,
+                candidate_value=27.8,
+                delta=-3.4,
+                direction="decrease",
+            )
+        ],
+        mutable_allowed=["BMI"],
+        immutable_features=["age"],
+        must_not_change=[],
+    )
+
+
 def test_template_planner_generates_non_empty_plan() -> None:
     request = CounterfactualRequest.model_validate(_request_payload())
     planner = TemplatePrescriptivePlanner()
 
-    plan = planner.build_plan(request=request, candidate=_candidate())
+    plan = planner.build_plan(
+        request=request,
+        candidate=_candidate(),
+        planner_input=_planner_input(),
+    )
 
     assert plan.generation_mode == "template"
     assert plan.intended_user == "clinician"
@@ -63,7 +97,11 @@ def test_template_planner_can_render_patient_safe_output() -> None:
     request = CounterfactualRequest.model_validate(_request_payload())
     planner = TemplatePrescriptivePlanner(intended_user="patient")
 
-    plan = planner.build_plan(request=request, candidate=_candidate())
+    plan = planner.build_plan(
+        request=request,
+        candidate=_candidate(),
+        planner_input=_planner_input(),
+    )
 
     assert plan.intended_user == "patient"
     assert plan.clinical_scope == "patient_education"
@@ -81,3 +119,49 @@ def test_factory_falls_back_to_template_when_openai_key_missing() -> None:
     planner = build_planner(settings)
 
     assert isinstance(planner, TemplatePrescriptivePlanner)
+
+
+def test_template_planner_uses_feature_change_context() -> None:
+    request = CounterfactualRequest.model_validate(_request_payload())
+    planner = TemplatePrescriptivePlanner()
+
+    plan = planner.build_plan(
+        request=request,
+        candidate=_candidate(),
+        planner_input=_planner_input(),
+    )
+
+    assert any("31.20" in goal and "27.80" in goal for goal in plan.goals)
+
+
+def test_openai_prompt_includes_rich_counterfactual_context() -> None:
+    request = CounterfactualRequest.model_validate(_request_payload())
+    planner = OpenAIPrescriptivePlanner(api_key="test-key", model="gpt-4o-mini")
+    policy = type(
+        "Policy",
+        (),
+        {
+            "intended_user": "clinician",
+            "clinical_scope": "clinician_support",
+            "summary": "summary",
+            "goals": ["goal"],
+            "action_steps": ["step"],
+            "safety_notes": ["note"],
+            "monitoring_plan": ["monitor"],
+            "missing_context": ["context"],
+            "contraindication_flags": [],
+            "human_review_required": True,
+        },
+    )()
+
+    prompt = planner._build_prompt(
+        request=request,
+        candidate=_candidate(),
+        planner_input=_planner_input(),
+        policy=policy,
+    )
+
+    assert '"changed_features"' in prompt
+    assert '"baseline_value": 31.2' in prompt
+    assert '"candidate_metrics"' in prompt
+    assert '"input_prediction"' in prompt

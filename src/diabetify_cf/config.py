@@ -42,6 +42,7 @@ def _default_path_for(name: str) -> str:
 class Settings:
     app_env: str = os.getenv("APP_ENV", "dev")
     log_level: str = os.getenv("CF_LOG_LEVEL", "INFO")
+    engine_provider: str = os.getenv("CF_ENGINE_PROVIDER", "nn")
 
     rabbitmq_url: str = os.getenv("RABBITMQ_URL", "amqp://admin:password123@localhost:5672/")
     request_queue: str = os.getenv("CF_REQUEST_QUEUE", "ml.cf.request")
@@ -60,6 +61,14 @@ class Settings:
     planner_timeout_ms: int = int(os.getenv("CF_PLANNER_TIMEOUT_MS", "4000"))
     planner_temperature: float = float(os.getenv("CF_PLANNER_TEMPERATURE", "0.2"))
     planner_max_steps: int = int(os.getenv("CF_PLANNER_MAX_STEPS", "6"))
+    nn_candidate_pool_size: int = int(os.getenv("CF_NN_CANDIDATE_POOL_SIZE", "256"))
+    nn_max_neighbors: int = int(os.getenv("CF_NN_MAX_NEIGHBORS", "64"))
+    nn_max_changed_features: int = int(os.getenv("CF_NN_MAX_CHANGED_FEATURES", "3"))
+    nn_min_reference_low_risk_probability: float | None = (
+        float(os.getenv("CF_NN_MIN_REFERENCE_LOW_RISK_PROBABILITY", ""))
+        if os.getenv("CF_NN_MIN_REFERENCE_LOW_RISK_PROBABILITY")
+        else None
+    )
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
     openai_endpoint: str = os.getenv(
         "CF_OPENAI_ENDPOINT", "https://api.openai.com/v1/chat/completions"
