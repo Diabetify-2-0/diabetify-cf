@@ -52,8 +52,6 @@ class Settings:
     rabbitmq_retry_delay_sec: int = int(os.getenv("CF_RABBITMQ_RETRY_DELAY_SEC", "5"))
     prefetch_count: int = int(os.getenv("CF_PREFETCH_COUNT", "1"))
 
-    default_total_cfs: int = int(os.getenv("CF_DEFAULT_TOTAL_CFS", "3"))
-    request_timeout_ms: int = int(os.getenv("CF_REQUEST_TIMEOUT_MS", "5000"))
     max_lof_score: float = float(os.getenv("CF_MAX_LOF_SCORE", "2.5"))
     planner_enabled: bool = _bool_env("CF_PLANNER_ENABLED", True)
     planner_provider: str = os.getenv("CF_PLANNER_PROVIDER", "template")
@@ -61,6 +59,7 @@ class Settings:
     planner_timeout_ms: int = int(os.getenv("CF_PLANNER_TIMEOUT_MS", "4000"))
     planner_temperature: float = float(os.getenv("CF_PLANNER_TEMPERATURE", "0.2"))
     planner_max_steps: int = int(os.getenv("CF_PLANNER_MAX_STEPS", "6"))
+    planner_intended_user: str = os.getenv("CF_PLANNER_INTENDED_USER", "clinician")
     nn_candidate_pool_size: int = int(os.getenv("CF_NN_CANDIDATE_POOL_SIZE", "256"))
     nn_max_neighbors: int = int(os.getenv("CF_NN_MAX_NEIGHBORS", "64"))
     nn_max_changed_features: int = int(os.getenv("CF_NN_MAX_CHANGED_FEATURES", "3"))

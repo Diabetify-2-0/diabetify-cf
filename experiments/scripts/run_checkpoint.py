@@ -7,27 +7,27 @@ from typing import Any
 
 try:
     from experiments.scripts._bootstrap import bootstrap_path
-except ModuleNotFoundError:  
+except ModuleNotFoundError:
     from _bootstrap import bootstrap_path
 
 
 bootstrap_path(__file__)
 
-from experiments.scripts.audit_comparison import ( 
+from experiments.scripts.audit_comparison import (
     DEFAULT_REQUIRED_ENGINES,
     audit_comparison,
 )
-from experiments.scripts.run_baseline import (  
+from experiments.scripts.run_baseline import (
     DEFAULT_SCENARIO_TIMEOUT_SECONDS,
     DEFAULT_STABILITY_CONFIG,
     DEFAULT_STABILITY_TIMEOUT_SECONDS,
 )
-from experiments.scripts.run_benchmark import DEFAULT_OUTPUT_ROOT  
-from experiments.scripts.run_comparison import (  
+from experiments.scripts.run_benchmark import DEFAULT_OUTPUT_ROOT
+from experiments.scripts.run_comparison import (
     DEFAULT_ENGINE_CONFIGS,
     run_comparison,
 )
-from experiments.scripts.run_scenarios import DEFAULT_SCENARIO_CONFIGS  
+from experiments.scripts.run_scenarios import DEFAULT_SCENARIO_CONFIGS
 
 
 def _percent(value: float) -> str:

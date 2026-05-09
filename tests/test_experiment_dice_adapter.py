@@ -14,7 +14,9 @@ def test_dice_no_counterfactual_error_returns_empty_candidates() -> None:
     )
 
     assert generator._is_no_counterfactual_error(
-        Exception("No counterfactuals found for any of the query points! Kindly check your configuration.")
+        Exception(
+            "No counterfactuals found for any of the query points! Kindly check your configuration."
+        )
     )
 
 

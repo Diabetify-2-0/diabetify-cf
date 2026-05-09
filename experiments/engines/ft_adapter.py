@@ -266,9 +266,7 @@ class FeatureTweakCandidateGenerator:
             thresholds[feature_name].add(float(split_value))
 
         return {
-            feature_name: sorted(values)
-            for feature_name, values in thresholds.items()
-            if values
+            feature_name: sorted(values) for feature_name, values in thresholds.items() if values
         }
 
     @staticmethod
@@ -433,10 +431,11 @@ class FeatureTweakCandidateGenerator:
         if sample_size >= len(values):
             return values
 
-        quantiles = [
-            index / (sample_size - 1)
-            for index in range(sample_size)
-        ] if sample_size > 1 else [0.5]
+        quantiles = (
+            [index / (sample_size - 1) for index in range(sample_size)]
+            if sample_size > 1
+            else [0.5]
+        )
         sampled = clipped.quantile(quantiles).tolist()
         return [float(value) for value in sampled]
 

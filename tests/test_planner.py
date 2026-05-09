@@ -121,6 +121,19 @@ def test_factory_falls_back_to_template_when_openai_key_missing() -> None:
     assert isinstance(planner, TemplatePrescriptivePlanner)
 
 
+def test_factory_passes_intended_user_to_template_planner() -> None:
+    settings = Settings(
+        planner_enabled=True,
+        planner_provider="template",
+        planner_intended_user="patient",
+    )
+
+    planner = build_planner(settings)
+
+    assert isinstance(planner, TemplatePrescriptivePlanner)
+    assert planner.intended_user == "patient"
+
+
 def test_template_planner_uses_feature_change_context() -> None:
     request = CounterfactualRequest.model_validate(_request_payload())
     planner = TemplatePrescriptivePlanner()

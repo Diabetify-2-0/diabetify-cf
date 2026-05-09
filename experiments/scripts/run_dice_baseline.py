@@ -2,13 +2,13 @@ from __future__ import annotations
 
 try:
     from experiments.scripts._bootstrap import bootstrap_path
-except ModuleNotFoundError: 
+except ModuleNotFoundError:
     from _bootstrap import bootstrap_path
 
 
 bootstrap_path(__file__)
 
-from experiments.scripts.run_baseline import ( 
+from experiments.scripts.run_baseline import (
     DEFAULT_SCENARIO_TIMEOUT_SECONDS,
     DEFAULT_STABILITY_CONFIG,
     DEFAULT_STABILITY_TIMEOUT_SECONDS,

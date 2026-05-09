@@ -1,6 +1,6 @@
 try:
     from experiments.scripts._bootstrap import bootstrap_path
-except ModuleNotFoundError:  
+except ModuleNotFoundError:
     from _bootstrap import bootstrap_path
 
 

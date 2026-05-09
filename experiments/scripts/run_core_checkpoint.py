@@ -9,12 +9,14 @@ from typing import Any
 
 try:
     from experiments.scripts._bootstrap import bootstrap_path
-except ModuleNotFoundError: 
+except ModuleNotFoundError:
     from _bootstrap import bootstrap_path
 
 
 REPO_ROOT = bootstrap_path(__file__)
-DEFAULT_SCOPE_PATH = REPO_ROOT / "experiments" / "configs" / "benchmark_scope" / "core_benchmark.json"
+DEFAULT_SCOPE_PATH = (
+    REPO_ROOT / "experiments" / "configs" / "benchmark_scope" / "core_benchmark.json"
+)
 DEFAULT_RESULTS_ROOT = REPO_ROOT / "experiments" / "results"
 DEFAULT_LATEST_COMPARISON = DEFAULT_RESULTS_ROOT / "latest" / "comparison.txt"
 

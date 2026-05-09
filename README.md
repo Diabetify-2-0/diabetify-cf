@@ -11,11 +11,12 @@ Phase 4 (prescriptive planning):
 
 - Contract schema (request/response) sudah dibuat.
 - RabbitMQ consumer/publisher sudah dibuat.
-- DICE real engine sudah aktif jika artifact tersedia.
+- `NN` counterfactual engine aktif sebagai default service engine jika artifact tersedia.
+- `DiCE` tetap tersedia sebagai provider alternatif untuk debugging atau pembandingan.
 - Hardening aktif: target probability enforcement, actionable-feature filtering, timeout-aware reason code, dan plausibility gate via LOF threshold.
 - Hardening klinis tambahan: directional constraints per fitur (mis. aktivitas fisik tidak boleh direkomendasikan menurun).
 - Prescriptive planner aktif dengan mode `template` default.
-- Integrasi OpenAI planner tersedia dengan fallback otomatis ke template jika API key tidak ada/gagal.
+- Integrasi OpenAI planner tersedia dengan fallback otomatis ke template jika API key tidak ada/gagal, dan kini menerima konteks counterfactual before/after yang lebih kaya.
 
 ## Folder Structure
 
@@ -62,6 +63,9 @@ Copy-Item .env.example .env
 python -m diabetify_cf.app
 ```
 
+Default local runtime memakai `CF_ENGINE_PROVIDER=nn`. Ubah ke `dice` jika ingin
+menjalankan provider DiCE pada service.
+
 For experiment engines beyond DiCE, install the experiment extra:
 
 ```powershell
@@ -73,7 +77,7 @@ pip install -e ".[dev,experiments]"
 ```powershell
 $env:PYTHONDONTWRITEBYTECODE = "1"
 python -m ruff check --no-cache src tests
-python -m black --check src tests
+python -m black --check src tests experiments --exclude notebooks
 python -m mypy src
 python -m pytest -q tests
 ```
@@ -121,9 +125,12 @@ generator.
 
 ## Notes
 
-- Service selalu menjalankan engine DiCE real dan membutuhkan `CF_MODEL_PATH` dan `CF_COLUMNS_PATH` valid.
+- Service default menjalankan engine `NN`; set `CF_ENGINE_PROVIDER=dice` untuk provider DiCE.
+- Service membutuhkan `CF_MODEL_PATH` dan `CF_COLUMNS_PATH` valid.
 - Default `CF_REFERENCE_DATA_PATH` mengarah ke `artifacts/reference/reference_data.parquet`.
 - Input `instance.features` wajib berisi seluruh fitur model pada `x_columns.pkl`.
 - `CF_MAX_LOF_SCORE` mengatur batas maksimum skor LOF kandidat (semakin kecil semakin ketat).
+- `CF_NN_*` mengatur candidate pool, jumlah neighbor yang diproyeksikan, dan sparsity projection untuk engine `NN`.
 - Planner default `CF_PLANNER_PROVIDER=template`; set `openai` + `OPENAI_API_KEY` untuk narasi LLM.
+- `CF_PLANNER_INTENDED_USER` mengatur apakah planner menulis untuk `clinician` atau `patient`.
 - CARLA is not enabled because `carla-recourse==0.0.5` pins `numpy==1.19.4`, which conflicts with this project's `numpy==2.2.6` stack.

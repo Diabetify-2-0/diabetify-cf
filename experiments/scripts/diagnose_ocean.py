@@ -11,18 +11,18 @@ import pandas as pd
 
 try:
     from experiments.scripts._bootstrap import bootstrap_path
-except ModuleNotFoundError:  
+except ModuleNotFoundError:
     from _bootstrap import bootstrap_path
 
 
 bootstrap_path(__file__)
 
-from diabetify_cf.config import Settings  
-from diabetify_cf.engine.artifacts import ModelArtifacts, load_artifacts  
-from experiments.scripts.audit_comparison import _latest_comparison_root  
-from experiments.scripts.collect_results import collect_results  
-from experiments.scripts.run_benchmark import DEFAULT_OUTPUT_ROOT  
-from experiments.scripts.run_comparison import engine_from_source_file 
+from diabetify_cf.config import Settings
+from diabetify_cf.engine.artifacts import ModelArtifacts, load_artifacts
+from experiments.scripts.audit_comparison import _latest_comparison_root
+from experiments.scripts.collect_results import collect_results
+from experiments.scripts.run_benchmark import DEFAULT_OUTPUT_ROOT
+from experiments.scripts.run_comparison import engine_from_source_file
 
 
 def _read_csv(path: Path) -> list[dict[str, str]]:
@@ -464,16 +464,10 @@ def _feature_constraint_summary(
         bound = bounds.get(feature_name, {})
         lower = bound.get("min")
         upper = bound.get("max")
-        width = (
-            float(upper) - float(lower)
-            if lower is not None and upper is not None
-            else None
-        )
+        width = float(upper) - float(lower) if lower is not None and upper is not None else None
         baseline_in_bounds = None
         if values and lower is not None and upper is not None:
-            baseline_in_bounds = sum(
-                1 for value in values if float(lower) <= value <= float(upper)
-            )
+            baseline_in_bounds = sum(1 for value in values if float(lower) <= value <= float(upper))
         summaries.append(
             {
                 "feature": feature_name,
@@ -530,9 +524,10 @@ def _is_likely_unreachable_stress(
     if feasible_rate > 0.0 or expected_infeasible:
         return False
     reachability = constraint_diagnosis.get("reachability", {})
-    return bool(reachability.get("available")) and float(
-        reachability.get("reachable_rate", 0.0)
-    ) <= 0.0
+    return (
+        bool(reachability.get("available"))
+        and float(reachability.get("reachable_rate", 0.0)) <= 0.0
+    )
 
 
 def _diagnosis_category(
@@ -692,8 +687,9 @@ def diagnose_engine(
     artifacts = _load_model_artifacts()
 
     scenarios = sorted(
-        set(scenario_by_engine.get(target_engine, {}))
-        .union(scenario_by_engine.get(baseline_engine, {}))
+        set(scenario_by_engine.get(target_engine, {})).union(
+            scenario_by_engine.get(baseline_engine, {})
+        )
     )
     scenario_diagnoses = [
         _scenario_diagnosis(
@@ -728,14 +724,10 @@ def diagnose_engine(
         and item["expected_infeasible"]
     ]
     target_worse_than_baseline = [
-        item["scenario"]
-        for item in scenario_diagnoses
-        if item["feasible_gap_vs_baseline"] < 0.0
+        item["scenario"] for item in scenario_diagnoses if item["feasible_gap_vs_baseline"] < 0.0
     ]
     violations = [
-        item["scenario"]
-        for item in scenario_diagnoses
-        if item["target_max_violation_rate"] > 0.0
+        item["scenario"] for item in scenario_diagnoses if item["target_max_violation_rate"] > 0.0
     ]
 
     return {

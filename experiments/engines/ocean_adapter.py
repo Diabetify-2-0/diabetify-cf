@@ -48,16 +48,9 @@ class OceanSolverOptions:
             raise ValueError("OCEAN engine option 'seed_step' must be >= 1.")
 
         max_time_raw = raw.get("max_time_per_attempt_seconds")
-        max_time_per_attempt_seconds = (
-            None if max_time_raw is None else int(max_time_raw)
-        )
-        if (
-            max_time_per_attempt_seconds is not None
-            and max_time_per_attempt_seconds < 1
-        ):
-            raise ValueError(
-                "OCEAN engine option 'max_time_per_attempt_seconds' must be >= 1."
-            )
+        max_time_per_attempt_seconds = None if max_time_raw is None else int(max_time_raw)
+        if max_time_per_attempt_seconds is not None and max_time_per_attempt_seconds < 1:
+            raise ValueError("OCEAN engine option 'max_time_per_attempt_seconds' must be >= 1.")
 
         num_workers_raw = raw.get("num_workers")
         num_workers = None if num_workers_raw is None else int(num_workers_raw)
@@ -103,7 +96,7 @@ class OceanCandidateGenerator:
 
     @staticmethod
     def _check_ocean_available() -> None:
-        import ocean  
+        import ocean
 
     def generate_raw(
         self,
@@ -160,9 +153,7 @@ class OceanCandidateGenerator:
         return max(1, math.ceil(total_budget / self.solver_options.attempt_count))
 
     def _attempt_seed(self, request: CounterfactualRequest, attempt_index: int) -> int:
-        return request.generation.random_seed + (
-            attempt_index * self.solver_options.seed_step
-        )
+        return request.generation.random_seed + (attempt_index * self.solver_options.seed_step)
 
     def _worker_kwargs(self) -> dict[str, int]:
         if self.solver_options.num_workers is None:

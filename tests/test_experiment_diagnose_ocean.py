@@ -68,7 +68,7 @@ def _write_comparison(root: Path) -> None:
                 "bounds_violation_rate": "0.0",
                 "directional_violation_rate": "0.0",
                 "reason_counts": '{"timeout": 1}',
-            }
+            },
         ],
     )
     _write_csv(
@@ -109,7 +109,7 @@ def _write_comparison(root: Path) -> None:
                 "bounds_violation_rate": "0.0",
                 "directional_violation_rate": "0.0",
                 "reason_counts": '{"TARGET_UNREACHABLE_UNDER_CONSTRAINTS": 2}',
-            }
+            },
         ],
     )
     _write_jsonl(
@@ -215,9 +215,7 @@ def _write_comparison(root: Path) -> None:
     }
     activity_config = {
         "mutable_allowed": ["moderate_physical_activity_frequency"],
-        "feature_bounds": {
-            "moderate_physical_activity_frequency": {"min": 0.0, "max": 14.0}
-        },
+        "feature_bounds": {"moderate_physical_activity_frequency": {"min": 0.0, "max": 14.0}},
     }
     (root / "baselines" / "dice" / "run-1" / "scenarios" / "no_mutable").mkdir(
         parents=True,
@@ -228,13 +226,7 @@ def _write_comparison(root: Path) -> None:
         exist_ok=True,
     )
     (
-        root
-        / "baselines"
-        / "dice"
-        / "run-1"
-        / "scenarios"
-        / "no_mutable"
-        / "effective_config.json"
+        root / "baselines" / "dice" / "run-1" / "scenarios" / "no_mutable" / "effective_config.json"
     ).write_text(json.dumps(effective_config), encoding="utf-8")
     ocean_activity_run.mkdir(parents=True, exist_ok=True)
     (ocean_activity_run / "effective_config.json").write_text(

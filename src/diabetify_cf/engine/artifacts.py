@@ -87,7 +87,7 @@ def _load_feature_registry(path: str, feature_columns: list[str]) -> FeatureRegi
         return FeatureRegistry.from_columns(feature_columns)
 
     registry = FeatureRegistry.from_file(str(file))
-    
+
     definitions = []
     for column in feature_columns:
         feature = registry.get(column)
@@ -98,6 +98,7 @@ def _load_feature_registry(path: str, feature_columns: list[str]) -> FeatureRegi
             continue
         definitions.append(feature)
     return FeatureRegistry(version=registry.version, features=definitions)
+
 
 def _load_reference_data(path: str, feature_columns: list[str]) -> pd.DataFrame:
     """Load reference data used by DiCE and LOF plausibility scoring."""
@@ -131,6 +132,7 @@ def _load_reference_data(path: str, feature_columns: list[str]) -> pd.DataFrame:
 def _empty_reference(feature_columns: list[str]) -> pd.DataFrame:
     """Return a minimal placeholder frame when real reference data is absent."""
     return pd.DataFrame([np.zeros(len(feature_columns))], columns=feature_columns)
+
 
 def _build_lof_model(reference_data: pd.DataFrame) -> LocalOutlierFactor | None:
     """Fit a novelty-detection LOF model when enough reference rows exist."""
