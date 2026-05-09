@@ -37,7 +37,7 @@ Gunakan ini untuk run resmi yang membandingkan `dice`, `ocean`, `ft`, dan `nn` d
 
 ```powershell
 .\.venv\Scripts\python.exe experiments\scripts\run_core_checkpoint.py `
-  --scenario-limit 10 `
+  --scenario-limit 20 `
   --stability-limit 10 `
   --repeat-count 5 `
   --scenario-timeout-seconds 180 `

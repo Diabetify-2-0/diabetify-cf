@@ -31,6 +31,7 @@ from experiments.scripts.summarize_results import summarize_run, write_summary_c
 DEFAULT_SCENARIO_CONFIGS = [
     Path("experiments/configs/scenarios/all_mutable.json"),
     Path("experiments/configs/scenarios/lifestyle_combo.json"),
+    Path("experiments/configs/scenarios/minimal_realistic_combo.json"),
     Path("experiments/configs/scenarios/bmi_only.json"),
     Path("experiments/configs/scenarios/activity_only.json"),
     Path("experiments/configs/scenarios/tight_bounds.json"),
