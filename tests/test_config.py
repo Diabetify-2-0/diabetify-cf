@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from diabetify_cf.config import _default_path_for, _env_or_default
+from diabetify_cf.config import SERVICE_ROOT, _default_path_for, _env_or_default, _path_env_or_default
 
 
 def test_default_reference_data_path_uses_local_reference_artifact() -> None:
@@ -27,3 +27,20 @@ def test_empty_environment_value_falls_back_to_default(monkeypatch) -> None:
     monkeypatch.setenv("CF_MODEL_PATH", "")
 
     assert _env_or_default("CF_MODEL_PATH", "fallback.pkl") == "fallback.pkl"
+
+
+def test_relative_artifact_path_is_resolved_from_repo_root(monkeypatch) -> None:
+    monkeypatch.setenv("CF_MODEL_PATH", "artifacts/models/xg_model.pkl")
+
+    resolved = Path(_path_env_or_default("CF_MODEL_PATH", "fallback.pkl"))
+
+    assert resolved == (SERVICE_ROOT / "artifacts" / "models" / "xg_model.pkl").resolve()
+
+
+def test_absolute_artifact_path_is_preserved(monkeypatch) -> None:
+    absolute = SERVICE_ROOT / "artifacts" / "models" / "xg_model.pkl"
+    monkeypatch.setenv("CF_MODEL_PATH", str(absolute))
+
+    resolved = Path(_path_env_or_default("CF_MODEL_PATH", "fallback.pkl"))
+
+    assert resolved == absolute

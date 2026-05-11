@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from diabetify_cf.planner.policy import build_policy_result, normalize_intended_user
 from diabetify_cf.planner.base import PrescriptivePlanner
+from diabetify_cf.planner.policy import build_policy_result
 from diabetify_cf.schemas import (
     CounterfactualCandidate,
     CounterfactualRequest,
@@ -11,9 +11,8 @@ from diabetify_cf.schemas import (
 
 
 class TemplatePrescriptivePlanner(PrescriptivePlanner):
-    def __init__(self, max_steps: int = 6, intended_user: str = "clinician") -> None:
+    def __init__(self, max_steps: int = 6) -> None:
         self.max_steps = max_steps
-        self.intended_user = normalize_intended_user(intended_user)
 
     def build_plan(
         self,
@@ -25,13 +24,11 @@ class TemplatePrescriptivePlanner(PrescriptivePlanner):
             request=request,
             candidate=candidate,
             planner_input=planner_input,
-            intended_user=self.intended_user,
         )
 
         return PrescriptivePlan(
             generation_mode="template",
             provider="template_v1",
-            intended_user=policy.intended_user,
             clinical_scope=policy.clinical_scope,
             policy_version=policy.policy_version,
             summary=policy.summary,

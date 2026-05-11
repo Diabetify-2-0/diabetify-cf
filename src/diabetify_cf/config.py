@@ -7,6 +7,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
+SERVICE_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _bool_env(name: str, default: bool) -> bool:
@@ -23,17 +24,26 @@ def _env_or_default(name: str, default: str) -> str:
     return raw
 
 
-def _default_path_for(name: str) -> str:
-    service_root = Path(__file__).resolve().parents[2]
+def _path_env_or_default(name: str, default: str) -> str:
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return default
 
+    path = Path(raw)
+    if path.is_absolute():
+        return str(path)
+    return str((SERVICE_ROOT / path).resolve())
+
+
+def _default_path_for(name: str) -> str:
     defaults = {
-        "CF_MODEL_PATH": service_root / "artifacts" / "models" / "xg_model.pkl",
-        "CF_COLUMNS_PATH": service_root / "artifacts" / "models" / "x_columns.pkl",
-        "CF_REFERENCE_DATA_PATH": service_root
+        "CF_MODEL_PATH": SERVICE_ROOT / "artifacts" / "models" / "xg_model.pkl",
+        "CF_COLUMNS_PATH": SERVICE_ROOT / "artifacts" / "models" / "x_columns.pkl",
+        "CF_REFERENCE_DATA_PATH": SERVICE_ROOT
         / "artifacts"
         / "reference"
         / "reference_data.parquet",
-        "CF_FEATURE_REGISTRY_PATH": service_root / "configs" / "feature_registry.json",
+        "CF_FEATURE_REGISTRY_PATH": SERVICE_ROOT / "configs" / "feature_registry.json",
     }
     return str(defaults[name])
 
@@ -59,7 +69,6 @@ class Settings:
     planner_timeout_ms: int = int(os.getenv("CF_PLANNER_TIMEOUT_MS", "4000"))
     planner_temperature: float = float(os.getenv("CF_PLANNER_TEMPERATURE", "0.2"))
     planner_max_steps: int = int(os.getenv("CF_PLANNER_MAX_STEPS", "6"))
-    planner_intended_user: str = os.getenv("CF_PLANNER_INTENDED_USER", "clinician")
     nn_candidate_pool_size: int = int(os.getenv("CF_NN_CANDIDATE_POOL_SIZE", "256"))
     nn_max_neighbors: int = int(os.getenv("CF_NN_MAX_NEIGHBORS", "64"))
     nn_max_changed_features: int = int(os.getenv("CF_NN_MAX_CHANGED_FEATURES", "3"))
@@ -73,11 +82,13 @@ class Settings:
         "CF_OPENAI_ENDPOINT", "https://api.openai.com/v1/chat/completions"
     )
 
-    model_path: str = _env_or_default("CF_MODEL_PATH", _default_path_for("CF_MODEL_PATH"))
-    columns_path: str = _env_or_default("CF_COLUMNS_PATH", _default_path_for("CF_COLUMNS_PATH"))
-    reference_data_path: str = _env_or_default(
+    model_path: str = _path_env_or_default("CF_MODEL_PATH", _default_path_for("CF_MODEL_PATH"))
+    columns_path: str = _path_env_or_default(
+        "CF_COLUMNS_PATH", _default_path_for("CF_COLUMNS_PATH")
+    )
+    reference_data_path: str = _path_env_or_default(
         "CF_REFERENCE_DATA_PATH", _default_path_for("CF_REFERENCE_DATA_PATH")
     )
-    feature_registry_path: str = _env_or_default(
+    feature_registry_path: str = _path_env_or_default(
         "CF_FEATURE_REGISTRY_PATH", _default_path_for("CF_FEATURE_REGISTRY_PATH")
     )

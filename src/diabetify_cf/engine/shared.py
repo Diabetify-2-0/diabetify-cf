@@ -110,6 +110,32 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
 
         try:
             prepared = self._prepare_request(request)
+            request_context = self._build_request_context_planner_input(
+                request=request,
+                prepared=prepared,
+            )
+            if self._target_satisfied(
+                prediction=prepared.base_prediction,
+                target_class=request.target.target_class,
+                min_target_probability=request.target.min_target_probability,
+            ):
+                return self._response(
+                    request=request,
+                    started=started,
+                    status=Status.FEASIBLE,
+                    reason_code=ReasonCode.TARGET_ALREADY_SATISFIED,
+                    message=(
+                        "Input already satisfies target class/probability; "
+                        "no counterfactual changes are required."
+                    ),
+                    validation=ValidationSummary(
+                        immutable_violation=False,
+                        mutable_compliance=True,
+                        medical_rules_passed=True,
+                    ),
+                    input_prediction=prepared.base_prediction,
+                    planner_input=request_context,
+                )
             if not prepared.mutable_allowed:
                 return self._response(
                     request=request,
@@ -122,6 +148,8 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                         mutable_compliance=True,
                         medical_rules_passed=True,
                     ),
+                    input_prediction=prepared.base_prediction,
+                    planner_input=request_context,
                 )
 
             raw_candidates = self._generate_raw_candidates(request=request, prepared=prepared)
@@ -232,6 +260,10 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
         started: float,
     ) -> CounterfactualResponse:
         timed_out = self._elapsed_ms(started) > request.generation.timeout_ms
+        request_context = self._build_request_context_planner_input(
+            request=request,
+            prepared=prepared,
+        )
         if raw_candidates.empty:
             reason_code = ReasonCode.TARGET_UNREACHABLE_UNDER_CONSTRAINTS
             message = "No counterfactual candidate generated under current constraints."
@@ -250,11 +282,13 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                     medical_rules_passed=True,
                 ),
                 input_prediction=prepared.base_prediction,
+                planner_input=request_context,
             )
 
         evaluated: list[CandidateEvaluation] = []
         immutable_violation_seen = False
         mutable_violation_seen = False
+        bounds_violation_seen = False
         medical_violation_seen = False
         directional_violation_seen = False
         target_violation_seen = False
@@ -276,6 +310,11 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 prepared.instance_features,
                 set(prepared.mutable_allowed),
             )
+            bounds_ok = self._bounds_ok(
+                candidate_features,
+                request,
+                prepared.registry,
+            )
             directional_ok = self._directional_ok(
                 candidate=candidate_features,
                 baseline=prepared.instance_features,
@@ -288,13 +327,15 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 immutable_violation_seen = True
             if not mutable_ok:
                 mutable_violation_seen = True
+            if not bounds_ok:
+                bounds_violation_seen = True
             if not directional_ok:
                 directional_violation_seen = True
                 medical_violation_seen = True
             if not medical_ok:
                 medical_violation_seen = True
 
-            if not (immutable_ok and mutable_ok and directional_ok and medical_ok):
+            if not (immutable_ok and mutable_ok and bounds_ok and directional_ok and medical_ok):
                 continue
 
             candidate_df = pd.DataFrame([candidate_features], columns=prepared.model_columns)
@@ -358,6 +399,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 medical_violation_seen
                 and not immutable_violation_seen
                 and not mutable_violation_seen
+                and not bounds_violation_seen
             ):
                 reason_code = ReasonCode.MEDICAL_RULE_VIOLATION_ONLY
                 message = "Candidates exist but fail medical plausibility constraints."
@@ -365,14 +407,22 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 directional_violation_seen
                 and not immutable_violation_seen
                 and not mutable_violation_seen
+                and not bounds_violation_seen
             ):
                 reason_code = ReasonCode.MEDICAL_RULE_VIOLATION_ONLY
                 message = "Candidates exist but violate directional medical constraints."
+            if (
+                bounds_violation_seen
+                and not immutable_violation_seen
+                and not mutable_violation_seen
+            ):
+                message = "Candidates generated but violate request feature bounds."
             if (
                 target_violation_seen
                 and not immutable_violation_seen
                 and not mutable_violation_seen
                 and not medical_violation_seen
+                and not bounds_violation_seen
             ):
                 message = "Candidates generated but none satisfied target class/probability."
 
@@ -386,9 +436,11 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                     immutable_violation=immutable_violation_seen,
                     mutable_compliance=not mutable_violation_seen,
                     medical_rules_passed=(not medical_violation_seen)
-                    and (not target_violation_seen),
+                    and (not target_violation_seen)
+                    and (not bounds_violation_seen),
                 ),
                 input_prediction=prepared.base_prediction,
+                planner_input=request_context,
             )
 
         evaluated.sort(key=lambda item: item.objective_score)
@@ -681,6 +733,26 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 return False
         return True
 
+    def _bounds_ok(
+        self,
+        candidate: dict[str, JSONFeatureValue],
+        request: CounterfactualRequest,
+        registry: FeatureRegistry,
+    ) -> bool:
+        for raw_name, bound in request.constraints.feature_bounds.items():
+            feature_name = registry.resolve_name(raw_name)
+            if feature_name not in candidate:
+                continue
+            try:
+                value = float(candidate[feature_name])
+            except (TypeError, ValueError):
+                return False
+            if bound.min is not None and value < bound.min:
+                return False
+            if bound.max is not None and value > bound.max:
+                return False
+        return True
+
     def _directional_ok(
         self,
         *,
@@ -840,6 +912,19 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             candidate_prediction=candidate.prediction,
             candidate_metrics=candidate.metrics,
             changed_features=changed_features,
+            mutable_allowed=list(prepared.mutable_allowed),
+            immutable_features=sorted(prepared.immutable_set),
+            must_not_change=list(request.constraints.must_not_change),
+        )
+
+    def _build_request_context_planner_input(
+        self,
+        *,
+        request: CounterfactualRequest,
+        prepared: PreparedRequest,
+    ) -> PlannerInput:
+        return PlannerInput(
+            input_prediction=prepared.base_prediction,
             mutable_allowed=list(prepared.mutable_allowed),
             immutable_features=sorted(prepared.immutable_set),
             must_not_change=list(request.constraints.must_not_change),

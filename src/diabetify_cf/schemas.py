@@ -161,8 +161,7 @@ class PrescriptivePlan(BaseModel):
 
     generation_mode: str
     provider: str
-    intended_user: str = "clinician"
-    clinical_scope: str = "clinician_support"
+    clinical_scope: str = "decision_support"
     policy_version: str = "planner_policy_v1"
     summary: str
     goals: list[str] = Field(default_factory=list)

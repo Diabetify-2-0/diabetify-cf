@@ -6,7 +6,7 @@ import urllib.request
 from typing import cast
 
 from diabetify_cf.planner.base import PrescriptivePlanner
-from diabetify_cf.planner.policy import build_policy_result, normalize_intended_user
+from diabetify_cf.planner.policy import build_policy_result
 from diabetify_cf.schemas import (
     CounterfactualCandidate,
     CounterfactualRequest,
@@ -23,7 +23,6 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
         timeout_ms: int = 4000,
         temperature: float = 0.2,
         endpoint: str = "https://api.openai.com/v1/chat/completions",
-        intended_user: str = "clinician",
     ) -> None:
         if not api_key:
             raise ValueError("OPENAI_API_KEY is required for OpenAI prescriptive planner.")
@@ -33,7 +32,6 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
         self.timeout_sec = max(1.0, float(timeout_ms) / 1000.0)
         self.temperature = max(0.0, min(float(temperature), 1.0))
         self.endpoint = endpoint
-        self.intended_user = normalize_intended_user(intended_user)
 
     def build_plan(
         self,
@@ -45,7 +43,6 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
             request=request,
             candidate=candidate,
             planner_input=planner_input,
-            intended_user=self.intended_user,
         )
         prompt = self._build_prompt(
             request=request,
@@ -59,7 +56,6 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
         return PrescriptivePlan(
             generation_mode="llm",
             provider=f"openai:{self.model}",
-            intended_user=policy.intended_user,
             clinical_scope=policy.clinical_scope,
             policy_version=policy.policy_version,
             summary=str(payload.get("summary", policy.summary)).strip(),
@@ -92,7 +88,6 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
         policy: object,
     ) -> str:
         compact = {
-            "intended_user": getattr(policy, "intended_user"),
             "clinical_scope": getattr(policy, "clinical_scope"),
             "target_class": request.target.target_class,
             "min_target_probability": request.target.min_target_probability,
@@ -123,8 +118,7 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
             "Jangan menyebut fitur sebagai berubah jika fitur itu tidak muncul pada changed_features. "
             "Gunakan before/after dari changed_features jika menjelaskan arah perubahan. "
             "Gunakan policy_summary dan policy_action_steps sebagai batas keras. "
-            "Jika intended_user=patient, gunakan bahasa edukatif dan non-direktif. "
-            "Jika intended_user=clinician, gunakan bahasa decision-support yang menekankan perlunya penilaian profesional. "
+            "Gunakan bahasa decision-support yang jelas, praktis, dan tetap non-preskriptif. "
             "Jawab ketat dalam JSON object dengan kunci: "
             "summary, goals (array), action_steps (array), safety_notes (array), "
             "monitoring_plan (array), disclaimer. "

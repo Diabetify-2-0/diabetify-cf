@@ -84,29 +84,12 @@ def test_template_planner_generates_non_empty_plan() -> None:
     )
 
     assert plan.generation_mode == "template"
-    assert plan.intended_user == "clinician"
-    assert plan.clinical_scope == "clinician_support"
+    assert plan.clinical_scope == "decision_support"
     assert len(plan.summary) > 0
     assert len(plan.action_steps) > 0
     assert len(plan.monitoring_plan) > 0
     assert plan.human_review_required is True
     assert len(plan.missing_context) > 0
-
-
-def test_template_planner_can_render_patient_safe_output() -> None:
-    request = CounterfactualRequest.model_validate(_request_payload())
-    planner = TemplatePrescriptivePlanner(intended_user="patient")
-
-    plan = planner.build_plan(
-        request=request,
-        candidate=_candidate(),
-        planner_input=_planner_input(),
-    )
-
-    assert plan.intended_user == "patient"
-    assert plan.clinical_scope == "patient_education"
-    assert plan.human_review_required is False
-    assert "edukatif" in plan.summary.lower()
 
 
 def test_factory_falls_back_to_template_when_openai_key_missing() -> None:
@@ -121,17 +104,16 @@ def test_factory_falls_back_to_template_when_openai_key_missing() -> None:
     assert isinstance(planner, TemplatePrescriptivePlanner)
 
 
-def test_factory_passes_intended_user_to_template_planner() -> None:
+def test_factory_builds_template_planner_with_default_config() -> None:
     settings = Settings(
         planner_enabled=True,
         planner_provider="template",
-        planner_intended_user="patient",
     )
 
     planner = build_planner(settings)
 
     assert isinstance(planner, TemplatePrescriptivePlanner)
-    assert planner.intended_user == "patient"
+    assert planner.max_steps == settings.planner_max_steps
 
 
 def test_template_planner_uses_feature_change_context() -> None:
@@ -154,8 +136,7 @@ def test_openai_prompt_includes_rich_counterfactual_context() -> None:
         "Policy",
         (),
         {
-            "intended_user": "clinician",
-            "clinical_scope": "clinician_support",
+            "clinical_scope": "decision_support",
             "summary": "summary",
             "goals": ["goal"],
             "action_steps": ["step"],

@@ -11,6 +11,7 @@ from diabetify_cf.schemas import (
     CandidateMetrics,
     CounterfactualCandidate,
     CounterfactualRequest,
+    FeatureBound,
     PlannerInput,
     PredictionInfo,
     PrescriptivePlan,
@@ -50,6 +51,42 @@ def test_engine_returns_infeasible_when_no_mutable_feature() -> None:
     assert result.status == Status.INFEASIBLE
     assert result.reason_code == ReasonCode.NO_MUTABLE_FEATURE
     assert result.candidates == []
+
+
+def test_engine_returns_feasible_when_input_already_satisfies_target() -> None:
+    req = CounterfactualRequest.model_validate(_request_payload(["bmi"]))
+    engine = DiceCounterfactualEngine()
+    engine.artifacts = object()  # type: ignore[assignment]
+
+    def _prepared_request(request: CounterfactualRequest) -> object:
+        return type(
+            "Prepared",
+            (),
+            {
+                "registry": FeatureRegistry.from_columns(["age", "bmi", "glucose"]),
+                "model_columns": ["age", "bmi", "glucose"],
+                "instance_features": {"age": 45, "bmi": 24.0, "glucose": 100},
+                "immutable_set": {"age"},
+                "mutable_allowed": ["bmi"],
+                "query_df": pd.DataFrame([{"age": 45, "bmi": 24.0, "glucose": 100.0}]),
+                "base_prediction": PredictionInfo(
+                    class_name="low_risk",
+                    probability_low_risk=0.82,
+                ),
+                "permitted_range": {"bmi": [20.0, 29.0]},
+            },
+        )()
+
+    engine._prepare_request = _prepared_request  # type: ignore[method-assign]
+
+    result = engine.generate(req)
+
+    assert result.status == Status.FEASIBLE
+    assert result.reason_code == ReasonCode.TARGET_ALREADY_SATISFIED
+    assert result.candidates == []
+    assert result.input_prediction is not None
+    assert result.input_prediction.class_name == "low_risk"
+    assert result.planner_input.mutable_allowed == ["bmi"]
 
 
 def test_engine_returns_not_ready_when_artifacts_are_missing() -> None:
@@ -298,6 +335,24 @@ def test_directional_ok_rejects_physical_activity_decrease() -> None:
     )
 
 
+def test_bounds_ok_respects_request_feature_bounds() -> None:
+    payload = _request_payload(["bmi"])
+    request = CounterfactualRequest.model_validate(payload)
+    registry = FeatureRegistry.from_columns(["age", "bmi", "glucose"])
+    engine = DiceCounterfactualEngine()
+
+    assert engine._bounds_ok(
+        {"age": 45, "bmi": 28.5, "glucose": 165},
+        request,
+        registry,
+    )
+    assert not engine._bounds_ok(
+        {"age": 45, "bmi": 30.5, "glucose": 165},
+        request,
+        registry,
+    )
+
+
 class _DummyPlanner(PrescriptivePlanner):
     def build_plan(
         self,
@@ -309,8 +364,7 @@ class _DummyPlanner(PrescriptivePlanner):
         return PrescriptivePlan(
             generation_mode="template",
             provider="dummy_test",
-            intended_user="clinician",
-            clinical_scope="clinician_support",
+            clinical_scope="decision_support",
             policy_version="dummy_policy",
             summary=f"Plan for {request.request_id}",
             goals=["goal"],
@@ -353,3 +407,36 @@ def test_prescriptive_plan_builder_uses_configured_planner() -> None:
 
     assert result is not None
     assert result.provider == "dummy_test"
+
+
+def test_infeasible_response_preserves_request_context_in_planner_input() -> None:
+    req = CounterfactualRequest.model_validate(_request_payload(["bmi"]))
+    engine = DiceCounterfactualEngine()
+    prepared = type(
+        "Prepared",
+        (),
+        {
+            "registry": FeatureRegistry.from_columns(["age", "bmi", "glucose"]),
+            "model_columns": ["age", "bmi", "glucose"],
+            "instance_features": {"age": 45, "bmi": 31.2, "glucose": 165},
+            "immutable_set": {"age"},
+            "mutable_allowed": ["bmi"],
+            "query_df": pd.DataFrame([{"age": 45, "bmi": 31.2, "glucose": 165.0}]),
+            "base_prediction": PredictionInfo(class_name="high_risk", probability_low_risk=0.2),
+            "permitted_range": {"bmi": [20.0, 29.0]},
+        },
+    )()
+
+    result = engine._process_candidates(
+        request=req,
+        prepared=prepared,
+        raw_candidates=pd.DataFrame(),
+        started=0.0,
+    )
+
+    assert result.status == Status.INFEASIBLE
+    assert result.input_prediction is not None
+    assert result.planner_input.input_prediction is not None
+    assert result.planner_input.input_prediction.class_name == "high_risk"
+    assert result.planner_input.mutable_allowed == ["bmi"]
+    assert result.planner_input.immutable_features == ["age"]
