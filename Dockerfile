@@ -16,8 +16,5 @@ COPY artifacts/models ./artifacts/models
 COPY artifacts/reference ./artifacts/reference
 
 RUN pip install --no-cache-dir .
-RUN adduser --disabled-password --gecos "" appuser \
-    && chown -R appuser:appuser /app
 
-USER appuser
 CMD ["python", "-m", "diabetify_cf.app"]
