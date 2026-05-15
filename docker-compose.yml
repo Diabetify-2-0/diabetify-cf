@@ -1,0 +1,36 @@
+services:
+  diabetify-cf:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: diabetify-cf
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      CF_LOG_LEVEL: ${CF_LOG_LEVEL:-INFO}
+      CF_ENGINE_PROVIDER: ${CF_ENGINE_PROVIDER:-nn}
+      CF_PLANNER_ENABLED: ${CF_PLANNER_ENABLED:-true}
+      CF_PLANNER_PROVIDER: ${CF_PLANNER_PROVIDER:-template}
+      CF_PLANNER_MODEL: ${CF_PLANNER_MODEL:-gpt-4o-mini}
+      CF_PLANNER_TIMEOUT_MS: ${CF_PLANNER_TIMEOUT_MS:-4000}
+      CF_PLANNER_TEMPERATURE: ${CF_PLANNER_TEMPERATURE:-0.2}
+      CF_PLANNER_MAX_STEPS: ${CF_PLANNER_MAX_STEPS:-6}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # Reuse RabbitMQ from diabetify-be (exposed on host port 5672).
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-password123}@host.docker.internal:5672/
+      CF_REQUEST_QUEUE: ${CF_REQUEST_QUEUE:-ml.cf.request}
+      CF_RESPONSE_QUEUE: ${CF_RESPONSE_QUEUE:-ml.cf.response}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "from pathlib import Path; import socket; assert Path('/app/artifacts/models/xg_model.pkl').exists(); assert Path('/app/artifacts/models/x_columns.pkl').exists(); socket.create_connection(('host.docker.internal', 5672), timeout=5).close()",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s

@@ -90,6 +90,14 @@ docker build -t diabetify-cf:dev .
 docker run --rm --env-file .env diabetify-cf:dev
 ```
 
+For the normal local full stack, use the provided compose file so the worker
+reuses RabbitMQ from `diabetify-be` on host port `5672`:
+
+```powershell
+cd diabetify-cf
+docker compose up --build -d
+```
+
 ## Research and Experiment Layout
 
 - `src/` berisi kode service yang dipakai modul Diabetify.

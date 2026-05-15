@@ -16,7 +16,7 @@ dependencies = [
   "pandas==2.2.3",
   "pyarrow==20.0.0",
   "scikit-learn==1.6.1",
-  "xgboost==3.0.1",
+  "xgboost-cpu==3.0.1",
 ]
 
 [project.optional-dependencies]
