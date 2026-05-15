@@ -63,8 +63,14 @@ Copy-Item .env.example .env
 python -m diabetify_cf.app
 ```
 
-Default local runtime memakai `CF_ENGINE_PROVIDER=nn`. Ubah ke `dice` jika ingin
-menjalankan provider DiCE pada service.
+Default local runtime memakai `CF_ENGINE_PROVIDER=nn`, jadi dependency runtime
+tetap ringan dan tidak meng-install `dice-ml`.
+
+Jika ingin menjalankan provider DiCE pada service, install extra `dice`:
+
+```powershell
+pip install -e ".[dev,dice]"
+```
 
 For experiment engines beyond DiCE, install the experiment extra:
 
@@ -134,6 +140,8 @@ generator.
 ## Notes
 
 - Service default menjalankan engine `NN`; set `CF_ENGINE_PROVIDER=dice` untuk provider DiCE.
+- Runtime Docker/service default tidak meng-install `dice-ml`; gunakan extra `dice`
+  atau `experiments` hanya saat memang butuh jalur DiCE.
 - Service membutuhkan `CF_MODEL_PATH` dan `CF_COLUMNS_PATH` valid.
 - Default `CF_REFERENCE_DATA_PATH` mengarah ke `artifacts/reference/reference_data.parquet`.
 - Input `instance.features` wajib berisi seluruh fitur model pada `x_columns.pkl`.

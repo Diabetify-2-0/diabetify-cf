@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from importlib.util import find_spec
+
 from diabetify_cf.config import Settings
 from diabetify_cf.engine.base import CounterfactualEngine
-from diabetify_cf.engine.dice_engine import DiceCounterfactualEngine
 from diabetify_cf.engine.nn_engine import (
     NearestNeighborCounterfactualEngine,
     NearestNeighborOptions,
@@ -26,6 +27,14 @@ def build_counterfactual_engine(
     }
 
     if provider == "dice":
+        if find_spec("dice_ml") is None:
+            raise ValueError(
+                "CF_ENGINE_PROVIDER=dice requires the optional 'dice' dependency. "
+                "Install it with `pip install -e \".[dice]\"` or use the "
+                "`.[experiments]` extra for the research stack."
+            )
+        from diabetify_cf.engine.dice_engine import DiceCounterfactualEngine
+
         return DiceCounterfactualEngine(**common_kwargs)
     if provider == "nn":
         return NearestNeighborCounterfactualEngine(

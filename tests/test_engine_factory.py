@@ -6,6 +6,7 @@ from diabetify_cf.engine import (
     NearestNeighborCounterfactualEngine,
     build_counterfactual_engine,
 )
+from diabetify_cf.engine import factory as engine_factory
 
 
 def test_build_counterfactual_engine_returns_nn_by_default() -> None:
@@ -19,7 +20,9 @@ def test_build_counterfactual_engine_returns_nn_by_default() -> None:
     assert isinstance(engine, NearestNeighborCounterfactualEngine)
 
 
-def test_build_counterfactual_engine_returns_dice_when_requested() -> None:
+def test_build_counterfactual_engine_returns_dice_when_requested(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(engine_factory, "find_spec", lambda name: object())
+
     engine = build_counterfactual_engine(
         Settings(
             engine_provider="dice",
@@ -29,6 +32,21 @@ def test_build_counterfactual_engine_returns_dice_when_requested() -> None:
     )
 
     assert isinstance(engine, DiceCounterfactualEngine)
+
+
+def test_build_counterfactual_engine_rejects_dice_when_optional_dependency_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(engine_factory, "find_spec", lambda name: None)
+
+    with pytest.raises(ValueError, match="requires the optional 'dice' dependency"):
+        build_counterfactual_engine(
+            Settings(
+                engine_provider="dice",
+                model_path="missing-model.pkl",
+                columns_path="missing-columns.pkl",
+            )
+        )
 
 
 def test_build_counterfactual_engine_passes_nn_settings() -> None:
