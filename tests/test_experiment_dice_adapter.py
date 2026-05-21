@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pandas as pd
-
 from experiments.engines.dice_adapter import DiceCandidateGenerator
 
 

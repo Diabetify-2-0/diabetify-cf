@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from time import perf_counter
 
 import pandas as pd
 
@@ -11,7 +12,6 @@ from diabetify_cf.schemas import (
     CandidateMetrics,
     CounterfactualCandidate,
     CounterfactualRequest,
-    FeatureBound,
     PlannerInput,
     PredictionInfo,
     PrescriptivePlan,
@@ -353,6 +353,121 @@ def test_bounds_ok_respects_request_feature_bounds() -> None:
     )
 
 
+def test_apply_feature_specific_mutability_disables_smoking_features_for_non_active_smokers() -> (
+    None
+):
+    registry = FeatureRegistry(
+        version="test_v1",
+        features=[
+            FeatureDefinition(
+                name="smoking_status",
+                feature_type="ordinal",
+                immutable=False,
+                actionable=True,
+                default_mutable=True,
+                global_min=0,
+                global_max=2,
+                cost_weight=1.0,
+                preferred_direction="decrease",
+                aliases=[],
+                allowed_transitions={0: (0,), 1: (1,), 2: (1, 2)},
+            ),
+            FeatureDefinition(
+                name="brinkman_index",
+                feature_type="ordinal",
+                immutable=False,
+                actionable=True,
+                default_mutable=True,
+                global_min=0,
+                global_max=3,
+                cost_weight=1.0,
+                preferred_direction="decrease",
+                aliases=[],
+            ),
+            FeatureDefinition(
+                name="BMI",
+                feature_type="continuous",
+                immutable=False,
+                actionable=True,
+                default_mutable=True,
+                global_min=10,
+                global_max=60,
+                cost_weight=1.0,
+                preferred_direction="decrease",
+                aliases=[],
+            ),
+        ],
+    )
+    engine = DiceCounterfactualEngine()
+
+    mutable_former = engine._apply_feature_specific_mutability(
+        mutable_allowed=["smoking_status", "brinkman_index", "BMI"],
+        baseline_features={"smoking_status": 1, "brinkman_index": 2, "BMI": 30.0},
+        registry=registry,
+    )
+    mutable_never = engine._apply_feature_specific_mutability(
+        mutable_allowed=["smoking_status", "brinkman_index", "BMI"],
+        baseline_features={"smoking_status": 0, "brinkman_index": 0, "BMI": 30.0},
+        registry=registry,
+    )
+    mutable_active = engine._apply_feature_specific_mutability(
+        mutable_allowed=["smoking_status", "brinkman_index", "BMI"],
+        baseline_features={"smoking_status": 2, "brinkman_index": 3, "BMI": 30.0},
+        registry=registry,
+    )
+
+    assert mutable_former == ["BMI"]
+    assert mutable_never == ["BMI"]
+    assert mutable_active == ["smoking_status", "brinkman_index", "BMI"]
+
+
+def test_transition_ok_enforces_smoking_status_allowed_transitions() -> None:
+    registry = FeatureRegistry(
+        version="test_v1",
+        features=[
+            FeatureDefinition(
+                name="smoking_status",
+                feature_type="ordinal",
+                immutable=False,
+                actionable=True,
+                default_mutable=True,
+                global_min=0,
+                global_max=2,
+                cost_weight=1.0,
+                preferred_direction="decrease",
+                aliases=[],
+                allowed_transitions={0: (0,), 1: (1,), 2: (1, 2)},
+            )
+        ],
+    )
+    engine = DiceCounterfactualEngine()
+
+    assert engine._transition_ok(
+        candidate={"smoking_status": 1},
+        baseline={"smoking_status": 2},
+        mutable_allowed={"smoking_status"},
+        registry=registry,
+    )
+    assert engine._transition_ok(
+        candidate={"smoking_status": 2},
+        baseline={"smoking_status": 2},
+        mutable_allowed={"smoking_status"},
+        registry=registry,
+    )
+    assert not engine._transition_ok(
+        candidate={"smoking_status": 0},
+        baseline={"smoking_status": 2},
+        mutable_allowed={"smoking_status"},
+        registry=registry,
+    )
+    assert not engine._transition_ok(
+        candidate={"smoking_status": 0},
+        baseline={"smoking_status": 1},
+        mutable_allowed={"smoking_status"},
+        registry=registry,
+    )
+
+
 class _DummyPlanner(PrescriptivePlanner):
     def build_plan(
         self,
@@ -431,12 +546,51 @@ def test_infeasible_response_preserves_request_context_in_planner_input() -> Non
         request=req,
         prepared=prepared,
         raw_candidates=pd.DataFrame(),
-        started=0.0,
+        started=perf_counter(),
     )
 
     assert result.status == Status.INFEASIBLE
+    assert result.reason_code == ReasonCode.TARGET_UNREACHABLE_UNDER_CONSTRAINTS
     assert result.input_prediction is not None
     assert result.planner_input.input_prediction is not None
     assert result.planner_input.input_prediction.class_name == "high_risk"
     assert result.planner_input.mutable_allowed == ["bmi"]
     assert result.planner_input.immutable_features == ["age"]
+
+
+def test_process_candidates_surfaces_medical_only_infeasible_reason() -> None:
+    req = CounterfactualRequest.model_validate(_request_payload(["bmi"]))
+    engine = DiceCounterfactualEngine()
+    prepared = type(
+        "Prepared",
+        (),
+        {
+            "registry": FeatureRegistry.from_columns(["age", "bmi", "glucose"]),
+            "model_columns": ["age", "bmi", "glucose"],
+            "instance_features": {"age": 45, "bmi": 31.2, "glucose": 165},
+            "immutable_set": {"age"},
+            "mutable_allowed": ["bmi"],
+            "query_df": pd.DataFrame([{"age": 45, "bmi": 31.2, "glucose": 165.0}]),
+            "base_prediction": PredictionInfo(class_name="high_risk", probability_low_risk=0.2),
+            "permitted_range": {"bmi": [20.0, 29.0]},
+        },
+    )()
+
+    engine._coerce_candidate_features = lambda **_: {"age": 45, "bmi": 28.0, "glucose": 165}
+    engine._immutable_ok = lambda *args, **kwargs: True
+    engine._mutable_ok = lambda *args, **kwargs: True
+    engine._bounds_ok = lambda *args, **kwargs: True
+    engine._directional_ok = lambda *args, **kwargs: True
+    engine._transition_ok = lambda *args, **kwargs: True
+    engine._medical_ok = lambda *args, **kwargs: False
+
+    result = engine._process_candidates(
+        request=req,
+        prepared=prepared,
+        raw_candidates=pd.DataFrame([{"age": 45, "bmi": 28.0, "glucose": 165.0}]),
+        started=0.0,
+    )
+
+    assert result.status == Status.INFEASIBLE
+    assert result.reason_code == ReasonCode.MEDICAL_RULE_VIOLATION_ONLY
+    assert result.message == "Candidates exist but fail medical plausibility constraints."

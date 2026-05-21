@@ -20,7 +20,9 @@ def test_build_counterfactual_engine_returns_nn_by_default() -> None:
     assert isinstance(engine, NearestNeighborCounterfactualEngine)
 
 
-def test_build_counterfactual_engine_returns_dice_when_requested(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_counterfactual_engine_returns_dice_when_requested(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(engine_factory, "find_spec", lambda name: object())
 
     engine = build_counterfactual_engine(

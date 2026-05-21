@@ -18,8 +18,8 @@ from diabetify_cf.schemas import (
     CounterfactualRequest,
     CounterfactualResponse,
     JSONFeatureValue,
-    PlannerInput,
     PlannerFeatureChange,
+    PlannerInput,
     PredictionInfo,
     PrescriptivePlan,
     ValidationSummary,
@@ -142,7 +142,9 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                     started=started,
                     status=Status.INFEASIBLE,
                     reason_code=ReasonCode.NO_MUTABLE_FEATURE,
-                    message="No mutable feature selected after immutable/constraint reconciliation.",
+                    message=(
+                        "No mutable feature selected after immutable/constraint " "reconciliation."
+                    ),
                     validation=ValidationSummary(
                         immutable_violation=False,
                         mutable_compliance=True,
@@ -226,6 +228,11 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             immutable_set=immutable_set,
             registry=registry,
         )
+        mutable_allowed = self._apply_feature_specific_mutability(
+            mutable_allowed=mutable_allowed,
+            baseline_features=instance_features,
+            registry=registry,
+        )
         query_df = pd.DataFrame(
             [self._to_series(model_columns, instance_features, registry)],
             columns=model_columns,
@@ -291,6 +298,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
         bounds_violation_seen = False
         medical_violation_seen = False
         directional_violation_seen = False
+        transition_violation_seen = False
         target_violation_seen = False
 
         for _, row in raw_candidates.iterrows():
@@ -321,6 +329,12 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 mutable_allowed=set(prepared.mutable_allowed),
                 registry=prepared.registry,
             )
+            transition_ok = self._transition_ok(
+                candidate=candidate_features,
+                baseline=prepared.instance_features,
+                mutable_allowed=set(prepared.mutable_allowed),
+                registry=prepared.registry,
+            )
             medical_ok = self._medical_ok(candidate_features, prepared.registry)
 
             if not immutable_ok:
@@ -332,10 +346,20 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             if not directional_ok:
                 directional_violation_seen = True
                 medical_violation_seen = True
+            if not transition_ok:
+                transition_violation_seen = True
+                medical_violation_seen = True
             if not medical_ok:
                 medical_violation_seen = True
 
-            if not (immutable_ok and mutable_ok and bounds_ok and directional_ok and medical_ok):
+            if not (
+                immutable_ok
+                and mutable_ok
+                and bounds_ok
+                and directional_ok
+                and transition_ok
+                and medical_ok
+            ):
                 continue
 
             candidate_df = pd.DataFrame([candidate_features], columns=prepared.model_columns)
@@ -403,6 +427,14 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             ):
                 reason_code = ReasonCode.MEDICAL_RULE_VIOLATION_ONLY
                 message = "Candidates exist but fail medical plausibility constraints."
+            if (
+                transition_violation_seen
+                and not immutable_violation_seen
+                and not mutable_violation_seen
+                and not bounds_violation_seen
+            ):
+                reason_code = ReasonCode.MEDICAL_RULE_VIOLATION_ONLY
+                message = "Candidates exist but violate allowed feature transition constraints."
             if (
                 directional_violation_seen
                 and not immutable_violation_seen
@@ -650,6 +682,28 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             seen.add(name)
         return allowed
 
+    def _apply_feature_specific_mutability(
+        self,
+        *,
+        mutable_allowed: list[str],
+        baseline_features: dict[str, JSONFeatureValue],
+        registry: FeatureRegistry,
+    ) -> list[str]:
+        smoking_status_feature = registry.get("smoking_status")
+        if smoking_status_feature is None:
+            return mutable_allowed
+
+        try:
+            baseline_smoking_status = int(float(baseline_features.get("smoking_status", 0)))
+        except (TypeError, ValueError):
+            return mutable_allowed
+
+        if baseline_smoking_status == 2:
+            return mutable_allowed
+
+        blocked_features = {"smoking_status", "brinkman_index"}
+        return [name for name in mutable_allowed if name not in blocked_features]
+
     def _to_series(
         self,
         ordered_columns: list[str],
@@ -784,6 +838,36 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 return False
             if direction == "decrease" and delta > 0:
                 return False
+        return True
+
+    def _transition_ok(
+        self,
+        *,
+        candidate: dict[str, JSONFeatureValue],
+        baseline: dict[str, JSONFeatureValue],
+        mutable_allowed: set[str],
+        registry: FeatureRegistry,
+    ) -> bool:
+        for feature_name in mutable_allowed:
+            if feature_name not in candidate or feature_name not in baseline:
+                continue
+
+            feature = registry.get(feature_name)
+            if feature is None or not feature.allowed_transitions:
+                continue
+
+            try:
+                baseline_value = int(float(baseline[feature_name]))
+                candidate_value = int(float(candidate[feature_name]))
+            except (TypeError, ValueError):
+                return False
+
+            allowed_targets = feature.allowed_transitions.get(baseline_value)
+            if allowed_targets is None:
+                continue
+            if candidate_value not in allowed_targets:
+                return False
+
         return True
 
     def _build_delta(

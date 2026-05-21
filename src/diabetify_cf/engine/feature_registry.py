@@ -36,6 +36,7 @@ class FeatureDefinition:
     cost_weight: float
     preferred_direction: str
     aliases: list[str]
+    allowed_transitions: dict[int, tuple[int, ...]] | None = None
 
     @property
     def is_continuous(self) -> bool:
@@ -81,6 +82,7 @@ class FeatureRegistry:
                     str(item.get("preferred_direction", "any")).lower()
                 ),
                 aliases=list(item.get("aliases", [])),
+                allowed_transitions=cls._parse_allowed_transitions(item.get("allowed_transitions")),
             )
             for item in features_raw
         ]
@@ -103,6 +105,7 @@ class FeatureRegistry:
                     cost_weight=1.0,
                     preferred_direction="any",
                     aliases=[],
+                    allowed_transitions=None,
                 )
             )
         return cls(version="auto_v1", features=features)
@@ -171,6 +174,34 @@ class FeatureRegistry:
         if feature.feature_type == "continuous":
             return float(cast(Any, value))
         return value
+
+    @staticmethod
+    def _parse_allowed_transitions(
+        raw: object,
+    ) -> dict[int, tuple[int, ...]] | None:
+        if not isinstance(raw, Mapping):
+            return None
+
+        parsed: dict[int, tuple[int, ...]] = {}
+        for baseline_raw, targets_raw in raw.items():
+            try:
+                baseline = int(baseline_raw)
+            except (TypeError, ValueError):
+                continue
+
+            if not isinstance(targets_raw, list):
+                continue
+
+            targets: list[int] = []
+            for target_raw in targets_raw:
+                try:
+                    targets.append(int(target_raw))
+                except (TypeError, ValueError):
+                    continue
+
+            parsed[baseline] = tuple(targets)
+
+        return parsed or None
 
     @staticmethod
     def _normalize_direction(direction: str) -> str:

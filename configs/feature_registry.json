@@ -23,6 +23,11 @@
       "global_max": 2,
       "cost_weight": 2.0,
       "preferred_direction": "decrease",
+      "allowed_transitions": {
+        "0": [0],
+        "1": [1],
+        "2": [1, 2]
+      },
       "aliases": []
     },
     {

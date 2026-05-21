@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from diabetify_cf.schemas import (
     CounterfactualCandidate,
     CounterfactualRequest,
+    JSONFeatureValue,
     PlannerFeatureChange,
     PlannerInput,
 )
@@ -59,9 +60,16 @@ def build_policy_result(
     human_review_required = True
 
     monitoring_plan = [
-        "Konfirmasi kembali baseline klinis dan konteks pasien sebelum menurunkan target numerik ke rencana tindakan.",
-        f"Target probabilitas low_risk pada request: >= {request.target.min_target_probability:.2f}.",
-        f"Probabilitas low_risk kandidat counterfactual: {candidate.prediction.probability_low_risk:.2f}.",
+        "Konfirmasi kembali baseline klinis dan konteks pasien sebelum menurunkan "
+        "target numerik ke rencana tindakan.",
+        (
+            "Target probabilitas low_risk pada request: >= "
+            f"{request.target.min_target_probability:.2f}."
+        ),
+        (
+            "Probabilitas low_risk kandidat counterfactual: "
+            f"{candidate.prediction.probability_low_risk:.2f}."
+        ),
     ]
     if planner_input is not None and planner_input.input_prediction is not None:
         monitoring_plan.insert(
@@ -90,6 +98,10 @@ def build_policy_result(
 
 
 def _goal_line(change: PlannerFeatureChange) -> str:
+    smoking_goal = _smoking_goal_line(change)
+    if smoking_goal is not None:
+        return smoking_goal
+
     action = "diturunkan" if float(change.delta) < 0 else "ditingkatkan"
     baseline = _format_value(change.baseline_value)
     candidate = _format_value(change.candidate_value)
@@ -102,15 +114,19 @@ def _goal_line(change: PlannerFeatureChange) -> str:
 
 def _base_steps() -> list[str]:
     return [
-        "Verifikasi bahwa target perubahan numerik relevan dengan kondisi klinis, terapi berjalan, dan preferensi pasien.",
-        "Saring lebih dahulu kontraindikasi dan konteks yang belum tersedia sebelum menurunkan target ke rekomendasi spesifik.",
+        "Verifikasi bahwa target perubahan numerik relevan dengan kondisi klinis, "
+        "terapi berjalan, dan preferensi pasien.",
+        "Saring lebih dahulu kontraindikasi dan konteks yang belum tersedia sebelum "
+        "menurunkan target ke rekomendasi spesifik.",
     ]
 
 
 def _base_safety_notes() -> list[str]:
     return [
-        "Hindari menerjemahkan delta model menjadi instruksi terapi otomatis tanpa menilai konteks klinis lengkap.",
-        "Bila konteks klinis tidak cukup, sistem sebaiknya berhenti pada level edukasi atau decision-support.",
+        "Hindari menerjemahkan delta model menjadi instruksi terapi otomatis tanpa "
+        "menilai konteks klinis lengkap.",
+        "Bila konteks klinis tidak cukup, sistem sebaiknya berhenti pada level edukasi "
+        "atau decision-support.",
     ]
 
 
@@ -125,42 +141,46 @@ def _base_missing_context() -> list[str]:
 def _feature_actions(
     feature: str,
     delta: float,
-    baseline_value: object,
-    candidate_value: object,
+    baseline_value: JSONFeatureValue,
+    candidate_value: JSONFeatureValue,
 ) -> list[str]:
     name = feature.lower()
+    smoking_actions = _smoking_actions(
+        feature=name,
+        baseline_value=baseline_value,
+        candidate_value=candidate_value,
+    )
+    if smoking_actions is not None:
+        return smoking_actions
+
     value_context = (
         f"Pertahankan fokus pada transisi dari {_format_value(baseline_value)} "
         f"menuju {_format_value(candidate_value)} secara bertahap dan realistis."
     )
     if "bmi" in name:
         return [
-            "Pertimbangkan strategi pengelolaan berat badan bertahap yang sesuai dengan status gizi, pola makan, dan kapasitas aktivitas pasien. "
-            + value_context
+            "Pertimbangkan strategi pengelolaan berat badan bertahap yang sesuai "
+            "dengan status gizi, pola makan, dan kapasitas aktivitas pasien. " + value_context
         ]
     if "physical_activity" in name:
         return [
-            "Nilai kapasitas fungsional dan gejala sebelum menganjurkan peningkatan aktivitas; bila aman, gunakan peningkatan bertahap. "
-            + value_context
-        ]
-    if "smoking" in name or "brinkman" in name:
-        return [
-            "Pertimbangkan dukungan berhenti merokok berbasis konseling, follow-up, dan terapi yang sesuai kebutuhan pasien. "
-            + value_context
+            "Nilai kapasitas fungsional dan gejala sebelum menganjurkan peningkatan "
+            "aktivitas; bila aman, gunakan peningkatan bertahap. " + value_context
         ]
     if "cholesterol" in name:
         return [
-            "Review pola makan, hasil lipid, dan terapi yang sedang berjalan sebelum menetapkan target spesifik. "
-            + value_context
+            "Review pola makan, hasil lipid, dan terapi yang sedang berjalan sebelum "
+            "menetapkan target spesifik. " + value_context
         ]
     if "hypertension" in name:
         return [
-            "Evaluasi kontrol tekanan darah, obat yang sedang dipakai, dan keamanan target aktivitas sebelum membuat rencana rinci. "
-            + value_context
+            "Evaluasi kontrol tekanan darah, obat yang sedang dipakai, dan keamanan "
+            "target aktivitas sebelum membuat rencana rinci. " + value_context
         ]
     direction = "penurunan" if delta < 0 else "peningkatan"
     return [
-        f"Tafsirkan target {direction} pada {feature} sebagai area fokus, bukan instruksi otomatis. {value_context}"
+        f"Tafsirkan target {direction} pada {feature} sebagai area fokus, "
+        f"bukan instruksi otomatis. {value_context}"
     ]
 
 
@@ -168,15 +188,18 @@ def _feature_safety_notes(feature: str) -> list[str]:
     name = feature.lower()
     if "bmi" in name:
         return [
-            "Target terkait berat badan perlu hati-hati pada kehamilan, gangguan makan, atau kondisi yang memengaruhi status gizi.",
+            "Target terkait berat badan perlu hati-hati pada kehamilan, gangguan "
+            "makan, atau kondisi yang memengaruhi status gizi.",
         ]
     if "physical_activity" in name:
         return [
-            "Peningkatan aktivitas fisik memerlukan kehati-hatian bila ada nyeri dada, sesak, pusing saat aktivitas, atau keterbatasan mobilitas.",
+            "Peningkatan aktivitas fisik memerlukan kehati-hatian bila ada nyeri "
+            "dada, sesak, pusing saat aktivitas, atau keterbatasan mobilitas.",
         ]
     if "hypertension" in name:
         return [
-            "Perubahan aktivitas dan gaya hidup pada pasien hipertensi perlu mempertimbangkan kontrol tekanan darah dan terapi yang sedang berjalan.",
+            "Perubahan aktivitas dan gaya hidup pada pasien hipertensi perlu "
+            "mempertimbangkan kontrol tekanan darah dan terapi yang sedang berjalan.",
         ]
     return []
 
@@ -185,11 +208,13 @@ def _feature_missing_context(feature: str) -> list[str]:
     name = feature.lower()
     if "bmi" in name:
         return [
-            "Status gizi, pola makan, dan faktor yang memengaruhi berat badan belum diketahui penuh."
+            "Status gizi, pola makan, dan faktor yang memengaruhi berat badan belum "
+            "diketahui penuh."
         ]
     if "physical_activity" in name:
         return [
-            "Kapasitas fungsional, gejala saat aktivitas, dan riwayat pembatasan fisik belum tersedia."
+            "Kapasitas fungsional, gejala saat aktivitas, dan riwayat pembatasan "
+            "fisik belum tersedia."
         ]
     if "hypertension" in name:
         return ["Data tekanan darah serial dan terapi antihipertensi belum tersedia."]
@@ -198,17 +223,69 @@ def _feature_missing_context(feature: str) -> list[str]:
     return []
 
 
+def _smoking_goal_line(change: PlannerFeatureChange) -> str | None:
+    feature_name = change.feature_name.lower()
+    baseline = int(float(change.baseline_value))
+    candidate = int(float(change.candidate_value))
+
+    if "smoking_status" in feature_name and baseline == 2 and candidate == 1:
+        return (
+            "Pertimbangkan skenario berhenti merokok agar status berubah dari perokok aktif "
+            "menjadi mantan perokok."
+        )
+
+    if "brinkman" in feature_name:
+        return (
+            "Pertimbangkan pengurangan konsumsi rokok harian secara bertahap agar paparan "
+            "rokok jangka panjang bergerak ke kategori yang lebih ringan."
+        )
+
+    return None
+
+
+def _smoking_actions(
+    *,
+    feature: str,
+    baseline_value: JSONFeatureValue,
+    candidate_value: JSONFeatureValue,
+) -> list[str] | None:
+    if "smoking_status" in feature:
+        baseline = int(float(baseline_value))
+        candidate = int(float(candidate_value))
+        if baseline == 2 and candidate == 1:
+            return [
+                "Pertimbangkan target berhenti merokok sepenuhnya dengan dukungan "
+                "konseling, follow-up, dan terapi yang sesuai kebutuhan pasien."
+            ]
+        return [
+            "Tafsirkan perubahan status merokok sebagai area diskusi perilaku, bukan "
+            "instruksi otomatis tanpa konfirmasi pasien."
+        ]
+
+    if "brinkman" in feature:
+        return [
+            "Pertimbangkan pengurangan konsumsi rokok harian secara bertahap, dengan "
+            "target yang realistis dan dapat dipantau dari hari ke hari."
+        ]
+
+    return None
+
+
 def _feature_contraindications(feature: str) -> list[str]:
     name = feature.lower()
     if "physical_activity" in name:
         return [
-            "Tunda target aktivitas spesifik bila ada gejala kardiorespirasi aktif atau keterbatasan fisik yang belum dievaluasi."
+            "Tunda target aktivitas spesifik bila ada gejala kardiorespirasi aktif "
+            "atau keterbatasan fisik yang belum dievaluasi."
         ]
     if "bmi" in name:
         return [
-            "Hindari target penurunan berat badan agresif tanpa evaluasi bila ada kondisi yang memengaruhi status gizi."
+            "Hindari target penurunan berat badan agresif tanpa evaluasi bila ada "
+            "kondisi yang memengaruhi status gizi."
         ]
     return []
+
+
 def _dedupe(items: list[str]) -> list[str]:
     seen: set[str] = set()
     out: list[str] = []

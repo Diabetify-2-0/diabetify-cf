@@ -17,28 +17,32 @@ def build_counterfactual_engine(
     planner: PrescriptivePlanner | None = None,
 ) -> CounterfactualEngine:
     provider = settings.engine_provider.strip().lower()
-    common_kwargs = {
-        "model_path": settings.model_path,
-        "columns_path": settings.columns_path,
-        "reference_data_path": settings.reference_data_path,
-        "feature_registry_path": settings.feature_registry_path,
-        "max_lof_score": settings.max_lof_score,
-        "planner": planner,
-    }
 
     if provider == "dice":
         if find_spec("dice_ml") is None:
             raise ValueError(
                 "CF_ENGINE_PROVIDER=dice requires the optional 'dice' dependency. "
-                "Install it with `pip install -e \".[dice]\"` or use the "
+                'Install it with `pip install -e ".[dice]"` or use the '
                 "`.[experiments]` extra for the research stack."
             )
         from diabetify_cf.engine.dice_engine import DiceCounterfactualEngine
 
-        return DiceCounterfactualEngine(**common_kwargs)
+        return DiceCounterfactualEngine(
+            model_path=settings.model_path,
+            columns_path=settings.columns_path,
+            reference_data_path=settings.reference_data_path,
+            feature_registry_path=settings.feature_registry_path,
+            max_lof_score=settings.max_lof_score,
+            planner=planner,
+        )
     if provider == "nn":
         return NearestNeighborCounterfactualEngine(
-            **common_kwargs,
+            model_path=settings.model_path,
+            columns_path=settings.columns_path,
+            reference_data_path=settings.reference_data_path,
+            feature_registry_path=settings.feature_registry_path,
+            max_lof_score=settings.max_lof_score,
+            planner=planner,
             options=NearestNeighborOptions.from_settings(settings),
         )
 

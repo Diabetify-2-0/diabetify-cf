@@ -6,7 +6,7 @@ import urllib.request
 from typing import cast
 
 from diabetify_cf.planner.base import PrescriptivePlanner
-from diabetify_cf.planner.policy import build_policy_result
+from diabetify_cf.planner.policy import PlanningPolicyResult, build_policy_result
 from diabetify_cf.schemas import (
     CounterfactualCandidate,
     CounterfactualRequest,
@@ -85,10 +85,10 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
         request: CounterfactualRequest,
         candidate: CounterfactualCandidate,
         planner_input: PlannerInput,
-        policy: object,
+        policy: PlanningPolicyResult,
     ) -> str:
         compact = {
-            "clinical_scope": getattr(policy, "clinical_scope"),
+            "clinical_scope": policy.clinical_scope,
             "target_class": request.target.target_class,
             "min_target_probability": request.target.min_target_probability,
             "input_prediction": (
@@ -103,19 +103,20 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
             "mutable_allowed": planner_input.mutable_allowed,
             "immutable_features": planner_input.immutable_features,
             "must_not_change": planner_input.must_not_change,
-            "policy_summary": getattr(policy, "summary"),
-            "policy_goals": getattr(policy, "goals"),
-            "policy_action_steps": getattr(policy, "action_steps"),
-            "policy_safety_notes": getattr(policy, "safety_notes"),
-            "policy_monitoring_plan": getattr(policy, "monitoring_plan"),
-            "missing_context": getattr(policy, "missing_context"),
-            "contraindication_flags": getattr(policy, "contraindication_flags"),
-            "human_review_required": getattr(policy, "human_review_required"),
+            "policy_summary": policy.summary,
+            "policy_goals": policy.goals,
+            "policy_action_steps": policy.action_steps,
+            "policy_safety_notes": policy.safety_notes,
+            "policy_monitoring_plan": policy.monitoring_plan,
+            "missing_context": policy.missing_context,
+            "contraindication_flags": policy.contraindication_flags,
+            "human_review_required": policy.human_review_required,
         }
         return (
             "Anda adalah asisten untuk merapikan output decision-support kesehatan. "
             "Jangan membuat instruksi terapi baru. Jangan menambah target numerik baru. "
-            "Jangan menyebut fitur sebagai berubah jika fitur itu tidak muncul pada changed_features. "
+            "Jangan menyebut fitur sebagai berubah jika fitur itu tidak muncul pada "
+            "changed_features. "
             "Gunakan before/after dari changed_features jika menjelaskan arah perubahan. "
             "Gunakan policy_summary dan policy_action_steps sebagai batas keras. "
             "Gunakan bahasa decision-support yang jelas, praktis, dan tetap non-preskriptif. "

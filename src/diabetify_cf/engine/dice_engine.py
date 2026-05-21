@@ -3,14 +3,31 @@ from __future__ import annotations
 import pandas as pd
 
 from diabetify_cf.engine.shared import ArtifactBackedCounterfactualEngine, PreparedRequest
+from diabetify_cf.planner.base import PrescriptivePlanner
 from diabetify_cf.schemas import CounterfactualRequest, PredictionInfo
 
 
 class DiceCounterfactualEngine(ArtifactBackedCounterfactualEngine):
     engine_version = "dice_engine_v4"
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        *,
+        model_path: str = "",
+        columns_path: str = "",
+        reference_data_path: str = "",
+        feature_registry_path: str = "",
+        max_lof_score: float = 2.5,
+        planner: PrescriptivePlanner | None = None,
+    ) -> None:
+        super().__init__(
+            model_path=model_path,
+            columns_path=columns_path,
+            reference_data_path=reference_data_path,
+            feature_registry_path=feature_registry_path,
+            max_lof_score=max_lof_score,
+            planner=planner,
+        )
         self._dice_data_cache: object | None = None
 
     def _generate_raw_candidates(

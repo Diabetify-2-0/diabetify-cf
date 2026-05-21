@@ -159,3 +159,111 @@ def test_openai_prompt_includes_rich_counterfactual_context() -> None:
     assert '"baseline_value": 31.2' in prompt
     assert '"candidate_metrics"' in prompt
     assert '"input_prediction"' in prompt
+
+
+def test_template_planner_translates_stop_smoking_without_brinkman_wording() -> None:
+    request = CounterfactualRequest.model_validate(
+        {
+            **_request_payload(),
+            "instance": {"features": {"age": 45, "smoking_status": 2, "brinkman_index": 3}},
+            "constraints": {
+                **_request_payload()["constraints"],
+                "mutable_allowed": ["smoking_status", "brinkman_index"],
+            },
+        }
+    )
+    planner = TemplatePrescriptivePlanner()
+    candidate = CounterfactualCandidate(
+        candidate_id="cf_smoke_stop",
+        features={"age": 45, "smoking_status": 1, "brinkman_index": 3},
+        delta={"smoking_status": -1},
+        prediction=PredictionInfo(class_name="low_risk", probability_low_risk=0.72),
+        metrics=CandidateMetrics(
+            distance_l1=0.10,
+            changed_feature_count=1,
+            lof_score=1.01,
+            constraint_violations=0,
+        ),
+    )
+    planner_input = PlannerInput(
+        recommended_candidate_id="cf_smoke_stop",
+        target_deltas={"smoking_status": -1},
+        input_prediction=PredictionInfo(class_name="high_risk", probability_low_risk=0.30),
+        candidate_prediction=PredictionInfo(class_name="low_risk", probability_low_risk=0.72),
+        changed_features=[
+            PlannerFeatureChange(
+                feature_name="smoking_status",
+                baseline_value=2,
+                candidate_value=1,
+                delta=-1,
+                direction="decrease",
+            )
+        ],
+        mutable_allowed=["smoking_status", "brinkman_index"],
+        immutable_features=["age"],
+        must_not_change=[],
+    )
+
+    plan = planner.build_plan(
+        request=request,
+        candidate=candidate,
+        planner_input=planner_input,
+    )
+
+    assert any("berhenti merokok" in goal.lower() for goal in plan.goals)
+    assert not any("brinkman" in goal.lower() for goal in plan.goals)
+    assert any("berhenti merokok" in step.lower() for step in plan.action_steps)
+
+
+def test_template_planner_translates_brinkman_to_daily_smoking_reduction() -> None:
+    request = CounterfactualRequest.model_validate(
+        {
+            **_request_payload(),
+            "instance": {"features": {"age": 45, "smoking_status": 2, "brinkman_index": 3}},
+            "constraints": {
+                **_request_payload()["constraints"],
+                "mutable_allowed": ["smoking_status", "brinkman_index"],
+            },
+        }
+    )
+    planner = TemplatePrescriptivePlanner()
+    candidate = CounterfactualCandidate(
+        candidate_id="cf_smoke_reduce",
+        features={"age": 45, "smoking_status": 2, "brinkman_index": 2},
+        delta={"brinkman_index": -1},
+        prediction=PredictionInfo(class_name="low_risk", probability_low_risk=0.64),
+        metrics=CandidateMetrics(
+            distance_l1=0.12,
+            changed_feature_count=1,
+            lof_score=1.02,
+            constraint_violations=0,
+        ),
+    )
+    planner_input = PlannerInput(
+        recommended_candidate_id="cf_smoke_reduce",
+        target_deltas={"brinkman_index": -1},
+        input_prediction=PredictionInfo(class_name="high_risk", probability_low_risk=0.28),
+        candidate_prediction=PredictionInfo(class_name="low_risk", probability_low_risk=0.64),
+        changed_features=[
+            PlannerFeatureChange(
+                feature_name="brinkman_index",
+                baseline_value=3,
+                candidate_value=2,
+                delta=-1,
+                direction="decrease",
+            )
+        ],
+        mutable_allowed=["smoking_status", "brinkman_index"],
+        immutable_features=["age"],
+        must_not_change=[],
+    )
+
+    plan = planner.build_plan(
+        request=request,
+        candidate=candidate,
+        planner_input=planner_input,
+    )
+
+    assert any("konsumsi rokok harian" in goal.lower() for goal in plan.goals)
+    assert not any("brinkman" in goal.lower() for goal in plan.goals)
+    assert any("konsumsi rokok harian" in step.lower() for step in plan.action_steps)

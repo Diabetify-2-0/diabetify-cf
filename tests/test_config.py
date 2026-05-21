@@ -1,6 +1,11 @@
 from pathlib import Path
 
-from diabetify_cf.config import SERVICE_ROOT, _default_path_for, _env_or_default, _path_env_or_default
+from diabetify_cf.config import (
+    SERVICE_ROOT,
+    _default_path_for,
+    _env_or_default,
+    _path_env_or_default,
+)
 
 
 def test_default_reference_data_path_uses_local_reference_artifact() -> None:
