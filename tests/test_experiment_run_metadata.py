@@ -13,7 +13,7 @@ def test_build_run_metadata_contains_reproducibility_fields() -> None:
 
     assert metadata["run_type"] == "benchmark"
     assert metadata["engine_name"] == "dice"
-    assert metadata["config_path"] == "experiments\\configs\\scenarios\\all_mutable.json"
+    assert metadata["config_path"] == "experiments/configs/scenarios/all_mutable.json"
     assert "version" in metadata["python"]
     assert "system" in metadata["platform"]
     assert "commit" in metadata["git"]

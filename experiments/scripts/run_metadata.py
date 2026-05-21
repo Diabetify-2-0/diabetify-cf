@@ -54,7 +54,7 @@ def build_run_metadata(
         "run_type": run_type,
         "engine_name": engine_name,
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "config_path": str(config_path) if config_path is not None else None,
+        "config_path": config_path.as_posix() if config_path is not None else None,
         "python": {
             "version": sys.version,
             "executable": sys.executable,
