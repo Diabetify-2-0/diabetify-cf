@@ -5,6 +5,9 @@ services:
       dockerfile: Dockerfile
     container_name: diabetify-cf
     restart: unless-stopped
+    stop_grace_period: 30s
+    cpus: "1.0"
+    mem_limit: 1g
     environment:
       APP_ENV: ${APP_ENV:-dev}
       CF_LOG_LEVEL: ${CF_LOG_LEVEL:-INFO}

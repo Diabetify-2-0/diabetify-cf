@@ -1,7 +1,10 @@
 from pathlib import Path
 
+import pytest
+
 from diabetify_cf.config import (
     SERVICE_ROOT,
+    Settings,
     _default_path_for,
     _env_or_default,
     _path_env_or_default,
@@ -49,3 +52,21 @@ def test_absolute_artifact_path_is_preserved(monkeypatch) -> None:
     resolved = Path(_path_env_or_default("CF_MODEL_PATH", "fallback.pkl"))
 
     assert resolved == absolute
+
+
+def test_prod_rejects_default_rabbitmq_credentials() -> None:
+    with pytest.raises(ValueError, match="non-default RabbitMQ credentials"):
+        Settings(
+            app_env="prod",
+            rabbitmq_url="amqp://admin:password123@localhost:5672/",
+        )
+
+
+def test_prod_accepts_non_default_rabbitmq_credentials() -> None:
+    settings = Settings(
+        app_env="prod",
+        rabbitmq_url="amqp://cf_user:strong-password@rabbitmq:5672/",
+        planner_provider="template",
+    )
+
+    assert settings.app_env == "prod"

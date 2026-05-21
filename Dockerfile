@@ -16,5 +16,9 @@ COPY artifacts/models ./artifacts/models
 COPY artifacts/reference ./artifacts/reference
 
 RUN pip install --no-cache-dir .
+RUN useradd --create-home --uid 10001 appuser \
+    && chown -R appuser:appuser /app
+
+USER appuser
 
 CMD ["python", "-m", "diabetify_cf.app"]

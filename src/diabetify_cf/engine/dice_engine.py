@@ -17,6 +17,7 @@ class DiceCounterfactualEngine(ArtifactBackedCounterfactualEngine):
         columns_path: str = "",
         reference_data_path: str = "",
         feature_registry_path: str = "",
+        artifact_manifest_path: str = "",
         max_lof_score: float = 2.5,
         planner: PrescriptivePlanner | None = None,
     ) -> None:
@@ -25,6 +26,7 @@ class DiceCounterfactualEngine(ArtifactBackedCounterfactualEngine):
             columns_path=columns_path,
             reference_data_path=reference_data_path,
             feature_registry_path=feature_registry_path,
+            artifact_manifest_path=artifact_manifest_path,
             max_lof_score=max_lof_score,
             planner=planner,
         )

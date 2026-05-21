@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from time import perf_counter
+from time import perf_counter, sleep
 
 import pandas as pd
 
@@ -99,6 +99,49 @@ def test_engine_returns_not_ready_when_artifacts_are_missing() -> None:
     assert result.reason_code == ReasonCode.ENGINE_NOT_READY
 
 
+def test_engine_timeout_returns_terminal_response_without_waiting_for_generator() -> None:
+    payload = _request_payload(["bmi"])
+    payload["generation"]["timeout_ms"] = 100
+    req = CounterfactualRequest.model_validate(payload)
+    engine = DiceCounterfactualEngine()
+    engine.artifacts = object()  # type: ignore[assignment]
+
+    def _prepared_request(request: CounterfactualRequest) -> object:
+        return type(
+            "Prepared",
+            (),
+            {
+                "registry": FeatureRegistry.from_columns(["age", "bmi", "glucose"]),
+                "model_columns": ["age", "bmi", "glucose"],
+                "instance_features": {"age": 45, "bmi": 31.2, "glucose": 165},
+                "immutable_set": {"age"},
+                "mutable_allowed": ["bmi"],
+                "query_df": pd.DataFrame([{"age": 45, "bmi": 31.2, "glucose": 165.0}]),
+                "base_prediction": PredictionInfo(
+                    class_name="high_risk",
+                    probability_low_risk=0.2,
+                ),
+                "permitted_range": {"bmi": [20.0, 29.0]},
+            },
+        )()
+
+    def _slow_generate_candidates(**_kwargs: object) -> pd.DataFrame:
+        sleep(0.3)
+        return pd.DataFrame([{"age": 45, "bmi": 28.0, "glucose": 165.0}])
+
+    engine._prepare_request = _prepared_request  # type: ignore[method-assign]
+    engine._generate_raw_candidates = _slow_generate_candidates  # type: ignore[method-assign]
+    started = perf_counter()
+
+    result = engine.generate(req)
+
+    assert (perf_counter() - started) < 0.25
+    assert result.status == Status.INFEASIBLE
+    assert result.reason_code == ReasonCode.TIMEOUT_NO_FEASIBLE_SOLUTION
+    assert result.input_prediction is not None
+    assert result.planner_input.input_prediction is not None
+
+
 def test_as_dice_input_df_coerces_numeric_columns() -> None:
     registry = FeatureRegistry.from_columns(["feature_a", "feature_b"])
     artifacts = ModelArtifacts(
@@ -118,6 +161,67 @@ def test_as_dice_input_df_coerces_numeric_columns() -> None:
     assert str(typed["feature_b"].dtype) == "float64"
     assert typed["feature_a"].iloc[0] == 1.5
     assert typed["feature_b"].iloc[0] == 2.0
+
+
+def _bmi_registry() -> FeatureRegistry:
+    return FeatureRegistry(
+        version="test_v1",
+        features=[
+            FeatureDefinition(
+                name="BMI",
+                feature_type="continuous",
+                immutable=False,
+                actionable=True,
+                default_mutable=True,
+                global_min=10,
+                global_max=60,
+                cost_weight=1.0,
+                preferred_direction="decrease",
+                aliases=["bmi"],
+            )
+        ],
+    )
+
+
+def _engine_with_bmi_artifacts() -> DiceCounterfactualEngine:
+    registry = _bmi_registry()
+    engine = DiceCounterfactualEngine()
+    engine.artifacts = ModelArtifacts(
+        model=object(),
+        feature_columns=["BMI"],
+        reference_data=pd.DataFrame({"BMI": [31.2]}),
+        feature_registry=registry,
+        lof_model=None,
+    )
+    return engine
+
+
+def test_prepare_request_rejects_duplicate_alias_features() -> None:
+    payload = _request_payload(["BMI"])
+    payload["instance"]["features"] = {"BMI": 31.2, "bmi": 30.0}
+    payload["constraints"]["feature_bounds"] = {"BMI": {"min": 10, "max": 60}}
+    request = CounterfactualRequest.model_validate(payload)
+    engine = _engine_with_bmi_artifacts()
+
+    result = engine.generate(request)
+
+    assert result.status == Status.ERROR
+    assert result.reason_code == ReasonCode.INVALID_INPUT_SCHEMA
+    assert result.message == "Invalid counterfactual request payload."
+
+
+def test_prepare_request_rejects_instance_feature_outside_registry_range() -> None:
+    payload = _request_payload(["BMI"])
+    payload["instance"]["features"] = {"BMI": 70.0}
+    payload["constraints"]["feature_bounds"] = {"BMI": {"min": 10, "max": 60}}
+    request = CounterfactualRequest.model_validate(payload)
+    engine = _engine_with_bmi_artifacts()
+
+    result = engine.generate(request)
+
+    assert result.status == Status.ERROR
+    assert result.reason_code == ReasonCode.INVALID_INPUT_SCHEMA
+    assert result.message == "Invalid counterfactual request payload."
 
 
 def test_permitted_range_includes_binary_mutable_feature() -> None:

@@ -119,8 +119,17 @@ class FeatureRegistry:
     def canonicalize_feature_map(self, raw: Mapping[str, FeatureValue]) -> dict[str, FeatureValue]:
         """Normalize request payload keys into canonical feature names."""
         canonical: dict[str, FeatureValue] = {}
+        source_keys: dict[str, str] = {}
         for key, value in raw.items():
-            canonical[self.resolve_name(key)] = value
+            canonical_name = self.resolve_name(key)
+            if canonical_name in canonical:
+                previous_key = source_keys[canonical_name]
+                raise ValueError(
+                    "Duplicate feature after alias normalization: "
+                    f"'{previous_key}' and '{key}' both resolve to '{canonical_name}'."
+                )
+            canonical[canonical_name] = value
+            source_keys[canonical_name] = key
         return canonical
 
     def canonicalize_feature_names(self, names: list[str]) -> list[str]:

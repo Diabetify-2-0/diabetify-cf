@@ -3,7 +3,15 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from diabetify_cf.schemas import CounterfactualRequest
+from diabetify_cf.reason_codes import ReasonCode, Status
+from diabetify_cf.schemas import (
+    CandidateMetrics,
+    CounterfactualRequest,
+    CounterfactualResponse,
+    PlannerInput,
+    PredictionInfo,
+    ValidationSummary,
+)
 
 
 def _valid_payload() -> dict:
@@ -49,3 +57,45 @@ def test_overlap_mutable_and_immutable_is_rejected() -> None:
     payload["constraints"]["immutable_features"] = ["age", "bmi"]
     with pytest.raises(ValidationError):
         CounterfactualRequest.model_validate(payload)
+
+
+def test_response_wire_uses_class_alias_inside_planner_input() -> None:
+    response = CounterfactualResponse(
+        request_id="req-1",
+        status=Status.FEASIBLE,
+        reason_code=ReasonCode.OK,
+        message="ok",
+        model_version="xgb_v1",
+        cf_engine_version="nn_engine_v1",
+        input_prediction=PredictionInfo(class_name="high_risk", probability_low_risk=0.25),
+        validation=ValidationSummary(
+            immutable_violation=False,
+            mutable_compliance=True,
+            medical_rules_passed=True,
+        ),
+        planner_input=PlannerInput(
+            input_prediction=PredictionInfo(
+                class_name="high_risk",
+                probability_low_risk=0.25,
+            ),
+            candidate_prediction=PredictionInfo(
+                class_name="low_risk",
+                probability_low_risk=0.72,
+            ),
+            candidate_metrics=CandidateMetrics(
+                distance_l1=0.1,
+                changed_feature_count=1,
+                lof_score=1.0,
+                constraint_violations=0,
+            ),
+        ),
+    )
+
+    wire = response.to_wire()
+
+    assert wire["input_prediction"]["class"] == "high_risk"
+    assert "class_name" not in wire["input_prediction"]
+    assert wire["planner_input"]["input_prediction"]["class"] == "high_risk"
+    assert wire["planner_input"]["candidate_prediction"]["class"] == "low_risk"
+    assert "class_name" not in wire["planner_input"]["input_prediction"]
+    assert "class_name" not in wire["planner_input"]["candidate_prediction"]

@@ -108,6 +108,9 @@ class CandidateMetrics(BaseModel):
     lof_score: float
     constraint_violations: int
 
+    def to_wire(self) -> dict[str, Any]:
+        return self.model_dump()
+
 
 class CounterfactualCandidate(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -155,6 +158,16 @@ class PlannerInput(BaseModel):
     immutable_features: list[str] = Field(default_factory=list)
     must_not_change: list[str] = Field(default_factory=list)
 
+    def to_wire(self) -> dict[str, Any]:
+        payload = self.model_dump(exclude_none=True)
+        if self.input_prediction is not None:
+            payload["input_prediction"] = self.input_prediction.to_wire()
+        if self.candidate_prediction is not None:
+            payload["candidate_prediction"] = self.candidate_prediction.to_wire()
+        if self.candidate_metrics is not None:
+            payload["candidate_metrics"] = self.candidate_metrics.to_wire()
+        return payload
+
 
 class PrescriptivePlan(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -199,5 +212,6 @@ class CounterfactualResponse(BaseModel):
         if self.input_prediction is not None:
             payload["input_prediction"] = self.input_prediction.to_wire()
         payload["candidates"] = [candidate.to_wire() for candidate in self.candidates]
+        payload["planner_input"] = self.planner_input.to_wire()
         payload["timestamp"] = self.timestamp.isoformat()
         return payload

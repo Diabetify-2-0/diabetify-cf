@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+import time
 import urllib.error
 import urllib.request
-from typing import cast
+from typing import Any, cast
 
 from diabetify_cf.planner.base import PrescriptivePlanner
 from diabetify_cf.planner.policy import PlanningPolicyResult, build_policy_result
@@ -23,6 +24,8 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
         timeout_ms: int = 4000,
         temperature: float = 0.2,
         endpoint: str = "https://api.openai.com/v1/chat/completions",
+        circuit_breaker_failures: int = 3,
+        circuit_breaker_cooldown_sec: int = 60,
     ) -> None:
         if not api_key:
             raise ValueError("OPENAI_API_KEY is required for OpenAI prescriptive planner.")
@@ -32,6 +35,10 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
         self.timeout_sec = max(1.0, float(timeout_ms) / 1000.0)
         self.temperature = max(0.0, min(float(temperature), 1.0))
         self.endpoint = endpoint
+        self.circuit_breaker_failures = max(1, circuit_breaker_failures)
+        self.circuit_breaker_cooldown_sec = max(1, circuit_breaker_cooldown_sec)
+        self._failure_count = 0
+        self._opened_until = 0.0
 
     def build_plan(
         self,
@@ -44,41 +51,72 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
             candidate=candidate,
             planner_input=planner_input,
         )
-        prompt = self._build_prompt(
-            request=request,
-            candidate=candidate,
-            planner_input=planner_input,
-            policy=policy,
-        )
-        raw_text = self._call_openai(prompt)
-        payload = self._parse_json(raw_text)
+        try:
+            self._raise_if_circuit_open()
+            prompt = self._build_prompt(
+                request=request,
+                candidate=candidate,
+                planner_input=planner_input,
+                policy=policy,
+            )
+            raw_text = self._call_openai(prompt)
+            payload = self._parse_json(raw_text)
+            self._validate_payload_schema(payload)
+            plan = PrescriptivePlan(
+                generation_mode="llm",
+                provider=f"openai:{self.model}",
+                clinical_scope=policy.clinical_scope,
+                policy_version=policy.policy_version,
+                summary=str(payload.get("summary", policy.summary)).strip(),
+                goals=self._string_list(payload, "goals"),
+                action_steps=self._string_list(payload, "action_steps"),
+                safety_notes=self._string_list(payload, "safety_notes"),
+                monitoring_plan=self._string_list(payload, "monitoring_plan"),
+                missing_context=policy.missing_context,
+                contraindication_flags=policy.contraindication_flags,
+                human_review_required=policy.human_review_required,
+                disclaimer=str(
+                    payload.get(
+                        "disclaimer",
+                        (
+                            "Panduan ini bersifat edukatif dan tidak menggantikan "
+                            "konsultasi dokter."
+                        ),
+                    )
+                ).strip(),
+            )
+        except Exception:
+            self._record_failure()
+            raise
 
-        return PrescriptivePlan(
-            generation_mode="llm",
-            provider=f"openai:{self.model}",
-            clinical_scope=policy.clinical_scope,
-            policy_version=policy.policy_version,
-            summary=str(payload.get("summary", policy.summary)).strip(),
-            goals=self._string_list(payload, "goals"),
-            action_steps=self._string_list(payload, "action_steps"),
-            safety_notes=self._string_list(payload, "safety_notes"),
-            monitoring_plan=self._string_list(payload, "monitoring_plan"),
-            missing_context=policy.missing_context,
-            contraindication_flags=policy.contraindication_flags,
-            human_review_required=policy.human_review_required,
-            disclaimer=str(
-                payload.get(
-                    "disclaimer",
-                    "Panduan ini bersifat edukatif dan tidak menggantikan konsultasi dokter.",
-                )
-            ).strip(),
-        )
+        self._record_success()
+        return plan
 
     def _string_list(self, payload: dict[str, object], key: str) -> list[str]:
         raw_items = payload.get(key, [])
         if not isinstance(raw_items, list):
             return []
         return [str(item).strip() for item in raw_items if str(item).strip()]
+
+    def _raise_if_circuit_open(self) -> None:
+        if time.monotonic() < self._opened_until:
+            raise RuntimeError("OpenAI planner circuit breaker is open.")
+
+    def _record_failure(self) -> None:
+        self._failure_count += 1
+        if self._failure_count >= self.circuit_breaker_failures:
+            self._opened_until = time.monotonic() + self.circuit_breaker_cooldown_sec
+
+    def _record_success(self) -> None:
+        self._failure_count = 0
+        self._opened_until = 0.0
+
+    def _validate_payload_schema(self, payload: dict[str, object]) -> None:
+        if not isinstance(payload.get("summary"), str):
+            raise RuntimeError("Planner output missing string field: summary.")
+        for key in ("goals", "action_steps", "safety_notes", "monitoring_plan"):
+            if not isinstance(payload.get(key), list):
+                raise RuntimeError(f"Planner output missing array field: {key}.")
 
     def _build_prompt(
         self,
@@ -87,31 +125,33 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
         planner_input: PlannerInput,
         policy: PlanningPolicyResult,
     ) -> str:
-        compact = {
-            "clinical_scope": policy.clinical_scope,
-            "target_class": request.target.target_class,
-            "min_target_probability": request.target.min_target_probability,
-            "input_prediction": (
-                planner_input.input_prediction.to_wire()
-                if planner_input.input_prediction is not None
-                else None
-            ),
-            "candidate_prediction": candidate.prediction.to_wire(),
-            "candidate_metrics": candidate.metrics.model_dump(),
-            "target_deltas": planner_input.target_deltas,
-            "changed_features": [item.model_dump() for item in planner_input.changed_features],
-            "mutable_allowed": planner_input.mutable_allowed,
-            "immutable_features": planner_input.immutable_features,
-            "must_not_change": planner_input.must_not_change,
-            "policy_summary": policy.summary,
-            "policy_goals": policy.goals,
-            "policy_action_steps": policy.action_steps,
-            "policy_safety_notes": policy.safety_notes,
-            "policy_monitoring_plan": policy.monitoring_plan,
-            "missing_context": policy.missing_context,
-            "contraindication_flags": policy.contraindication_flags,
-            "human_review_required": policy.human_review_required,
-        }
+        compact = self._redact_payload(
+            {
+                "clinical_scope": policy.clinical_scope,
+                "target_class": request.target.target_class,
+                "min_target_probability": request.target.min_target_probability,
+                "input_prediction": (
+                    planner_input.input_prediction.to_wire()
+                    if planner_input.input_prediction is not None
+                    else None
+                ),
+                "candidate_prediction": candidate.prediction.to_wire(),
+                "candidate_metrics": candidate.metrics.model_dump(),
+                "target_deltas": planner_input.target_deltas,
+                "changed_features": [item.model_dump() for item in planner_input.changed_features],
+                "mutable_allowed": planner_input.mutable_allowed,
+                "immutable_features": planner_input.immutable_features,
+                "must_not_change": planner_input.must_not_change,
+                "policy_summary": policy.summary,
+                "policy_goals": policy.goals,
+                "policy_action_steps": policy.action_steps,
+                "policy_safety_notes": policy.safety_notes,
+                "policy_monitoring_plan": policy.monitoring_plan,
+                "missing_context": policy.missing_context,
+                "contraindication_flags": policy.contraindication_flags,
+                "human_review_required": policy.human_review_required,
+            }
+        )
         return (
             "Anda adalah asisten untuk merapikan output decision-support kesehatan. "
             "Jangan membuat instruksi terapi baru. Jangan menambah target numerik baru. "
@@ -126,6 +166,17 @@ class OpenAIPrescriptivePlanner(PrescriptivePlanner):
             "Gunakan Bahasa Indonesia yang jelas dan praktis.\n\n"
             f"Data kasus: {json.dumps(compact, ensure_ascii=True)}"
         )
+
+    def _redact_payload(self, value: Any) -> Any:
+        sensitive_keys = {"patient_id", "request_id", "correlation_id"}
+        if isinstance(value, dict):
+            return {
+                key: ("<redacted>" if key in sensitive_keys else self._redact_payload(item))
+                for key, item in value.items()
+            }
+        if isinstance(value, list):
+            return [self._redact_payload(item) for item in value]
+        return value
 
     def _call_openai(self, prompt: str) -> str:
         body = {

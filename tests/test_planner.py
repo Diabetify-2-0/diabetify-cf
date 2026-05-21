@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 
+import pytest
+
 from diabetify_cf.config import Settings
 from diabetify_cf.planner.factory import build_planner
 from diabetify_cf.planner.openai_planner import OpenAIPrescriptivePlanner
@@ -159,6 +161,58 @@ def test_openai_prompt_includes_rich_counterfactual_context() -> None:
     assert '"baseline_value": 31.2' in prompt
     assert '"candidate_metrics"' in prompt
     assert '"input_prediction"' in prompt
+
+
+def test_openai_prompt_redacts_sensitive_identifiers() -> None:
+    planner = OpenAIPrescriptivePlanner(api_key="test-key", model="gpt-4o-mini")
+
+    redacted = planner._redact_payload(
+        {
+            "request_id": "req-1",
+            "patient_id": "patient-1",
+            "nested": [{"correlation_id": "corr-1", "value": 1}],
+        }
+    )
+
+    assert redacted["request_id"] == "<redacted>"
+    assert redacted["patient_id"] == "<redacted>"
+    assert redacted["nested"][0]["correlation_id"] == "<redacted>"
+    assert redacted["nested"][0]["value"] == 1
+
+
+def test_openai_planner_rejects_invalid_llm_schema() -> None:
+    planner = OpenAIPrescriptivePlanner(api_key="test-key", model="gpt-4o-mini")
+
+    with pytest.raises(RuntimeError, match="summary"):
+        planner._validate_payload_schema({"goals": []})
+
+
+def test_openai_planner_opens_circuit_after_repeated_failures() -> None:
+    class BrokenPlanner(OpenAIPrescriptivePlanner):
+        def __init__(self) -> None:
+            super().__init__(
+                api_key="test-key",
+                model="gpt-4o-mini",
+                circuit_breaker_failures=2,
+                circuit_breaker_cooldown_sec=60,
+            )
+            self.calls = 0
+
+        def _call_openai(self, prompt: str) -> str:
+            self.calls += 1
+            return "{}"
+
+    planner = BrokenPlanner()
+    request = CounterfactualRequest.model_validate(_request_payload())
+
+    with pytest.raises(RuntimeError):
+        planner.build_plan(request, _candidate(), _planner_input())
+    with pytest.raises(RuntimeError):
+        planner.build_plan(request, _candidate(), _planner_input())
+    with pytest.raises(RuntimeError, match="circuit breaker"):
+        planner.build_plan(request, _candidate(), _planner_input())
+
+    assert planner.calls == 2
 
 
 def test_template_planner_translates_stop_smoking_without_brinkman_wording() -> None:

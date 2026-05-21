@@ -11,6 +11,8 @@ counterfactual workflow instead of file and fallback handling.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import pickle
 import warnings
 from dataclasses import dataclass
@@ -24,6 +26,12 @@ from sklearn.neighbors import LocalOutlierFactor
 from diabetify_cf.engine.feature_registry import FeatureRegistry
 
 
+@dataclass(frozen=True)
+class ArtifactMetadata:
+    version: str
+    checksums: dict[str, str]
+
+
 @dataclass
 class ModelArtifacts:
     model: Any
@@ -31,6 +39,7 @@ class ModelArtifacts:
     reference_data: pd.DataFrame
     feature_registry: FeatureRegistry
     lof_model: LocalOutlierFactor | None
+    metadata: ArtifactMetadata | None = None
 
 
 def load_artifacts(
@@ -38,6 +47,7 @@ def load_artifacts(
     columns_path: str,
     reference_data_path: str,
     feature_registry_path: str,
+    artifact_manifest_path: str = "",
 ) -> ModelArtifacts:
     """Load all artifacts needed to run the real counterfactual engine."""
 
@@ -51,6 +61,14 @@ def load_artifacts(
         raise FileNotFoundError(f"model file not found: {model_file}")
     if not columns_file.exists():
         raise FileNotFoundError(f"columns file not found: {columns_file}")
+
+    metadata = _build_artifact_metadata(
+        model_path=model_path,
+        columns_path=columns_path,
+        reference_data_path=reference_data_path,
+        feature_registry_path=feature_registry_path,
+    )
+    _validate_artifact_manifest(artifact_manifest_path, metadata)
 
     with model_file.open("rb") as f:
         with warnings.catch_warnings():
@@ -73,7 +91,62 @@ def load_artifacts(
         reference_data=reference_data,
         feature_registry=feature_registry,
         lof_model=lof_model,
+        metadata=metadata,
     )
+
+
+def _build_artifact_metadata(
+    *,
+    model_path: str,
+    columns_path: str,
+    reference_data_path: str,
+    feature_registry_path: str,
+) -> ArtifactMetadata:
+    paths = {
+        "model": model_path,
+        "columns": columns_path,
+        "reference_data": reference_data_path,
+        "feature_registry": feature_registry_path,
+    }
+    checksums = {
+        name: _sha256_file(path) for name, path in paths.items() if path and Path(path).exists()
+    }
+    return ArtifactMetadata(version="artifact_manifest_v1", checksums=checksums)
+
+
+def _sha256_file(path: str) -> str:
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _validate_artifact_manifest(
+    manifest_path: str,
+    metadata: ArtifactMetadata,
+) -> None:
+    if not manifest_path:
+        return
+
+    file = Path(manifest_path)
+    if not file.exists():
+        return
+
+    manifest = json.loads(file.read_text(encoding="utf-8"))
+    expected = manifest.get("artifacts", {})
+    if not isinstance(expected, dict):
+        raise ValueError("artifact manifest 'artifacts' must be an object")
+
+    for artifact_name, expected_item in expected.items():
+        if not isinstance(expected_item, dict):
+            continue
+        expected_sha = expected_item.get("sha256")
+        if not isinstance(expected_sha, str) or not expected_sha:
+            continue
+        actual_sha = metadata.checksums.get(str(artifact_name))
+        if actual_sha != expected_sha:
+            raise ValueError(f"artifact checksum mismatch for '{artifact_name}'")
 
 
 def _load_feature_registry(path: str, feature_columns: list[str]) -> FeatureRegistry:

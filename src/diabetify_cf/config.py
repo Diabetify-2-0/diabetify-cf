@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
@@ -44,6 +45,7 @@ def _default_path_for(name: str) -> str:
         / "reference"
         / "reference_data.parquet",
         "CF_FEATURE_REGISTRY_PATH": SERVICE_ROOT / "configs" / "feature_registry.json",
+        "CF_ARTIFACT_MANIFEST_PATH": SERVICE_ROOT / "artifacts" / "models" / "manifest.json",
     }
     return str(defaults[name])
 
@@ -60,7 +62,17 @@ class Settings:
 
     max_rabbitmq_retries: int = int(os.getenv("CF_MAX_RABBITMQ_RETRIES", "5"))
     rabbitmq_retry_delay_sec: int = int(os.getenv("CF_RABBITMQ_RETRY_DELAY_SEC", "5"))
+    rabbitmq_publish_retries: int = int(os.getenv("CF_RABBITMQ_PUBLISH_RETRIES", "3"))
     prefetch_count: int = int(os.getenv("CF_PREFETCH_COUNT", "1"))
+    rabbitmq_enable_dlq: bool = _bool_env("CF_RABBITMQ_ENABLE_DLQ", False)
+    rabbitmq_message_ttl_ms: int | None = (
+        int(os.getenv("CF_RABBITMQ_MESSAGE_TTL_MS", ""))
+        if os.getenv("CF_RABBITMQ_MESSAGE_TTL_MS")
+        else None
+    )
+    request_dlq: str = os.getenv("CF_REQUEST_DLQ", "ml.cf.request.dlq")
+    response_dlq: str = os.getenv("CF_RESPONSE_DLQ", "ml.cf.response.dlq")
+    idempotency_cache_size: int = int(os.getenv("CF_IDEMPOTENCY_CACHE_SIZE", "1024"))
 
     max_lof_score: float = float(os.getenv("CF_MAX_LOF_SCORE", "2.5"))
     planner_enabled: bool = _bool_env("CF_PLANNER_ENABLED", True)
@@ -92,3 +104,15 @@ class Settings:
     feature_registry_path: str = _path_env_or_default(
         "CF_FEATURE_REGISTRY_PATH", _default_path_for("CF_FEATURE_REGISTRY_PATH")
     )
+    artifact_manifest_path: str = _path_env_or_default("CF_ARTIFACT_MANIFEST_PATH", "")
+
+    def __post_init__(self) -> None:
+        if self.app_env.strip().lower() not in {"prod", "production"}:
+            return
+
+        parsed_rabbitmq = urlparse(self.rabbitmq_url)
+        if parsed_rabbitmq.username == "admin" and parsed_rabbitmq.password == "password123":
+            raise ValueError("Production APP_ENV requires non-default RabbitMQ credentials.")
+        if self.planner_enabled and self.planner_provider.strip().lower() == "openai":
+            if not self.openai_api_key.strip():
+                raise ValueError("Production OpenAI planner requires OPENAI_API_KEY.")

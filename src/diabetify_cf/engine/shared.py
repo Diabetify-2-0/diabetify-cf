@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeoutError
 from dataclasses import dataclass
 from time import perf_counter
 
@@ -56,11 +59,13 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
         columns_path: str = "",
         reference_data_path: str = "",
         feature_registry_path: str = "",
+        artifact_manifest_path: str = "",
         max_lof_score: float = 2.5,
         planner: PrescriptivePlanner | None = None,
     ) -> None:
         self.max_lof_score = max(1.0, float(max_lof_score))
         self.planner = planner
+        self.logger = logging.getLogger("diabetify_cf.engine")
         self.artifacts: ModelArtifacts | None = None
         self.initialization_error: str | None = None
 
@@ -70,6 +75,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 columns_path=columns_path,
                 reference_data_path=reference_data_path,
                 feature_registry_path=feature_registry_path,
+                artifact_manifest_path=artifact_manifest_path,
             )
         except Exception as exc:
             self.initialization_error = str(exc)
@@ -92,15 +98,18 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             )
 
         if self.artifacts is None:
-            message = f"{self.__class__.__name__} is not fully configured yet."
             if self.initialization_error:
-                message += f" Initialization error: {self.initialization_error}"
+                self.logger.error(
+                    "%s initialization failed: %s",
+                    self.__class__.__name__,
+                    self.initialization_error,
+                )
             return self._response(
                 request=request,
                 started=started,
                 status=Status.ERROR,
                 reason_code=ReasonCode.ENGINE_NOT_READY,
-                message=message,
+                message="Counterfactual engine is not ready.",
                 validation=ValidationSummary(
                     immutable_violation=False,
                     mutable_compliance=True,
@@ -154,7 +163,11 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                     planner_input=request_context,
                 )
 
-            raw_candidates = self._generate_raw_candidates(request=request, prepared=prepared)
+            raw_candidates = self._generate_raw_candidates_with_timeout(
+                request=request,
+                prepared=prepared,
+                started=started,
+            )
             return self._process_candidates(
                 request=request,
                 prepared=prepared,
@@ -162,25 +175,57 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 started=started,
             )
         except ValueError as err:
+            self.logger.warning(
+                "Invalid counterfactual request for request_id=%s: %s",
+                request.request_id,
+                err,
+            )
             return self._response(
                 request=request,
                 started=started,
                 status=Status.ERROR,
                 reason_code=ReasonCode.INVALID_INPUT_SCHEMA,
-                message=str(err),
+                message="Invalid counterfactual request payload.",
                 validation=ValidationSummary(
                     immutable_violation=False,
                     mutable_compliance=False,
                     medical_rules_passed=False,
                 ),
             )
-        except Exception as err:
+        except TimeoutError:
+            planner_input = PlannerInput()
+            input_prediction = None
+            if "prepared" in locals():
+                input_prediction = prepared.base_prediction
+                planner_input = self._build_request_context_planner_input(
+                    request=request,
+                    prepared=prepared,
+                )
+            return self._response(
+                request=request,
+                started=started,
+                status=Status.INFEASIBLE,
+                reason_code=ReasonCode.TIMEOUT_NO_FEASIBLE_SOLUTION,
+                message="Counterfactual generation exceeded request timeout.",
+                validation=ValidationSummary(
+                    immutable_violation=False,
+                    mutable_compliance=True,
+                    medical_rules_passed=False,
+                ),
+                input_prediction=input_prediction,
+                planner_input=planner_input,
+            )
+        except Exception:
+            self.logger.exception(
+                "Unhandled counterfactual engine error for request_id=%s",
+                request.request_id,
+            )
             return self._response(
                 request=request,
                 started=started,
                 status=Status.ERROR,
                 reason_code=ReasonCode.INTERNAL_ERROR,
-                message=f"Unhandled counterfactual engine error: {err}",
+                message="Counterfactual engine failed while processing request.",
                 validation=ValidationSummary(
                     immutable_violation=False,
                     mutable_compliance=False,
@@ -196,6 +241,36 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
         prepared: PreparedRequest,
     ) -> pd.DataFrame:
         raise NotImplementedError
+
+    def _generate_raw_candidates_with_timeout(
+        self,
+        *,
+        request: CounterfactualRequest,
+        prepared: PreparedRequest,
+        started: float,
+    ) -> pd.DataFrame:
+        remaining_ms = request.generation.timeout_ms - self._elapsed_ms(started)
+        if remaining_ms <= 0:
+            raise TimeoutError
+
+        executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="cf-engine")
+        future = executor.submit(
+            self._generate_raw_candidates,
+            request=request,
+            prepared=prepared,
+        )
+        try:
+            result = future.result(timeout=remaining_ms / 1000.0)
+        except FutureTimeoutError as err:
+            future.cancel()
+            executor.shutdown(wait=False, cancel_futures=True)
+            raise TimeoutError from err
+        except Exception:
+            executor.shutdown(wait=True, cancel_futures=False)
+            raise
+
+        executor.shutdown(wait=True, cancel_futures=False)
+        return result
 
     def _prepare_request(self, request: CounterfactualRequest) -> PreparedRequest:
         assert self.artifacts is not None
@@ -218,6 +293,11 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
         if missing_features:
             missing_str = ", ".join(missing_features)
             raise ValueError(f"Missing required feature(s): {missing_str}")
+
+        self._validate_instance_feature_values(
+            instance_features=instance_features,
+            registry=registry,
+        )
 
         immutable_set = (
             set(registry.immutable_defaults()).union(immutable_input).union(must_not_change)
@@ -555,6 +635,31 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 typed[column] = numeric.astype("float64")
 
         return typed
+
+    def _validate_instance_feature_values(
+        self,
+        *,
+        instance_features: dict[str, JSONFeatureValue],
+        registry: FeatureRegistry,
+    ) -> None:
+        for feature_name, value in instance_features.items():
+            feature = registry.get(feature_name)
+            if feature is None:
+                continue
+
+            try:
+                numeric_value = float(value)
+            except (TypeError, ValueError) as err:
+                raise ValueError(f"Feature '{feature_name}' must be numeric.") from err
+
+            if np.isnan(numeric_value):
+                raise ValueError(f"Feature '{feature_name}' cannot be NaN.")
+            if feature.global_min is not None and numeric_value < feature.global_min:
+                raise ValueError(f"Feature '{feature_name}' is below minimum {feature.global_min}.")
+            if feature.global_max is not None and numeric_value > feature.global_max:
+                raise ValueError(f"Feature '{feature_name}' is above maximum {feature.global_max}.")
+            if feature.is_binary and numeric_value not in {0.0, 1.0}:
+                raise ValueError(f"Feature '{feature_name}' must be binary 0/1.")
 
     def _build_permitted_range(
         self,
