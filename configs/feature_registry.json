@@ -63,7 +63,7 @@
       "actionable": true,
       "default_mutable": true,
       "global_min": 0,
-      "global_max": 14,
+      "global_max": 7,
       "cost_weight": 0.8,
       "preferred_direction": "increase",
       "aliases": [

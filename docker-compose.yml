@@ -19,7 +19,6 @@ services:
       CF_PLANNER_TEMPERATURE: ${CF_PLANNER_TEMPERATURE:-0.2}
       CF_PLANNER_MAX_STEPS: ${CF_PLANNER_MAX_STEPS:-6}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      # Reuse RabbitMQ from diabetify-be (exposed on host port 5672).
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-password123}@host.docker.internal:5672/
       CF_REQUEST_QUEUE: ${CF_REQUEST_QUEUE:-ml.cf.request}
       CF_RESPONSE_QUEUE: ${CF_RESPONSE_QUEUE:-ml.cf.response}
