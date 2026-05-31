@@ -87,9 +87,9 @@
     {
       "name": "brinkman_index",
       "type": "ordinal",
-      "immutable": false,
-      "actionable": true,
-      "default_mutable": true,
+      "immutable": true,
+      "actionable": false,
+      "default_mutable": false,
       "global_min": 0,
       "global_max": 3,
       "cost_weight": 1.5,

@@ -804,7 +804,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             return mutable_allowed
 
         if baseline_smoking_status == 2:
-            return mutable_allowed
+            return [name for name in mutable_allowed if name != "brinkman_index"]
 
         blocked_features = {"smoking_status", "brinkman_index"}
         return [name for name in mutable_allowed if name not in blocked_features]
