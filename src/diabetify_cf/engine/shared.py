@@ -753,16 +753,10 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
     ) -> bool:
         normalized = target_class.strip().lower()
         if normalized in {"low", "low_risk", "non_diabetes", "0"}:
-            return (
-                prediction.class_name == "low_risk"
-                and prediction.probability_low_risk >= min_target_probability
-            )
+            return prediction.probability_low_risk >= min_target_probability
         if normalized in {"high", "high_risk", "diabetes", "1"}:
             high_risk_probability = 1.0 - prediction.probability_low_risk
-            return (
-                prediction.class_name == "high_risk"
-                and high_risk_probability >= min_target_probability
-            )
+            return high_risk_probability >= min_target_probability
         return prediction.probability_low_risk >= min_target_probability
 
     def _build_mutable_allowed(

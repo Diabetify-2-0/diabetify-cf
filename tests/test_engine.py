@@ -89,6 +89,43 @@ def test_engine_returns_feasible_when_input_already_satisfies_target() -> None:
     assert result.planner_input.mutable_allowed == ["bmi"]
 
 
+def test_engine_returns_feasible_when_high_risk_is_already_below_requested_threshold() -> None:
+    payload = _request_payload(["bmi"])
+    payload["target"]["min_target_probability"] = 0.30
+    req = CounterfactualRequest.model_validate(payload)
+    engine = DiceCounterfactualEngine()
+    engine.artifacts = object()  # type: ignore[assignment]
+
+    def _prepared_request(request: CounterfactualRequest) -> object:
+        return type(
+            "Prepared",
+            (),
+            {
+                "registry": FeatureRegistry.from_columns(["age", "bmi", "glucose"]),
+                "model_columns": ["age", "bmi", "glucose"],
+                "instance_features": {"age": 45, "bmi": 24.0, "glucose": 100},
+                "immutable_set": {"age"},
+                "mutable_allowed": ["bmi"],
+                "query_df": pd.DataFrame([{"age": 45, "bmi": 24.0, "glucose": 100.0}]),
+                "base_prediction": PredictionInfo(
+                    class_name="high_risk",
+                    probability_low_risk=0.35,
+                ),
+                "permitted_range": {"bmi": [20.0, 29.0]},
+            },
+        )()
+
+    engine._prepare_request = _prepared_request  # type: ignore[method-assign]
+
+    result = engine.generate(req)
+
+    assert result.status == Status.FEASIBLE
+    assert result.reason_code == ReasonCode.TARGET_ALREADY_SATISFIED
+    assert result.candidates == []
+    assert result.input_prediction is not None
+    assert result.input_prediction.class_name == "high_risk"
+
+
 def test_engine_returns_not_ready_when_artifacts_are_missing() -> None:
     req = CounterfactualRequest.model_validate(_request_payload(["bmi"]))
     engine = DiceCounterfactualEngine()
@@ -329,11 +366,14 @@ def test_target_satisfied_enforces_min_probability() -> None:
     engine = DiceCounterfactualEngine()
     low_prediction = PredictionInfo(class_name="low_risk", probability_low_risk=0.72)
     high_prediction = PredictionInfo(class_name="high_risk", probability_low_risk=0.22)
+    moderate_high_prediction = PredictionInfo(class_name="high_risk", probability_low_risk=0.35)
 
     assert engine._target_satisfied(low_prediction, "low_risk", 0.70)
     assert not engine._target_satisfied(low_prediction, "low_risk", 0.80)
     assert engine._target_satisfied(high_prediction, "high_risk", 0.75)
     assert not engine._target_satisfied(high_prediction, "high_risk", 0.90)
+    assert engine._target_satisfied(moderate_high_prediction, "low_risk", 0.30)
+    assert not engine._target_satisfied(moderate_high_prediction, "low_risk", 0.40)
 
 
 def test_build_mutable_allowed_filters_immutable_non_actionable_and_duplicates() -> None:
