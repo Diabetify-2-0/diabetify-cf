@@ -492,9 +492,7 @@ def test_bounds_ok_respects_request_feature_bounds() -> None:
     )
 
 
-def test_apply_feature_specific_mutability_disables_smoking_features_for_non_active_smokers() -> (
-    None
-):
+def test_apply_feature_specific_mutability_keeps_brinkman_index_immutable() -> None:
     registry = FeatureRegistry(
         version="test_v1",
         features=[
@@ -514,9 +512,9 @@ def test_apply_feature_specific_mutability_disables_smoking_features_for_non_act
             FeatureDefinition(
                 name="brinkman_index",
                 feature_type="ordinal",
-                immutable=False,
-                actionable=True,
-                default_mutable=True,
+                immutable=True,
+                actionable=False,
+                default_mutable=False,
                 global_min=0,
                 global_max=3,
                 cost_weight=1.0,
@@ -557,7 +555,7 @@ def test_apply_feature_specific_mutability_disables_smoking_features_for_non_act
 
     assert mutable_former == ["BMI"]
     assert mutable_never == ["BMI"]
-    assert mutable_active == ["smoking_status", "brinkman_index", "BMI"]
+    assert mutable_active == ["smoking_status", "BMI"]
 
 
 def test_transition_ok_enforces_smoking_status_allowed_transitions() -> None:
@@ -601,6 +599,12 @@ def test_transition_ok_enforces_smoking_status_allowed_transitions() -> None:
     )
     assert not engine._transition_ok(
         candidate={"smoking_status": 0},
+        baseline={"smoking_status": 1},
+        mutable_allowed={"smoking_status"},
+        registry=registry,
+    )
+    assert not engine._transition_ok(
+        candidate={"smoking_status": 2},
         baseline={"smoking_status": 1},
         mutable_allowed={"smoking_status"},
         registry=registry,

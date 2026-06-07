@@ -79,7 +79,6 @@ def test_lifestyle_combo_uses_actionable_registry_features() -> None:
         "BMI",
         "moderate_physical_activity_frequency",
         "smoking_status",
-        "brinkman_index",
         "is_hypertension",
     ]
     for feature_name in config["mutable_allowed"]:
