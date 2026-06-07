@@ -54,7 +54,7 @@ class ConstraintSpec(BaseModel):
 class GenerationSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    total_cfs: int = Field(default=3, ge=1, le=20)
+    total_cfs: int = Field(default=1, ge=1, le=20)
     method: str = "dice_genetic"
     random_seed: int = 42
     timeout_ms: int = Field(default=5000, ge=100, le=60000)
@@ -169,24 +169,6 @@ class PlannerInput(BaseModel):
         return payload
 
 
-class PrescriptivePlan(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    generation_mode: str
-    provider: str
-    clinical_scope: str = "decision_support"
-    policy_version: str = "planner_policy_v1"
-    summary: str
-    goals: list[str] = Field(default_factory=list)
-    action_steps: list[str] = Field(default_factory=list)
-    safety_notes: list[str] = Field(default_factory=list)
-    monitoring_plan: list[str] = Field(default_factory=list)
-    missing_context: list[str] = Field(default_factory=list)
-    contraindication_flags: list[str] = Field(default_factory=list)
-    human_review_required: bool = True
-    disclaimer: str = "Panduan ini bersifat edukatif dan tidak menggantikan konsultasi dokter."
-
-
 class CounterfactualResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -202,7 +184,6 @@ class CounterfactualResponse(BaseModel):
     candidates: list[CounterfactualCandidate] = Field(default_factory=list)
     validation: ValidationSummary
     planner_input: PlannerInput = Field(default_factory=PlannerInput)
-    prescriptive_plan: PrescriptivePlan | None = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     def to_wire(self) -> dict[str, Any]:

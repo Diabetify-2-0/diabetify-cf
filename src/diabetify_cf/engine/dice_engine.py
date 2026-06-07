@@ -3,7 +3,6 @@ from __future__ import annotations
 import pandas as pd
 
 from diabetify_cf.engine.shared import ArtifactBackedCounterfactualEngine, PreparedRequest
-from diabetify_cf.planner.base import PrescriptivePlanner
 from diabetify_cf.schemas import CounterfactualRequest, PredictionInfo
 
 
@@ -19,7 +18,6 @@ class DiceCounterfactualEngine(ArtifactBackedCounterfactualEngine):
         feature_registry_path: str = "",
         artifact_manifest_path: str = "",
         max_lof_score: float = 2.5,
-        planner: PrescriptivePlanner | None = None,
     ) -> None:
         super().__init__(
             model_path=model_path,
@@ -28,7 +26,6 @@ class DiceCounterfactualEngine(ArtifactBackedCounterfactualEngine):
             feature_registry_path=feature_registry_path,
             artifact_manifest_path=artifact_manifest_path,
             max_lof_score=max_lof_score,
-            planner=planner,
         )
         self._dice_data_cache: object | None = None
 

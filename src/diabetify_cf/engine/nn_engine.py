@@ -9,7 +9,6 @@ import pandas as pd
 from diabetify_cf.config import Settings
 from diabetify_cf.engine.feature_registry import FeatureDefinition
 from diabetify_cf.engine.shared import ArtifactBackedCounterfactualEngine, PreparedRequest
-from diabetify_cf.planner.base import PrescriptivePlanner
 from diabetify_cf.schemas import CounterfactualRequest
 
 
@@ -42,7 +41,6 @@ class NearestNeighborCounterfactualEngine(ArtifactBackedCounterfactualEngine):
         feature_registry_path: str = "",
         artifact_manifest_path: str = "",
         max_lof_score: float = 2.5,
-        planner: PrescriptivePlanner | None = None,
         options: NearestNeighborOptions | None = None,
     ) -> None:
         super().__init__(
@@ -52,7 +50,6 @@ class NearestNeighborCounterfactualEngine(ArtifactBackedCounterfactualEngine):
             feature_registry_path=feature_registry_path,
             artifact_manifest_path=artifact_manifest_path,
             max_lof_score=max_lof_score,
-            planner=planner,
         )
         self.options = options or NearestNeighborOptions()
 

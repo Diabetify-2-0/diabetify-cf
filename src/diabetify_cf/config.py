@@ -75,12 +75,6 @@ class Settings:
     idempotency_cache_size: int = int(os.getenv("CF_IDEMPOTENCY_CACHE_SIZE", "1024"))
 
     max_lof_score: float = float(os.getenv("CF_MAX_LOF_SCORE", "2.5"))
-    planner_enabled: bool = _bool_env("CF_PLANNER_ENABLED", True)
-    planner_provider: str = os.getenv("CF_PLANNER_PROVIDER", "template")
-    planner_model: str = os.getenv("CF_PLANNER_MODEL", "gpt-4o-mini")
-    planner_timeout_ms: int = int(os.getenv("CF_PLANNER_TIMEOUT_MS", "4000"))
-    planner_temperature: float = float(os.getenv("CF_PLANNER_TEMPERATURE", "0.2"))
-    planner_max_steps: int = int(os.getenv("CF_PLANNER_MAX_STEPS", "6"))
     nn_candidate_pool_size: int = int(os.getenv("CF_NN_CANDIDATE_POOL_SIZE", "256"))
     nn_max_neighbors: int = int(os.getenv("CF_NN_MAX_NEIGHBORS", "64"))
     nn_max_changed_features: int = int(os.getenv("CF_NN_MAX_CHANGED_FEATURES", "3"))
@@ -89,11 +83,6 @@ class Settings:
         if os.getenv("CF_NN_MIN_REFERENCE_LOW_RISK_PROBABILITY")
         else None
     )
-    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
-    openai_endpoint: str = os.getenv(
-        "CF_OPENAI_ENDPOINT", "https://api.openai.com/v1/chat/completions"
-    )
-
     model_path: str = _path_env_or_default("CF_MODEL_PATH", _default_path_for("CF_MODEL_PATH"))
     columns_path: str = _path_env_or_default(
         "CF_COLUMNS_PATH", _default_path_for("CF_COLUMNS_PATH")
@@ -113,6 +102,3 @@ class Settings:
         parsed_rabbitmq = urlparse(self.rabbitmq_url)
         if parsed_rabbitmq.username == "admin" and parsed_rabbitmq.password == "password123":
             raise ValueError("Production APP_ENV requires non-default RabbitMQ credentials.")
-        if self.planner_enabled and self.planner_provider.strip().lower() == "openai":
-            if not self.openai_api_key.strip():
-                raise ValueError("Production OpenAI planner requires OPENAI_API_KEY.")

@@ -13,7 +13,6 @@ import pandas as pd
 from diabetify_cf.engine.artifacts import ModelArtifacts, load_artifacts
 from diabetify_cf.engine.base import CounterfactualEngine
 from diabetify_cf.engine.feature_registry import FeatureRegistry
-from diabetify_cf.planner.base import PrescriptivePlanner
 from diabetify_cf.reason_codes import ReasonCode, Status
 from diabetify_cf.schemas import (
     CandidateMetrics,
@@ -24,7 +23,6 @@ from diabetify_cf.schemas import (
     PlannerFeatureChange,
     PlannerInput,
     PredictionInfo,
-    PrescriptivePlan,
     ValidationSummary,
 )
 
@@ -61,10 +59,8 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
         feature_registry_path: str = "",
         artifact_manifest_path: str = "",
         max_lof_score: float = 2.5,
-        planner: PrescriptivePlanner | None = None,
     ) -> None:
         self.max_lof_score = max(1.0, float(max_lof_score))
-        self.planner = planner
         self.logger = logging.getLogger("diabetify_cf.engine")
         self.artifacts: ModelArtifacts | None = None
         self.initialization_error: str | None = None
@@ -578,11 +574,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             input_prediction=prepared.base_prediction,
             candidates=candidates,
             planner_input=planner_input,
-            prescriptive_plan=self._build_prescriptive_plan(
-                request=request,
-                candidate=top_candidate,
-                planner_input=planner_input,
-            ),
         )
 
     def _response(
@@ -597,7 +588,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
         input_prediction: PredictionInfo | None = None,
         candidates: list[CounterfactualCandidate] | None = None,
         planner_input: PlannerInput | None = None,
-        prescriptive_plan: PrescriptivePlan | None = None,
     ) -> CounterfactualResponse:
         return CounterfactualResponse(
             request_id=request.request_id,
@@ -611,7 +601,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             candidates=candidates or [],
             validation=validation,
             planner_input=planner_input or PlannerInput(),
-            prescriptive_plan=prescriptive_plan,
         )
 
     def _as_model_input_df(self, frame: pd.DataFrame) -> pd.DataFrame:
@@ -1046,24 +1035,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             + w_plausibility * plausibility_score
             + w_action_cost * action_cost_score
         )
-
-    def _build_prescriptive_plan(
-        self,
-        *,
-        request: CounterfactualRequest,
-        candidate: CounterfactualCandidate,
-        planner_input: PlannerInput,
-    ) -> PrescriptivePlan | None:
-        if self.planner is None:
-            return None
-        try:
-            return self.planner.build_plan(
-                request=request,
-                candidate=candidate,
-                planner_input=planner_input,
-            )
-        except Exception:
-            return None
 
     def _build_planner_input(
         self,

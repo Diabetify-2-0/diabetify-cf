@@ -8,13 +8,10 @@ from diabetify_cf.engine.nn_engine import (
     NearestNeighborCounterfactualEngine,
     NearestNeighborOptions,
 )
-from diabetify_cf.planner.base import PrescriptivePlanner
 
 
 def build_counterfactual_engine(
     settings: Settings,
-    *,
-    planner: PrescriptivePlanner | None = None,
 ) -> CounterfactualEngine:
     provider = settings.engine_provider.strip().lower()
 
@@ -34,7 +31,6 @@ def build_counterfactual_engine(
             feature_registry_path=settings.feature_registry_path,
             artifact_manifest_path=settings.artifact_manifest_path,
             max_lof_score=settings.max_lof_score,
-            planner=planner,
         )
     if provider == "nn":
         return NearestNeighborCounterfactualEngine(
@@ -44,7 +40,6 @@ def build_counterfactual_engine(
             feature_registry_path=settings.feature_registry_path,
             artifact_manifest_path=settings.artifact_manifest_path,
             max_lof_score=settings.max_lof_score,
-            planner=planner,
             options=NearestNeighborOptions.from_settings(settings),
         )
 
