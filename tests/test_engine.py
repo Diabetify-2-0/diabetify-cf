@@ -6,7 +6,6 @@ import pandas as pd
 from diabetify_cf.engine import DiceCounterfactualEngine
 from diabetify_cf.engine.artifacts import ModelArtifacts
 from diabetify_cf.engine.feature_registry import FeatureDefinition, FeatureRegistry
-from diabetify_cf.planner.base import PrescriptivePlanner
 from diabetify_cf.reason_codes import ReasonCode, Status
 from diabetify_cf.schemas import (
     CandidateMetrics,
@@ -14,7 +13,6 @@ from diabetify_cf.schemas import (
     CounterfactualRequest,
     PlannerInput,
     PredictionInfo,
-    PrescriptivePlan,
 )
 
 
@@ -612,35 +610,9 @@ def test_transition_ok_enforces_smoking_status_allowed_transitions() -> None:
     )
 
 
-class _DummyPlanner(PrescriptivePlanner):
-    def build_plan(
-        self,
-        request: CounterfactualRequest,
-        candidate,
-        planner_input: PlannerInput,
-    ) -> PrescriptivePlan:
-        assert planner_input.recommended_candidate_id == candidate.candidate_id
-        return PrescriptivePlan(
-            generation_mode="template",
-            provider="dummy_test",
-            clinical_scope="decision_support",
-            policy_version="dummy_policy",
-            summary=f"Plan for {request.request_id}",
-            goals=["goal"],
-            action_steps=["step"],
-            safety_notes=["note"],
-            monitoring_plan=["monitor"],
-            missing_context=["context"],
-            contraindication_flags=[],
-            human_review_required=True,
-        )
-
-
 def test_prescriptive_plan_builder_uses_configured_planner() -> None:
     req = CounterfactualRequest.model_validate(_request_payload(["bmi"]))
-    engine = DiceCounterfactualEngine(
-        planner=_DummyPlanner(),
-    )
+    engine = DiceCounterfactualEngine()
     candidate = CounterfactualCandidate(
         candidate_id="cf_1",
         features={"age": 45, "bmi": 28.0},

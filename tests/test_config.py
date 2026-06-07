@@ -66,7 +66,6 @@ def test_prod_accepts_non_default_rabbitmq_credentials() -> None:
     settings = Settings(
         app_env="prod",
         rabbitmq_url="amqp://cf_user:strong-password@rabbitmq:5672/",
-        planner_provider="template",
     )
 
     assert settings.app_env == "prod"
