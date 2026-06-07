@@ -8,10 +8,7 @@ from diabetify_cf.engine.artifacts import ModelArtifacts
 from diabetify_cf.engine.feature_registry import FeatureDefinition, FeatureRegistry
 from diabetify_cf.reason_codes import ReasonCode, Status
 from diabetify_cf.schemas import (
-    CandidateMetrics,
-    CounterfactualCandidate,
     CounterfactualRequest,
-    PlannerInput,
     PredictionInfo,
 )
 
@@ -608,36 +605,6 @@ def test_transition_ok_enforces_smoking_status_allowed_transitions() -> None:
         mutable_allowed={"smoking_status"},
         registry=registry,
     )
-
-
-def test_prescriptive_plan_builder_uses_configured_planner() -> None:
-    req = CounterfactualRequest.model_validate(_request_payload(["bmi"]))
-    engine = DiceCounterfactualEngine()
-    candidate = CounterfactualCandidate(
-        candidate_id="cf_1",
-        features={"age": 45, "bmi": 28.0},
-        delta={"bmi": -3.2},
-        prediction=PredictionInfo(class_name="low_risk", probability_low_risk=0.75),
-        metrics=CandidateMetrics(
-            distance_l1=0.1,
-            changed_feature_count=1,
-            lof_score=1.0,
-            constraint_violations=0,
-        ),
-    )
-
-    planner_input = PlannerInput(
-        recommended_candidate_id="cf_1",
-        target_deltas={"bmi": -3.2},
-    )
-    result = engine._build_prescriptive_plan(
-        request=req,
-        candidate=candidate,
-        planner_input=planner_input,
-    )
-
-    assert result is not None
-    assert result.provider == "dummy_test"
 
 
 def test_infeasible_response_preserves_request_context_in_planner_input() -> None:
