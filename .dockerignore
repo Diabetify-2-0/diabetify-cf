@@ -20,5 +20,5 @@ tests/
 experiments/
 README.md
 .gitignore
-
+.github/
 .ipynb_checkpoints/
