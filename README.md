@@ -7,7 +7,7 @@ Counterfactual microservice untuk Diabetify berbasis spesifikasi:
 
 ## Current Phase
 
-Phase 4 (prescriptive planning):
+Phase 4 (counterfactual service hardening):
 
 - Contract schema (request/response) sudah dibuat.
 - RabbitMQ consumer/publisher sudah dibuat.
@@ -15,8 +15,6 @@ Phase 4 (prescriptive planning):
 - `DiCE` tetap tersedia sebagai provider alternatif untuk debugging atau pembandingan.
 - Hardening aktif: target probability enforcement, actionable-feature filtering, timeout-aware reason code, dan plausibility gate via LOF threshold.
 - Hardening klinis tambahan: directional constraints per fitur (mis. aktivitas fisik tidak boleh direkomendasikan menurun).
-- Prescriptive planner aktif dengan mode `template` default.
-- Integrasi OpenAI planner tersedia dengan fallback otomatis ke template jika API key tidak ada/gagal, dan kini menerima konteks counterfactual before/after yang lebih kaya.
 
 ## Folder Structure
 
@@ -37,7 +35,6 @@ diabetify-cf/
   src/diabetify_cf/
     engine/
     messaging/
-    planner/
     app.py
     config.py
     reason_codes.py
@@ -147,5 +144,4 @@ generator.
 - Input `instance.features` wajib berisi seluruh fitur model pada `x_columns.pkl`.
 - `CF_MAX_LOF_SCORE` mengatur batas maksimum skor LOF kandidat (semakin kecil semakin ketat).
 - `CF_NN_*` mengatur candidate pool, jumlah neighbor yang diproyeksikan, dan sparsity projection untuk engine `NN`.
-- Planner default `CF_PLANNER_PROVIDER=template`; set `openai` + `OPENAI_API_KEY` untuk narasi LLM.
 - CARLA is not enabled because `carla-recourse==0.0.5` pins `numpy==1.19.4`, which conflicts with this project's `numpy==2.2.6` stack.
