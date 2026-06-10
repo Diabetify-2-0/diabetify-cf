@@ -169,10 +169,10 @@ def build_markdown_report(baseline_root: Path, top_n: int = 10) -> str:
     ]
     if scenario_rows:
         lines.append(
-            "| Scenario | Status | Feasible | Target | Immutable | Mutable | Bounds | "
+            "| Scenario | Status | Feasible | Target | Immutable | Mutable | "
             "Direction | Runtime ms | LOF |"
         )
-        lines.append("| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+        lines.append("| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
         for row in scenario_rows:
             lines.append(
                 "| "
@@ -184,7 +184,6 @@ def build_markdown_report(baseline_root: Path, top_n: int = 10) -> str:
                         _percent(_as_float(row, "target_success_rate")),
                         _percent(_as_float(row, "immutable_violation_rate")),
                         _percent(_as_float(row, "mutable_violation_rate")),
-                        _percent(_as_float(row, "bounds_violation_rate")),
                         _percent(_as_float(row, "directional_violation_rate")),
                         _number(_as_float(row, "mean_runtime_ms")),
                         _number(_as_float(row, "mean_lof_score")),
@@ -271,7 +270,6 @@ def _print_scenarios(rows: list[dict[str, str]]) -> None:
         "target",
         "immutable",
         "mutable",
-        "bounds",
         "direction",
         "runtime_ms",
         "lof",
@@ -289,7 +287,6 @@ def _print_scenarios(rows: list[dict[str, str]]) -> None:
                     _percent(_as_float(row, "target_success_rate")),
                     _percent(_as_float(row, "immutable_violation_rate")),
                     _percent(_as_float(row, "mutable_violation_rate")),
-                    _percent(_as_float(row, "bounds_violation_rate")),
                     _percent(_as_float(row, "directional_violation_rate")),
                     _number(_as_float(row, "mean_runtime_ms")),
                     _number(_as_float(row, "mean_lof_score")),

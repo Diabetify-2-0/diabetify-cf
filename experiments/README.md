@@ -125,7 +125,6 @@ Kelompok skenario yang dipakai:
   - `bmi_only`
 - **Stress test**
   - `activity_only`
-  - `tight_bounds`
 - **Kontrol infeasible**
   - `no_mutable`
 - **Stabilitas**
@@ -143,7 +142,6 @@ Metrik dibaca dalam tiga lapisan:
 - **Metrik validasi constraint**
   - `immutable_violation_rate`
   - `mutable_violation_rate`
-  - `bounds_violation_rate`
   - `directional_violation_rate`
 - **Metrik diagnostik pendukung**
   - `reason_counts`
@@ -171,12 +169,12 @@ Matriks utama:
 
 Validasi constraint pada kelompok operasional tetap bersih:
 
-| Engine | Immutable Viol. | Mutable Viol. | Bounds Viol. | Directional Viol. |
-|---|---:|---:|---:|---:|
-| DiCE | 0.00% | 0.00% | 0.00% | 0.00% |
-| OCEAN | 0.00% | 0.00% | 0.00% | 0.00% |
-| FT | 0.00% | 0.00% | 0.00% | 0.00% |
-| NN | 0.00% | 0.00% | 0.00% | 0.00% |
+| Engine | Immutable Viol. | Mutable Viol. | Directional Viol. |
+|---|---:|---:|---:|
+| DiCE | 0.00% | 0.00% | 0.00% |
+| OCEAN | 0.00% | 0.00% | 0.00% |
+| FT | 0.00% | 0.00% | 0.00% |
+| NN | 0.00% | 0.00% | 0.00% |
 
 Pembacaan praktis hasil:
 

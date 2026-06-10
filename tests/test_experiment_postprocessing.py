@@ -58,7 +58,6 @@ def _request() -> CounterfactualRequest:
             "constraints": {
                 "immutable_features": ["age"],
                 "mutable_allowed": ["BMI"],
-                "feature_bounds": {"BMI": {"min": 18.5, "max": 35.0}},
             },
         }
     )
@@ -75,25 +74,7 @@ def _postprocessor() -> ExperimentPostprocessor:
     return ExperimentPostprocessor(artifacts=artifacts, max_lof_score=2.5)
 
 
-def test_postprocessor_rejects_candidates_outside_request_feature_bounds() -> None:
-    postprocessor = _postprocessor()
-    request = _request()
-    prepared = postprocessor.prepare(request)
-
-    result = postprocessor.process(
-        request=request,
-        prepared=prepared,
-        raw_candidates=pd.DataFrame([{"age": 45, "BMI": 37.0}]),
-        started=perf_counter(),
-    )
-
-    assert result.status == Status.INFEASIBLE
-    assert result.reason_code == ReasonCode.TARGET_UNREACHABLE_UNDER_CONSTRAINTS
-    assert "feature bounds" in result.message
-    assert result.candidates == []
-
-
-def test_postprocessor_accepts_candidates_inside_request_feature_bounds() -> None:
+def test_postprocessor_accepts_valid_candidate() -> None:
     postprocessor = _postprocessor()
     request = _request()
     prepared = postprocessor.prepare(request)

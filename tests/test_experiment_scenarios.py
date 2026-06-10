@@ -86,7 +86,6 @@ def test_lifestyle_combo_uses_actionable_registry_features() -> None:
         assert feature is not None
         assert feature.actionable
         assert not feature.immutable
-        assert feature_name in config["feature_bounds"]
 
 
 def test_no_mutable_declares_expected_infeasible_control() -> None:
@@ -104,7 +103,5 @@ def test_no_mutable_declares_expected_infeasible_control() -> None:
 
 def test_stress_scenarios_declare_scenario_role() -> None:
     activity = json.loads((SCENARIO_DIR / "activity_only.json").read_text(encoding="utf-8"))
-    tight = json.loads((SCENARIO_DIR / "tight_bounds.json").read_text(encoding="utf-8"))
 
     assert activity["scenario_role"] == "single_feature_stress_test"
-    assert tight["scenario_role"] == "tight_bounds_stress_test"

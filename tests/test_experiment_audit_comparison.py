@@ -29,7 +29,6 @@ def _write_minimal_comparison(root: Path) -> None:
                 "feasible_rate": "1.0",
                 "immutable_violation_rate": "0.0",
                 "mutable_violation_rate": "0.0",
-                "bounds_violation_rate": "0.0",
                 "directional_violation_rate": "0.0",
             }
         ],
@@ -43,7 +42,6 @@ def _write_minimal_comparison(root: Path) -> None:
                 "feasible_rate": "0.0",
                 "immutable_violation_rate": "0.0",
                 "mutable_violation_rate": "0.0",
-                "bounds_violation_rate": "0.0",
                 "directional_violation_rate": "0.0",
             }
         ],
@@ -121,7 +119,6 @@ def test_audit_comparison_fails_on_constraint_violation(tmp_path: Path) -> None:
                 "feasible_rate": "1.0",
                 "immutable_violation_rate": "0.1",
                 "mutable_violation_rate": "0.0",
-                "bounds_violation_rate": "0.0",
                 "directional_violation_rate": "0.0",
             }
         ],

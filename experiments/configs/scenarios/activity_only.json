@@ -7,12 +7,8 @@
   "random_seed": 42,
   "mutable_allowed": ["moderate_physical_activity_frequency"],
   "immutable_features": [],
-  "feature_bounds": {
-    "moderate_physical_activity_frequency": { "min": 0, "max": 14 }
-  },
   "use_default_mutable": false,
   "use_default_immutable": true,
-  "use_default_feature_bounds": false,
   "scenario_role": "single_feature_stress_test",
   "notes": "Tests whether physical activity alone can move model risk under broad realistic bounds."
 }

@@ -70,23 +70,6 @@ def _default_immutable_features(registry: FeatureRegistry) -> list[str]:
     return registry.immutable_defaults()
 
 
-def _default_feature_bounds(
-    registry: FeatureRegistry, mutable_allowed: list[str]
-) -> dict[str, dict[str, float]]:
-    bounds: dict[str, dict[str, float]] = {}
-    for feature_name in mutable_allowed:
-        feature = registry.get(feature_name)
-        if feature is None:
-            continue
-        if feature.global_min is None or feature.global_max is None:
-            continue
-        bounds[feature_name] = {
-            "min": float(feature.global_min),
-            "max": float(feature.global_max),
-        }
-    return bounds
-
-
 def build_request_payload(
     *,
     row: dict[str, Any],
@@ -103,10 +86,6 @@ def build_request_payload(
     if not immutable_features and bool(config.get("use_default_immutable", True)):
         immutable_features = _default_immutable_features(registry)
 
-    feature_bounds = dict(config.get("feature_bounds") or {})
-    if not feature_bounds and bool(config.get("use_default_feature_bounds", True)):
-        feature_bounds = _default_feature_bounds(registry, mutable_allowed)
-
     return {
         "request_id": f"exp-{index:05d}",
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -119,7 +98,6 @@ def build_request_payload(
         "constraints": {
             "immutable_features": immutable_features,
             "mutable_allowed": mutable_allowed,
-            "feature_bounds": feature_bounds,
             "must_not_change": list(config.get("must_not_change") or []),
             "medical_rule_set_version": str(config.get("medical_rule_set_version", "med_rule_v1")),
         },

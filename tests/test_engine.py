@@ -23,7 +23,6 @@ def _request_payload(mutable_allowed: list[str]) -> dict:
         "constraints": {
             "immutable_features": ["age"],
             "mutable_allowed": mutable_allowed,
-            "feature_bounds": {"bmi": {"min": 20.0, "max": 29.0}},
             "must_not_change": [],
             "medical_rule_set_version": "med_rule_v1",
         },
@@ -231,7 +230,6 @@ def _engine_with_bmi_artifacts() -> DiceCounterfactualEngine:
 def test_prepare_request_rejects_duplicate_alias_features() -> None:
     payload = _request_payload(["BMI"])
     payload["instance"]["features"] = {"BMI": 31.2, "bmi": 30.0}
-    payload["constraints"]["feature_bounds"] = {"BMI": {"min": 10, "max": 60}}
     request = CounterfactualRequest.model_validate(payload)
     engine = _engine_with_bmi_artifacts()
 
@@ -245,7 +243,6 @@ def test_prepare_request_rejects_duplicate_alias_features() -> None:
 def test_prepare_request_rejects_instance_feature_outside_registry_range() -> None:
     payload = _request_payload(["BMI"])
     payload["instance"]["features"] = {"BMI": 70.0}
-    payload["constraints"]["feature_bounds"] = {"BMI": {"min": 10, "max": 60}}
     request = CounterfactualRequest.model_validate(payload)
     engine = _engine_with_bmi_artifacts()
 
@@ -286,25 +283,16 @@ def test_permitted_range_includes_binary_mutable_feature() -> None:
             ),
         ],
     )
-    payload = _request_payload(["is_hypertension", "BMI"])
-    payload["instance"]["features"] = {"is_hypertension": 1, "BMI": 31.2}
-    payload["constraints"]["feature_bounds"] = {
-        "is_hypertension": {"min": 0, "max": 1},
-        "BMI": {"min": 18.5, "max": 35},
-    }
-    request = CounterfactualRequest.model_validate(payload)
     engine = DiceCounterfactualEngine()
 
     permitted = engine._build_permitted_range(
-        model_columns=["is_hypertension", "BMI"],
         mutable_allowed=["is_hypertension", "BMI"],
-        request=request,
         registry=registry,
         baseline_features={"is_hypertension": 1, "BMI": 31.2},
     )
 
     assert permitted["is_hypertension"] == [0.0, 1.0]
-    assert permitted["BMI"] == [18.5, 31.2]
+    assert permitted["BMI"] == [10.0, 31.2]
 
 
 def test_permitted_range_applies_directional_constraints() -> None:
@@ -337,18 +325,10 @@ def test_permitted_range_applies_directional_constraints() -> None:
             ),
         ],
     )
-    payload = _request_payload(["moderate_physical_activity_frequency", "BMI"])
-    payload["instance"]["features"] = {
-        "moderate_physical_activity_frequency": 2,
-        "BMI": 31.2,
-    }
-    request = CounterfactualRequest.model_validate(payload)
     engine = DiceCounterfactualEngine()
 
     permitted = engine._build_permitted_range(
-        model_columns=["moderate_physical_activity_frequency", "BMI"],
         mutable_allowed=["moderate_physical_activity_frequency", "BMI"],
-        request=request,
         registry=registry,
         baseline_features={"moderate_physical_activity_frequency": 2, "BMI": 31.2},
     )
@@ -471,24 +451,6 @@ def test_directional_ok_rejects_physical_activity_decrease() -> None:
         baseline=baseline,
         mutable_allowed={"moderate_physical_activity_frequency", "BMI"},
         registry=registry,
-    )
-
-
-def test_bounds_ok_respects_request_feature_bounds() -> None:
-    payload = _request_payload(["bmi"])
-    request = CounterfactualRequest.model_validate(payload)
-    registry = FeatureRegistry.from_columns(["age", "bmi", "glucose"])
-    engine = DiceCounterfactualEngine()
-
-    assert engine._bounds_ok(
-        {"age": 45, "bmi": 28.5, "glucose": 165},
-        request,
-        registry,
-    )
-    assert not engine._bounds_ok(
-        {"age": 45, "bmi": 30.5, "glucose": 165},
-        request,
-        registry,
     )
 
 
@@ -666,7 +628,6 @@ def test_process_candidates_surfaces_medical_only_infeasible_reason() -> None:
     engine._coerce_candidate_features = lambda **_: {"age": 45, "bmi": 28.0, "glucose": 165}
     engine._immutable_ok = lambda *args, **kwargs: True
     engine._mutable_ok = lambda *args, **kwargs: True
-    engine._bounds_ok = lambda *args, **kwargs: True
     engine._directional_ok = lambda *args, **kwargs: True
     engine._transition_ok = lambda *args, **kwargs: True
     engine._medical_ok = lambda *args, **kwargs: False

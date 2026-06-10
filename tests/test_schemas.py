@@ -24,7 +24,6 @@ def _valid_payload() -> dict:
         "constraints": {
             "immutable_features": ["age"],
             "mutable_allowed": ["bmi", "glucose"],
-            "feature_bounds": {"bmi": {"min": 20.0, "max": 29.0}},
             "must_not_change": [],
             "medical_rule_set_version": "med_rule_v1",
         },
@@ -43,13 +42,6 @@ def test_request_schema_valid() -> None:
     parsed = CounterfactualRequest.model_validate(payload)
     assert parsed.request_id == "req-1"
     assert parsed.constraints.mutable_allowed == ["bmi", "glucose"]
-
-
-def test_feature_bound_invalid_when_min_greater_than_max() -> None:
-    payload = _valid_payload()
-    payload["constraints"]["feature_bounds"]["bmi"] = {"min": 30.0, "max": 20.0}
-    with pytest.raises(ValidationError):
-        CounterfactualRequest.model_validate(payload)
 
 
 def test_overlap_mutable_and_immutable_is_rejected() -> None:

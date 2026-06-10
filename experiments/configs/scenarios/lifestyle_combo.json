@@ -12,13 +12,6 @@
     "is_hypertension"
   ],
   "immutable_features": [],
-  "feature_bounds": {
-    "BMI": { "min": 18.5, "max": 35.0 },
-    "moderate_physical_activity_frequency": { "min": 0, "max": 14 },
-    "smoking_status": { "min": 0, "max": 2 },
-    "is_hypertension": { "min": 0, "max": 1 }
-  },
   "use_default_mutable": false,
-  "use_default_immutable": true,
-  "use_default_feature_bounds": false
+  "use_default_immutable": true
 }

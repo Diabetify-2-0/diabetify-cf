@@ -67,8 +67,6 @@ def test_build_request_payload_uses_registry_defaults() -> None:
 
     assert request.constraints.immutable_features == ["age", "is_bloodline"]
     assert request.constraints.mutable_allowed == ["BMI"]
-    assert request.constraints.feature_bounds["BMI"].min == 10
-    assert request.constraints.feature_bounds["BMI"].max == 60
 
 
 def test_build_request_payload_respects_explicit_mutable_allowed() -> None:

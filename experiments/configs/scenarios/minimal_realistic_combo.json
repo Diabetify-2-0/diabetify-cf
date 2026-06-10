@@ -10,13 +10,8 @@
     "moderate_physical_activity_frequency"
   ],
   "immutable_features": [],
-  "feature_bounds": {
-    "BMI": { "min": 18.5, "max": 35.0 },
-    "moderate_physical_activity_frequency": { "min": 0, "max": 14 }
-  },
   "use_default_mutable": false,
   "use_default_immutable": true,
-  "use_default_feature_bounds": false,
   "scenario_role": "operational_bridge",
   "notes": "Operational bridge scenario that tests whether a minimal but still realistic lifestyle intervention pair can produce feasible recourse."
 }

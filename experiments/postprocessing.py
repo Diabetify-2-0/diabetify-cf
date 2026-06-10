@@ -84,14 +84,17 @@ class ExperimentPostprocessor:
             immutable_set=immutable_set,
             registry=registry,
         )
+        mutable_allowed = self._apply_feature_specific_mutability(
+            mutable_allowed=mutable_allowed,
+            baseline_features=instance_features,
+            registry=registry,
+        )
         instance_series = self._to_series(model_columns, instance_features, registry)
         query_df = pd.DataFrame([instance_series], columns=model_columns)
         query_df = self.as_model_input_df(query_df)
         base_prediction = self.predict_info(query_df)
         permitted_range = self._build_permitted_range(
-            model_columns=model_columns,
             mutable_allowed=mutable_allowed,
-            request=request,
             registry=registry,
             baseline_features=instance_features,
         )
@@ -156,9 +159,9 @@ class ExperimentPostprocessor:
         evaluated: list[_CandidateEvaluation] = []
         immutable_violation_seen = False
         mutable_violation_seen = False
-        bounds_violation_seen = False
         medical_violation_seen = False
         directional_violation_seen = False
+        transition_violation_seen = False
         target_violation_seen = False
 
         for _, row in raw_candidates.iterrows():
@@ -176,12 +179,13 @@ class ExperimentPostprocessor:
                 prepared.instance_features,
                 set(prepared.mutable_allowed),
             )
-            bounds_ok = self._bounds_ok(
-                candidate_features,
-                request,
-                prepared.registry,
-            )
             directional_ok = self._directional_ok(
+                candidate=candidate_features,
+                baseline=prepared.instance_features,
+                mutable_allowed=set(prepared.mutable_allowed),
+                registry=prepared.registry,
+            )
+            transition_ok = self._transition_ok(
                 candidate=candidate_features,
                 baseline=prepared.instance_features,
                 mutable_allowed=set(prepared.mutable_allowed),
@@ -193,14 +197,17 @@ class ExperimentPostprocessor:
                 immutable_violation_seen = True
             if not mutable_ok:
                 mutable_violation_seen = True
-            if not bounds_ok:
-                bounds_violation_seen = True
             if not directional_ok:
                 directional_violation_seen = True
                 medical_violation_seen = True
+            if not transition_ok:
+                transition_violation_seen = True
+                medical_violation_seen = True
             if not medical_ok:
                 medical_violation_seen = True
-            if not (immutable_ok and mutable_ok and bounds_ok and directional_ok and medical_ok):
+            if not (
+                immutable_ok and mutable_ok and directional_ok and transition_ok and medical_ok
+            ):
                 continue
 
             candidate_df = pd.DataFrame([candidate_features], columns=prepared.model_columns)
@@ -262,30 +269,28 @@ class ExperimentPostprocessor:
                 medical_violation_seen
                 and not immutable_violation_seen
                 and not mutable_violation_seen
-                and not bounds_violation_seen
             ):
                 reason_code = ReasonCode.MEDICAL_RULE_VIOLATION_ONLY
                 message = "Candidates exist but fail medical plausibility constraints."
             if (
+                transition_violation_seen
+                and not immutable_violation_seen
+                and not mutable_violation_seen
+            ):
+                reason_code = ReasonCode.MEDICAL_RULE_VIOLATION_ONLY
+                message = "Candidates exist but violate allowed feature transition constraints."
+            if (
                 directional_violation_seen
                 and not immutable_violation_seen
                 and not mutable_violation_seen
-                and not bounds_violation_seen
             ):
                 reason_code = ReasonCode.MEDICAL_RULE_VIOLATION_ONLY
                 message = "Candidates exist but violate directional medical constraints."
-            if (
-                bounds_violation_seen
-                and not immutable_violation_seen
-                and not mutable_violation_seen
-            ):
-                message = "Candidates generated but violate request feature bounds."
             if (
                 target_violation_seen
                 and not immutable_violation_seen
                 and not mutable_violation_seen
                 and not medical_violation_seen
-                and not bounds_violation_seen
             ):
                 message = "Candidates generated but none satisfied target class/probability."
 
@@ -300,8 +305,7 @@ class ExperimentPostprocessor:
                     immutable_violation=immutable_violation_seen,
                     mutable_compliance=not mutable_violation_seen,
                     medical_rules_passed=(not medical_violation_seen)
-                    and (not target_violation_seen)
-                    and (not bounds_violation_seen),
+                    and (not target_violation_seen),
                 ),
             )
 
@@ -358,36 +362,11 @@ class ExperimentPostprocessor:
 
     def _build_permitted_range(
         self,
-        model_columns: list[str],
         mutable_allowed: list[str],
-        request: CounterfactualRequest,
         registry: FeatureRegistry,
         baseline_features: dict[str, JSONFeatureValue],
     ) -> dict[str, list[float]]:
-        default_range = registry.default_permitted_range(mutable_allowed)
-        request_bounds = {}
-
-        for raw_name, bound in request.constraints.feature_bounds.items():
-            canonical_name = registry.resolve_name(raw_name)
-            if canonical_name not in model_columns or canonical_name not in mutable_allowed:
-                continue
-
-            lower = bound.min
-            upper = bound.max
-            if lower is not None and upper is not None and lower > upper:
-                raise ValueError(f"Conflicting bounds for feature '{canonical_name}': min > max.")
-
-            if canonical_name in default_range:
-                current = default_range[canonical_name]
-                lower = current[0] if lower is None else lower
-                upper = current[1] if upper is None else upper
-            elif lower is None or upper is None:
-                continue
-
-            request_bounds[canonical_name] = [float(lower), float(upper)]
-
-        merged = dict(default_range)
-        merged.update(request_bounds)
+        merged = dict(registry.default_permitted_range(mutable_allowed))
 
         for feature_name in mutable_allowed:
             if feature_name not in merged or feature_name not in baseline_features:
@@ -428,6 +407,27 @@ class ExperimentPostprocessor:
             allowed.append(name)
             seen.add(name)
         return allowed
+
+    def _apply_feature_specific_mutability(
+        self,
+        mutable_allowed: list[str],
+        baseline_features: dict[str, JSONFeatureValue],
+        registry: FeatureRegistry,
+    ) -> list[str]:
+        smoking_status_feature = registry.get("smoking_status")
+        if smoking_status_feature is None:
+            return mutable_allowed
+
+        try:
+            baseline_smoking_status = int(float(baseline_features.get("smoking_status", 0)))
+        except (TypeError, ValueError):
+            return mutable_allowed
+
+        if baseline_smoking_status == 2:
+            return [name for name in mutable_allowed if name != "brinkman_index"]
+
+        blocked_features = {"smoking_status", "brinkman_index"}
+        return [name for name in mutable_allowed if name not in blocked_features]
 
     def _to_series(
         self,
@@ -485,26 +485,6 @@ class ExperimentPostprocessor:
                 return False
         return True
 
-    def _bounds_ok(
-        self,
-        candidate: dict[str, JSONFeatureValue],
-        request: CounterfactualRequest,
-        registry: FeatureRegistry,
-    ) -> bool:
-        for raw_name, bound in request.constraints.feature_bounds.items():
-            feature_name = registry.resolve_name(raw_name)
-            if feature_name not in candidate:
-                continue
-            try:
-                value = float(candidate[feature_name])
-            except (TypeError, ValueError):
-                return False
-            if bound.min is not None and value < bound.min:
-                return False
-            if bound.max is not None and value > bound.max:
-                return False
-        return True
-
     def _medical_ok(
         self, candidate: dict[str, JSONFeatureValue], registry: FeatureRegistry
     ) -> bool:
@@ -548,6 +528,31 @@ class ExperimentPostprocessor:
             if feature.preferred_direction == "increase" and delta < 0:
                 return False
             if feature.preferred_direction == "decrease" and delta > 0:
+                return False
+        return True
+
+    def _transition_ok(
+        self,
+        candidate: dict[str, JSONFeatureValue],
+        baseline: dict[str, JSONFeatureValue],
+        mutable_allowed: set[str],
+        registry: FeatureRegistry,
+    ) -> bool:
+        for feature_name in mutable_allowed:
+            if feature_name not in candidate or feature_name not in baseline:
+                continue
+            feature = registry.get(feature_name)
+            if feature is None or not feature.allowed_transitions:
+                continue
+            try:
+                baseline_value = int(float(baseline[feature_name]))
+                candidate_value = int(float(candidate[feature_name]))
+            except (TypeError, ValueError):
+                return False
+            allowed_targets = feature.allowed_transitions.get(baseline_value)
+            if allowed_targets is None:
+                continue
+            if candidate_value not in allowed_targets:
                 return False
         return True
 

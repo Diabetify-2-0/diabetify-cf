@@ -56,7 +56,6 @@ def _request() -> CounterfactualRequest:
             "constraints": {
                 "immutable_features": ["age", "is_bloodline"],
                 "mutable_allowed": ["BMI"],
-                "feature_bounds": {"BMI": {"min": 18.5, "max": 35.0}},
             },
         }
     )
@@ -78,7 +77,6 @@ def test_evaluate_candidate_marks_valid_candidate() -> None:
     assert report["target_success"] is True
     assert report["immutable_violation_count"] == 0
     assert report["mutable_violation_count"] == 0
-    assert report["bounds_violation_count"] == 0
     assert report["directional_violation_count"] == 0
     assert report["plausibility_pass"] is True
 
@@ -99,6 +97,5 @@ def test_evaluate_candidate_counts_constraint_violations() -> None:
     assert report["target_success"] is False
     assert report["immutable_violation_count"] == 2
     assert report["mutable_violation_count"] == 2
-    assert report["bounds_violation_count"] == 1
     assert report["directional_violation_count"] == 1
     assert report["plausibility_pass"] is False

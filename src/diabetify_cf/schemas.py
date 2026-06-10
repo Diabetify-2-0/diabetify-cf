@@ -18,25 +18,11 @@ class TargetSpec(BaseModel):
     min_target_probability: float = Field(default=0.5, ge=0.0, le=1.0)
 
 
-class FeatureBound(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    min: float | None = None
-    max: float | None = None
-
-    @model_validator(mode="after")
-    def validate_bounds(self) -> FeatureBound:
-        if self.min is not None and self.max is not None and self.min > self.max:
-            raise ValueError("min cannot be greater than max")
-        return self
-
-
 class ConstraintSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     immutable_features: list[str] = Field(default_factory=list)
     mutable_allowed: list[str] = Field(default_factory=list)
-    feature_bounds: dict[str, FeatureBound] = Field(default_factory=dict)
     must_not_change: list[str] = Field(default_factory=list)
     medical_rule_set_version: str = "med_rule_v1"
 

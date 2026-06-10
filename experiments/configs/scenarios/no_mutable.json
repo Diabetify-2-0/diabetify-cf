@@ -7,10 +7,8 @@
   "random_seed": 42,
   "mutable_allowed": [],
   "immutable_features": [],
-  "feature_bounds": {},
   "use_default_mutable": false,
   "use_default_immutable": true,
-  "use_default_feature_bounds": false,
   "expected_outcome": {
     "category": "expected_infeasible_control",
     "feasible": false,

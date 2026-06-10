@@ -41,7 +41,6 @@ def _write_comparison(root: Path) -> None:
                 "mean_runtime_ms": "100.0",
                 "immutable_violation_rate": "0.0",
                 "mutable_violation_rate": "0.0",
-                "bounds_violation_rate": "0.0",
                 "directional_violation_rate": "0.0",
                 "reason_counts": '{"OK": 2}',
             },
@@ -53,7 +52,6 @@ def _write_comparison(root: Path) -> None:
                 "mean_runtime_ms": "5.0",
                 "immutable_violation_rate": "0.0",
                 "mutable_violation_rate": "0.0",
-                "bounds_violation_rate": "0.0",
                 "directional_violation_rate": "0.0",
                 "reason_counts": '{"NO_MUTABLE_FEATURE": 2}',
             },
@@ -65,7 +63,6 @@ def _write_comparison(root: Path) -> None:
                 "mean_runtime_ms": "0.0",
                 "immutable_violation_rate": "0.0",
                 "mutable_violation_rate": "0.0",
-                "bounds_violation_rate": "0.0",
                 "directional_violation_rate": "0.0",
                 "reason_counts": '{"timeout": 1}',
             },
@@ -82,7 +79,6 @@ def _write_comparison(root: Path) -> None:
                 "mean_runtime_ms": "300.0",
                 "immutable_violation_rate": "0.0",
                 "mutable_violation_rate": "0.0",
-                "bounds_violation_rate": "0.0",
                 "directional_violation_rate": "0.0",
                 "reason_counts": '{"OK": 1, "TARGET_UNREACHABLE_UNDER_CONSTRAINTS": 1}',
             },
@@ -94,7 +90,6 @@ def _write_comparison(root: Path) -> None:
                 "mean_runtime_ms": "5.0",
                 "immutable_violation_rate": "0.0",
                 "mutable_violation_rate": "0.0",
-                "bounds_violation_rate": "0.0",
                 "directional_violation_rate": "0.0",
                 "reason_counts": '{"NO_MUTABLE_FEATURE": 2}',
             },
@@ -106,7 +101,6 @@ def _write_comparison(root: Path) -> None:
                 "mean_runtime_ms": "200.0",
                 "immutable_violation_rate": "0.0",
                 "mutable_violation_rate": "0.0",
-                "bounds_violation_rate": "0.0",
                 "directional_violation_rate": "0.0",
                 "reason_counts": '{"TARGET_UNREACHABLE_UNDER_CONSTRAINTS": 2}',
             },
@@ -215,7 +209,6 @@ def _write_comparison(root: Path) -> None:
     }
     activity_config = {
         "mutable_allowed": ["moderate_physical_activity_frequency"],
-        "feature_bounds": {"moderate_physical_activity_frequency": {"min": 0.0, "max": 14.0}},
     }
     (root / "baselines" / "dice" / "run-1" / "scenarios" / "no_mutable").mkdir(
         parents=True,

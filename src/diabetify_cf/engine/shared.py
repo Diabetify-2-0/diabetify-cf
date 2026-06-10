@@ -316,9 +316,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
         query_df = self._as_model_input_df(query_df)
         base_prediction = self._predict_info(query_df)
         permitted_range = self._build_permitted_range(
-            model_columns=model_columns,
             mutable_allowed=mutable_allowed,
-            request=request,
             registry=registry,
             baseline_features=instance_features,
         )
@@ -371,7 +369,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
         evaluated: list[CandidateEvaluation] = []
         immutable_violation_seen = False
         mutable_violation_seen = False
-        bounds_violation_seen = False
         medical_violation_seen = False
         directional_violation_seen = False
         transition_violation_seen = False
@@ -394,11 +391,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 prepared.instance_features,
                 set(prepared.mutable_allowed),
             )
-            bounds_ok = self._bounds_ok(
-                candidate_features,
-                request,
-                prepared.registry,
-            )
             directional_ok = self._directional_ok(
                 candidate=candidate_features,
                 baseline=prepared.instance_features,
@@ -417,8 +409,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 immutable_violation_seen = True
             if not mutable_ok:
                 mutable_violation_seen = True
-            if not bounds_ok:
-                bounds_violation_seen = True
             if not directional_ok:
                 directional_violation_seen = True
                 medical_violation_seen = True
@@ -429,12 +419,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 medical_violation_seen = True
 
             if not (
-                immutable_ok
-                and mutable_ok
-                and bounds_ok
-                and directional_ok
-                and transition_ok
-                and medical_ok
+                immutable_ok and mutable_ok and directional_ok and transition_ok and medical_ok
             ):
                 continue
 
@@ -499,7 +484,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 medical_violation_seen
                 and not immutable_violation_seen
                 and not mutable_violation_seen
-                and not bounds_violation_seen
             ):
                 reason_code = ReasonCode.MEDICAL_RULE_VIOLATION_ONLY
                 message = "Candidates exist but fail medical plausibility constraints."
@@ -507,7 +491,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 transition_violation_seen
                 and not immutable_violation_seen
                 and not mutable_violation_seen
-                and not bounds_violation_seen
             ):
                 reason_code = ReasonCode.MEDICAL_RULE_VIOLATION_ONLY
                 message = "Candidates exist but violate allowed feature transition constraints."
@@ -515,22 +498,14 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 directional_violation_seen
                 and not immutable_violation_seen
                 and not mutable_violation_seen
-                and not bounds_violation_seen
             ):
                 reason_code = ReasonCode.MEDICAL_RULE_VIOLATION_ONLY
                 message = "Candidates exist but violate directional medical constraints."
-            if (
-                bounds_violation_seen
-                and not immutable_violation_seen
-                and not mutable_violation_seen
-            ):
-                message = "Candidates generated but violate request feature bounds."
             if (
                 target_violation_seen
                 and not immutable_violation_seen
                 and not mutable_violation_seen
                 and not medical_violation_seen
-                and not bounds_violation_seen
             ):
                 message = "Candidates generated but none satisfied target class/probability."
 
@@ -544,8 +519,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                     immutable_violation=immutable_violation_seen,
                     mutable_compliance=not mutable_violation_seen,
                     medical_rules_passed=(not medical_violation_seen)
-                    and (not target_violation_seen)
-                    and (not bounds_violation_seen),
+                    and (not target_violation_seen),
                 ),
                 input_prediction=prepared.base_prediction,
                 planner_input=request_context,
@@ -653,39 +627,11 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
     def _build_permitted_range(
         self,
         *,
-        model_columns: list[str],
         mutable_allowed: list[str],
-        request: CounterfactualRequest,
         registry: FeatureRegistry,
         baseline_features: dict[str, JSONFeatureValue],
     ) -> dict[str, list[float]]:
-        default_range = registry.default_permitted_range(mutable_allowed)
-        request_bounds: dict[str, list[float]] = {}
-
-        for raw_name, bound in request.constraints.feature_bounds.items():
-            canonical_name = registry.resolve_name(raw_name)
-            if canonical_name not in model_columns or canonical_name not in mutable_allowed:
-                continue
-
-            lower = bound.min
-            upper = bound.max
-            if lower is not None and upper is not None and lower > upper:
-                raise ValueError(f"Conflicting bounds for feature '{canonical_name}': min > max.")
-
-            if canonical_name in default_range:
-                current = default_range[canonical_name]
-                if lower is None:
-                    lower = current[0]
-                if upper is None:
-                    upper = current[1]
-            elif lower is None or upper is None:
-                continue
-
-            if lower is not None and upper is not None:
-                request_bounds[canonical_name] = [float(lower), float(upper)]
-
-        merged = dict(default_range)
-        merged.update(request_bounds)
+        merged = dict(registry.default_permitted_range(mutable_allowed))
 
         for feature_name in mutable_allowed:
             if feature_name not in merged or feature_name not in baseline_features:
@@ -872,26 +818,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             if feature.global_max is not None and val > feature.global_max:
                 return False
             if feature.is_binary and val not in {0.0, 1.0}:
-                return False
-        return True
-
-    def _bounds_ok(
-        self,
-        candidate: dict[str, JSONFeatureValue],
-        request: CounterfactualRequest,
-        registry: FeatureRegistry,
-    ) -> bool:
-        for raw_name, bound in request.constraints.feature_bounds.items():
-            feature_name = registry.resolve_name(raw_name)
-            if feature_name not in candidate:
-                continue
-            try:
-                value = float(candidate[feature_name])
-            except (TypeError, ValueError):
-                return False
-            if bound.min is not None and value < bound.min:
-                return False
-            if bound.max is not None and value > bound.max:
                 return False
         return True
 

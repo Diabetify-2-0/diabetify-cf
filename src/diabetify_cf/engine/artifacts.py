@@ -22,6 +22,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from sklearn.neighbors import LocalOutlierFactor
+from sklearn.pipeline import Pipeline, make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 from diabetify_cf.engine.feature_registry import FeatureRegistry
 
@@ -38,7 +40,7 @@ class ModelArtifacts:
     feature_columns: list[str]
     reference_data: pd.DataFrame
     feature_registry: FeatureRegistry
-    lof_model: LocalOutlierFactor | None
+    lof_model: Pipeline | None
     metadata: ArtifactMetadata | None = None
 
 
@@ -207,11 +209,25 @@ def _empty_reference(feature_columns: list[str]) -> pd.DataFrame:
     return pd.DataFrame([np.zeros(len(feature_columns))], columns=feature_columns)
 
 
-def _build_lof_model(reference_data: pd.DataFrame) -> LocalOutlierFactor | None:
-    """Fit a novelty-detection LOF model when enough reference rows exist."""
+def _build_lof_model(reference_data: pd.DataFrame) -> Pipeline | None:
+    """Fit a novelty-detection LOF model on standardized reference features.
+
+    Features are standardized (zero mean, unit variance) before the LOF
+    neighbor-distance computation. Without scaling, wide-range features such as
+    ``age`` (~18-100) and ``BMI`` (~10-60) dominate the Euclidean distance while
+    narrow-range clinical flags (``is_hypertension``, ``is_cholesterol``,
+    ``smoking_status``) contribute almost nothing, so plausibility would be
+    judged almost entirely on age and BMI. Standardizing gives every feature a
+    comparable voice in the density estimate. The ``StandardScaler`` is fit on
+    the reference data and bundled into the pipeline so that the same transform
+    is applied automatically when scoring candidates.
+    """
     if len(reference_data) < 2:
         return None
 
-    lof = LocalOutlierFactor(n_neighbors=min(20, len(reference_data) - 1), novelty=True)
+    lof = make_pipeline(
+        StandardScaler(),
+        LocalOutlierFactor(n_neighbors=min(20, len(reference_data) - 1), novelty=True),
+    )
     lof.fit(reference_data.to_numpy())
     return lof

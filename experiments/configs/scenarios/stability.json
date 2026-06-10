@@ -7,8 +7,6 @@
   "random_seed": 42,
   "mutable_allowed": [],
   "immutable_features": [],
-  "feature_bounds": {},
   "use_default_mutable": true,
-  "use_default_immutable": true,
-  "use_default_feature_bounds": true
+  "use_default_immutable": true
 }

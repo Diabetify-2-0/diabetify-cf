@@ -40,10 +40,10 @@ def test_summarize_run_uses_top_candidate_per_request_for_primary_rates(tmp_path
         tmp_path / "candidates.csv",
         "\n".join(
             [
-                "engine_name,request_id,candidate_id,status,target_success,plausibility_pass,immutable_violation_count,mutable_violation_count,bounds_violation_count,directional_violation_count,lof_score,distance_l1,changed_feature_count,delta",
-                'dice,req-1,cf_1,FEASIBLE,True,True,0,0,0,0,1.0,0.1,1,"{}"',
-                'dice,req-1,cf_2,FEASIBLE,False,False,1,0,0,0,3.0,0.5,2,"{}"',
-                'dice,req-2,cf_1,FEASIBLE,True,True,0,0,0,0,1.2,0.2,1,"{}"',
+                "engine_name,request_id,candidate_id,status,target_success,plausibility_pass,immutable_violation_count,mutable_violation_count,directional_violation_count,lof_score,distance_l1,changed_feature_count,delta",
+                'dice,req-1,cf_1,FEASIBLE,True,True,0,0,0,1.0,0.1,1,"{}"',
+                'dice,req-1,cf_2,FEASIBLE,False,False,1,0,0,3.0,0.5,2,"{}"',
+                'dice,req-2,cf_1,FEASIBLE,True,True,0,0,0,1.2,0.2,1,"{}"',
             ]
         )
         + "\n",

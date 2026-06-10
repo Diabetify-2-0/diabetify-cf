@@ -90,7 +90,6 @@ def summarize_run(run_dir: Path) -> dict[str, Any]:
         "plausibility_pass_rate": _boolean_rate(top_candidates, "plausibility_pass"),
         "immutable_violation_rate": _positive_rate(top_candidates, "immutable_violation_count"),
         "mutable_violation_rate": _positive_rate(top_candidates, "mutable_violation_count"),
-        "bounds_violation_rate": _positive_rate(top_candidates, "bounds_violation_count"),
         "directional_violation_rate": _positive_rate(top_candidates, "directional_violation_count"),
         "mean_lof_score": _mean_float(top_candidates, "lof_score"),
         "mean_distance_l1": _mean_float(top_candidates, "distance_l1"),
@@ -102,9 +101,6 @@ def summarize_run(run_dir: Path) -> dict[str, Any]:
         ),
         "mutable_violation_rate_all_candidates": _positive_rate(
             candidates, "mutable_violation_count"
-        ),
-        "bounds_violation_rate_all_candidates": _positive_rate(
-            candidates, "bounds_violation_count"
         ),
         "directional_violation_rate_all_candidates": _positive_rate(
             candidates, "directional_violation_count"

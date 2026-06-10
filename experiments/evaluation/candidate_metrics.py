@@ -71,17 +71,6 @@ def evaluate_candidate(
     immutable_violations = changed.intersection(immutable)
     mutable_violations = {feature for feature in changed if feature not in mutable}
 
-    bounds_violations: set[str] = set()
-    for raw_name, bound in request.constraints.feature_bounds.items():
-        feature_name = registry.resolve_name(raw_name)
-        if feature_name not in features:
-            continue
-        value = _as_float(features[feature_name])
-        if bound.min is not None and value < bound.min:
-            bounds_violations.add(feature_name)
-        if bound.max is not None and value > bound.max:
-            bounds_violations.add(feature_name)
-
     directional_violations: set[str] = set()
     for feature_name in changed.intersection(mutable):
         feature = registry.get(feature_name)
@@ -102,7 +91,6 @@ def evaluate_candidate(
         "target_success": _target_success(candidate, request),
         "immutable_violation_count": len(immutable_violations),
         "mutable_violation_count": len(mutable_violations),
-        "bounds_violation_count": len(bounds_violations),
         "directional_violation_count": len(directional_violations),
         "plausibility_pass": lof_score <= max_lof_score,
         "changed_feature_count_eval": len(changed),

@@ -22,7 +22,6 @@ DEFAULT_REQUIRED_ENGINES = ["dice", "ocean"]
 VIOLATION_RATE_FIELDS = [
     "immutable_violation_rate",
     "mutable_violation_rate",
-    "bounds_violation_rate",
     "directional_violation_rate",
 ]
 

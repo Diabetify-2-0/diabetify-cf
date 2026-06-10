@@ -34,7 +34,6 @@ DEFAULT_SCENARIO_CONFIGS = [
     Path("experiments/configs/scenarios/minimal_realistic_combo.json"),
     Path("experiments/configs/scenarios/bmi_only.json"),
     Path("experiments/configs/scenarios/activity_only.json"),
-    Path("experiments/configs/scenarios/tight_bounds.json"),
     Path("experiments/configs/scenarios/no_mutable.json"),
 ]
 DEFAULT_SCENARIO_TIMEOUT_SECONDS = 300
@@ -170,7 +169,6 @@ def _failed_scenario_summary(
         "plausibility_pass_rate": 0.0,
         "immutable_violation_rate": 0.0,
         "mutable_violation_rate": 0.0,
-        "bounds_violation_rate": 0.0,
         "directional_violation_rate": 0.0,
         "mean_lof_score": 0.0,
         "mean_distance_l1": 0.0,

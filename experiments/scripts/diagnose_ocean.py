@@ -80,12 +80,6 @@ def _optional_number(value: Any) -> str:
         return str(value)
 
 
-def _optional_count(value: Any, total: Any) -> str:
-    if value is None:
-        return "-"
-    return f"{value}/{total}"
-
-
 def _parse_json_counter(value: str) -> dict[str, int]:
     try:
         parsed = json.loads(value or "{}")
@@ -221,11 +215,6 @@ def _effective_config(row: dict[str, str]) -> dict[str, Any]:
     return _read_json(config_path)
 
 
-def _feature_bounds(config: dict[str, Any]) -> dict[str, dict[str, float | None]]:
-    raw = config.get("feature_bounds") or {}
-    return raw if isinstance(raw, dict) else {}
-
-
 def _input_features(row: dict[str, str]) -> dict[str, Any]:
     try:
         parsed = json.loads(row.get("features", "{}"))
@@ -265,18 +254,11 @@ def _load_model_artifacts() -> ModelArtifacts | None:
 def _feature_bound(
     *,
     feature_name: str,
-    config: dict[str, Any],
     artifacts: ModelArtifacts,
 ) -> tuple[float | None, float | None]:
-    raw_bounds = _feature_bounds(config)
-    bound = raw_bounds.get(feature_name, {})
-    lower = bound.get("min")
-    upper = bound.get("max")
     feature = artifacts.feature_registry.get(feature_name)
-    if lower is None and feature is not None:
-        lower = feature.global_min
-    if upper is None and feature is not None:
-        upper = feature.global_max
+    lower = None if feature is None else feature.global_min
+    upper = None if feature is None else feature.global_max
     return (
         None if lower is None else float(lower),
         None if upper is None else float(upper),
@@ -375,7 +357,6 @@ def _optimistic_candidate(
             continue
         lower, upper = _feature_bound(
             feature_name=feature_name,
-            config=config,
             artifacts=artifacts,
         )
         value = _directional_value(
@@ -450,7 +431,6 @@ def _reachability_diagnosis(
 def _feature_constraint_summary(
     *,
     mutable_allowed: list[str],
-    bounds: dict[str, dict[str, float | None]],
     inputs: list[dict[str, str]],
 ) -> list[dict[str, Any]]:
     input_features = [_input_features(row) for row in inputs]
@@ -461,23 +441,12 @@ def _feature_constraint_summary(
             for features in input_features
             if feature_name in features and features[feature_name] not in {None, ""}
         ]
-        bound = bounds.get(feature_name, {})
-        lower = bound.get("min")
-        upper = bound.get("max")
-        width = float(upper) - float(lower) if lower is not None and upper is not None else None
-        baseline_in_bounds = None
-        if values and lower is not None and upper is not None:
-            baseline_in_bounds = sum(1 for value in values if float(lower) <= value <= float(upper))
         summaries.append(
             {
                 "feature": feature_name,
-                "bound_min": lower,
-                "bound_max": upper,
-                "bound_width": width,
                 "input_min": min(values) if values else None,
                 "input_mean": sum(values) / len(values) if values else None,
                 "input_max": max(values) if values else None,
-                "baseline_in_bounds_count": baseline_in_bounds,
                 "input_count": len(values),
             }
         )
@@ -493,18 +462,15 @@ def _constraint_diagnosis(
 ) -> dict[str, Any]:
     config = _effective_config(target_row)
     mutable_allowed = [str(item) for item in config.get("mutable_allowed", [])]
-    bounds = _feature_bounds(config)
     return {
         "scenario": scenario,
         "input_available": bool(inputs),
         "input_count": len(inputs),
         "mutable_allowed": mutable_allowed,
         "mutable_count": len(mutable_allowed),
-        "feature_bound_count": len(bounds),
         "baseline_high_risk_probability": _input_probability_summary(inputs),
         "features": _feature_constraint_summary(
             mutable_allowed=mutable_allowed,
-            bounds=bounds,
             inputs=inputs,
         ),
         "reachability": _reachability_diagnosis(
@@ -630,7 +596,6 @@ def _scenario_diagnosis(
     violation_rate = max(
         _as_float(target_row, "immutable_violation_rate"),
         _as_float(target_row, "mutable_violation_rate"),
-        _as_float(target_row, "bounds_violation_rate"),
         _as_float(target_row, "directional_violation_rate"),
     )
     constraint_diagnosis = _constraint_diagnosis(
@@ -884,27 +849,18 @@ def build_diagnostics_report(payload: dict[str, Any]) -> str:
             lines.append("No mutable feature constraints available.")
             lines.append("")
             continue
-        lines.append(
-            "| Feature | Bound min | Bound max | Width | Input min | Input mean | "
-            "Input max | In-bounds inputs |"
-        )
-        lines.append("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+        lines.append("| Feature | Input min | Input mean | Input max | Input count |")
+        lines.append("| --- | ---: | ---: | ---: | ---: |")
         for feature in features:
             lines.append(
                 "| "
                 + " | ".join(
                     [
                         feature["feature"],
-                        _optional_number(feature["bound_min"]),
-                        _optional_number(feature["bound_max"]),
-                        _optional_number(feature["bound_width"]),
                         _optional_number(feature["input_min"]),
                         _optional_number(feature["input_mean"]),
                         _optional_number(feature["input_max"]),
-                        _optional_count(
-                            feature["baseline_in_bounds_count"],
-                            feature["input_count"],
-                        ),
+                        str(feature["input_count"]),
                     ]
                 )
                 + " |"

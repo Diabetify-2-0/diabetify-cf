@@ -51,7 +51,6 @@ def test_build_markdown_report_contains_scenario_and_stability_sections(tmp_path
                 "target_success_rate": "1.0",
                 "immutable_violation_rate": "0.0",
                 "mutable_violation_rate": "0.0",
-                "bounds_violation_rate": "0.0",
                 "directional_violation_rate": "0.0",
                 "mean_runtime_ms": "12.0",
                 "mean_lof_score": "1.0",
