@@ -48,6 +48,16 @@ def _boolean_rate(rows: list[dict[str, Any]], key: str) -> float:
     return sum(1 for row in rows if _truthy(row.get(key))) / len(rows)
 
 
+def _boolean_rate_over_total_cases(
+    rows: list[dict[str, Any]],
+    key: str,
+    total_cases: int,
+) -> float:
+    if total_cases <= 0:
+        return 0.0
+    return sum(1 for row in rows if _truthy(row.get(key))) / total_cases
+
+
 def _top_candidate_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     top_by_request: dict[str, dict[str, Any]] = {}
     ordered_request_ids: list[str] = []
@@ -74,19 +84,28 @@ def summarize_run(run_dir: Path) -> dict[str, Any]:
     ]
 
     total_cases = len(cases)
-    feasible_cases = status_counts.get("FEASIBLE", 0)
+    validity_success_cases = sum(1 for row in top_candidates if _truthy(row.get("target_success")))
+    validity_success_rate = (
+        validity_success_cases / total_cases if total_cases else 0.0
+    )
     return {
         "run_dir": str(run_dir),
         "total_cases": total_cases,
-        "feasible_cases": feasible_cases,
-        "feasible_rate": feasible_cases / total_cases if total_cases else 0.0,
+        "validity_success_cases": validity_success_cases,
+        "validity_success_rate": validity_success_rate,
+        "feasible_cases": validity_success_cases,
+        "feasible_rate": validity_success_rate,
         "mean_runtime_ms": sum(runtimes) / len(runtimes) if runtimes else 0.0,
         "mean_candidate_count": (
             sum(candidate_counts) / len(candidate_counts) if candidate_counts else 0.0
         ),
         "candidate_rows": len(candidates),
         "requests_with_candidates": len(top_candidates),
-        "target_success_rate": _boolean_rate(top_candidates, "target_success"),
+        "target_success_rate": _boolean_rate_over_total_cases(
+            top_candidates,
+            "target_success",
+            total_cases,
+        ),
         "plausibility_pass_rate": _boolean_rate(top_candidates, "plausibility_pass"),
         "immutable_violation_rate": _positive_rate(top_candidates, "immutable_violation_count"),
         "mutable_violation_rate": _positive_rate(top_candidates, "mutable_violation_count"),

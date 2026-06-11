@@ -31,7 +31,9 @@ from experiments.scripts.run_benchmark import (
 from experiments.scripts.run_scenarios import DEFAULT_SCENARIO_CONFIGS
 
 DEFAULT_ENGINE_CONFIGS = [
+    Path("experiments/configs/engines/dice_plain.json"),
     Path("experiments/configs/engines/dice.json"),
+    Path("experiments/configs/engines/nn.json"),
 ]
 
 
@@ -165,7 +167,7 @@ def build_comparison_report(comparison_root: Path, top_n: int = 10) -> str:
 
     if scenarios_by_engine:
         lines.append(
-            "| Engine | Scenarios | Completed | Timeout | Failed | Mean feasible | "
+            "| Engine | Scenarios | Completed | Timeout | Failed | Mean validity | "
             "Candidate rows |"
         )
         lines.append("| --- | ---: | ---: | ---: | ---: | ---: | ---: |")
@@ -180,7 +182,9 @@ def build_comparison_report(comparison_root: Path, top_n: int = 10) -> str:
                         str(statuses.get("completed", 0)),
                         str(statuses.get("timeout", 0)),
                         str(statuses.get("failed", 0)),
-                        _percent(_mean([_as_float(row, "feasible_rate") for row in rows])),
+                        _percent(
+                            _mean([_as_float(row, "validity_success_rate") for row in rows])
+                        ),
                         str(candidate_counts.get(engine, 0)),
                     ]
                 )
@@ -192,7 +196,7 @@ def build_comparison_report(comparison_root: Path, top_n: int = 10) -> str:
     lines.extend(["", "## Scenario Matrix", ""])
     if scenario_rows:
         lines.append(
-            "| Engine | Scenario | Status | Feasible | Target | Runtime ms | Step runtime s | "
+            "| Engine | Scenario | Status | Validity | Plausibility | Runtime ms | Step runtime s | "
             "Reason counts |"
         )
         lines.append("| --- | --- | --- | ---: | ---: | ---: | ---: | --- |")
@@ -205,8 +209,8 @@ def build_comparison_report(comparison_root: Path, top_n: int = 10) -> str:
                         engine,
                         row.get("scenario", "-"),
                         row.get("step_status") or "completed",
-                        _percent(_as_float(row, "feasible_rate")),
-                        _percent(_as_float(row, "target_success_rate")),
+                        _percent(_as_float(row, "validity_success_rate")),
+                        _percent(_as_float(row, "plausibility_pass_rate")),
                         _number(_as_float(row, "mean_runtime_ms")),
                         _number(_as_float(row, "step_runtime_seconds")),
                         row.get("reason_counts", "{}").replace("|", "\\|"),
@@ -220,9 +224,9 @@ def build_comparison_report(comparison_root: Path, top_n: int = 10) -> str:
     lines.extend(["", "## Stability", ""])
     if stability_by_engine:
         lines.append(
-            "| Engine | Case count | Mean feasible | Fully feasible cases | "
-            "Stability evaluable cases | Feasible-only Jaccard | "
-            "Feasible-only std norm | All-repeat Jaccard |"
+            "| Engine | Case count | Mean success | Fully successful cases | "
+            "Stability evaluable cases | Successful-only Jaccard | "
+            "Successful-only std norm | All-repeat Jaccard |"
         )
         lines.append("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
         for engine, rows in stability_by_engine.items():
@@ -233,9 +237,11 @@ def build_comparison_report(comparison_root: Path, top_n: int = 10) -> str:
                     [
                         engine,
                         str(case_count),
-                        _percent(_mean([_as_float(row, "mean_feasible_rate") for row in rows])),
+                        _percent(_mean([_as_float(row, "mean_success_rate") for row in rows])),
                         _percent(
-                            _mean([_as_float(row, "fully_feasible_case_rate") for row in rows])
+                            _mean(
+                                [_as_float(row, "fully_successful_case_rate") for row in rows]
+                            )
                         ),
                         _percent(
                             _mean([_as_float(row, "stability_evaluable_case_rate") for row in rows])
@@ -289,12 +295,14 @@ def build_comparison_report(comparison_root: Path, top_n: int = 10) -> str:
             "",
             "- Engine comparison uses the same scenario configs, limits, repeat count, "
             "and timeouts.",
-            "- `completed` means the subprocess finished; success is measured by feasible "
+            "- `completed` means the subprocess finished; success is measured by validity "
             "rate and violations.",
+            "- Validity is measured only as target-class flipping on the top candidate "
+            "per request; constraint and plausibility checks remain separate metrics.",
             "- Scenario summary rates are computed from the top-ranked candidate per request; "
             "all-candidate statistics remain available in raw CSV outputs.",
-            "- Feasible-only stability is computed only from repeats that produced "
-            "FEASIBLE counterfactuals.",
+            "- Successful-only stability is computed only from repeats whose top candidate "
+            "reached the target class.",
             "- Small limits are smoke-level evidence. Increase limits before drawing final "
             "research claims.",
             "",

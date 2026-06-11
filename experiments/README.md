@@ -9,8 +9,9 @@ Fungsi utamanya:
 - menyiapkan artefak analisis untuk notebook.
 
 Benchmark inti final yang dipakai di repo ini:
-- `dice`
-- `nn`
+- `dice_plain`
+- `dice_constrained_native`
+- `nn_production`
 
 ## Struktur Singkat
 
@@ -32,6 +33,7 @@ experiments/
 ### 1. Jalankan benchmark inti final
 
 Gunakan ini untuk run resmi yang membandingkan `dice` dan `nn` dalam desain yang sama.
+Gunakan ini untuk run resmi yang membandingkan tiga tingkat kematangan metode penelitian dalam desain yang sama.
 
 ```powershell
 .\.venv\Scripts\python.exe experiments\scripts\run_core_checkpoint.py `
@@ -67,7 +69,7 @@ Ini mengecek:
 Untuk debug satu engine dan satu scenario:
 
 ```powershell
-.\.venv\Scripts\python.exe experiments\scripts\run_benchmark.py --engine-config experiments\configs\engines\dice.json --scenario-config experiments\configs\scenarios\all_mutable.json
+.\.venv\Scripts\python.exe experiments\scripts\run_benchmark.py --engine-config experiments\configs\engines\dice_plain.json --scenario-config experiments\configs\scenarios\default_mutable.json
 ```
 
 ## Folder `results/`
@@ -105,12 +107,12 @@ Konfigurasi benchmark inti final:
 Kelompok skenario yang dipakai:
 
 - **Operasional**
-  - `all_mutable`
-  - `lifestyle_combo`
-  - `minimal_realistic_combo`
-  - `bmi_only`
+  - `default_mutable`
+  - `bmi_activity_smoking_hypertension`
+  - `bmi_activity`
+  - `bmi`
 - **Stress test**
-  - `activity_only`
+  - `activity`
 - **Kontrol infeasible**
   - `no_mutable`
 - **Stabilitas**
@@ -119,9 +121,9 @@ Kelompok skenario yang dipakai:
 Metrik dibaca dalam tiga lapisan:
 
 - **Metrik utama pembanding**
-  - `feasible_rate` pada skenario operasional
+  - `validity_success_rate` pada skenario operasional
   - `plausibility_pass_rate`
-  - `fully_feasible_case_rate`
+  - `fully_successful_case_rate`
   - `mean_feasible_only_jaccard_changed_features`
   - `mean_feasible_only_stability_std_norm`
   - `mean_runtime_ms`

@@ -8,7 +8,12 @@ import pandas as pd
 from diabetify_cf.config import Settings
 from diabetify_cf.engine.artifacts import ModelArtifacts, load_artifacts
 from diabetify_cf.reason_codes import ReasonCode, Status
-from diabetify_cf.schemas import CounterfactualRequest, ValidationSummary
+from diabetify_cf.schemas import (
+    CandidateMetrics,
+    CounterfactualCandidate,
+    CounterfactualRequest,
+    ValidationSummary,
+)
 from experiments.engines.base import EngineRunResult, ExperimentEngine
 from experiments.postprocessing import (
     ExperimentPostprocessor,
@@ -18,7 +23,7 @@ from experiments.postprocessing import (
 
 
 class DiceCandidateGenerator:
-    """DiCE-only candidate generator for experiment comparisons."""
+    """DiCE-backed candidate generator used by research experiment adapters."""
 
     engine_version = "dice_generator_experiment_v1"
 
@@ -48,6 +53,7 @@ class DiceCandidateGenerator:
         request: CounterfactualRequest,
         prepared: PreparedExperimentRequest,
         postprocessor: ExperimentPostprocessor,
+        use_native_constraints: bool,
     ) -> pd.DataFrame:
         assert self.artifacts is not None
         import dice_ml
@@ -70,11 +76,12 @@ class DiceCandidateGenerator:
                 request.target.target_class,
                 prepared.base_prediction,
             ),
-            "features_to_vary": prepared.mutable_allowed,
             "verbose": False,
             "random_seed": request.generation.random_seed,
         }
-        if prepared.permitted_range:
+        if use_native_constraints:
+            kwargs["features_to_vary"] = prepared.mutable_allowed
+        if use_native_constraints and prepared.permitted_range:
             kwargs["permitted_range"] = prepared.permitted_range
 
         try:
@@ -127,7 +134,7 @@ class DiceCandidateGenerator:
 
 
 class DiceExperimentAdapter(ExperimentEngine):
-    name = "dice"
+    name = "dice_constrained_native"
 
     def __init__(
         self,
@@ -181,7 +188,7 @@ class DiceExperimentAdapter(ExperimentEngine):
         try:
             prepared = postprocessor.prepare(request)
             if not prepared.mutable_allowed:
-                return self._to_run_result(
+                return self._to_processed_run_result(
                     request=request,
                     result=postprocessor.no_mutable_result(request, started),
                 )
@@ -189,14 +196,15 @@ class DiceExperimentAdapter(ExperimentEngine):
                 request=request,
                 prepared=prepared,
                 postprocessor=postprocessor,
+                use_native_constraints=True,
             )
-            result = postprocessor.process(
+            return self._to_raw_run_result(
                 request=request,
                 prepared=prepared,
+                postprocessor=postprocessor,
                 raw_candidates=raw_candidates,
                 started=started,
             )
-            return self._to_run_result(request=request, result=result)
         except ValueError as err:
             return EngineRunResult(
                 engine_name=self.name,
@@ -222,7 +230,52 @@ class DiceExperimentAdapter(ExperimentEngine):
                 raw_error=repr(err),
             )
 
-    def _to_run_result(
+    def _to_raw_run_result(
+        self,
+        *,
+        request: CounterfactualRequest,
+        prepared: PreparedExperimentRequest,
+        postprocessor: ExperimentPostprocessor,
+        raw_candidates: pd.DataFrame,
+        started: float,
+    ) -> EngineRunResult:
+        if raw_candidates.empty:
+            result = ExperimentPostprocessResult(
+                status=Status.INFEASIBLE,
+                reason_code=ReasonCode.TARGET_UNREACHABLE_UNDER_CONSTRAINTS,
+                message="DiCE did not return any candidate under the current native setup.",
+                runtime_ms=self._elapsed_ms(started),
+                candidates=[],
+                input_prediction=prepared.base_prediction,
+                validation=ValidationSummary(
+                    immutable_violation=False,
+                    mutable_compliance=True,
+                    medical_rules_passed=True,
+                ),
+            )
+            return self._to_processed_run_result(request=request, result=result)
+
+        candidates = [
+            self._candidate_from_raw_row(
+                candidate_id=f"cf_{index + 1}",
+                row=row,
+                prepared=prepared,
+                postprocessor=postprocessor,
+            )
+            for index, (_, row) in enumerate(raw_candidates.iterrows())
+        ]
+        return EngineRunResult(
+            engine_name=self.name,
+            request_id=request.request_id,
+            status=Status.FEASIBLE.value,
+            reason_code=ReasonCode.OK.value,
+            message=f"Generated {len(candidates)} raw DiCE candidate(s) without pipeline filtering.",
+            runtime_ms=self._elapsed_ms(started),
+            candidate_count=len(candidates),
+            candidates=[candidate.to_wire() for candidate in candidates],
+        )
+
+    def _to_processed_run_result(
         self,
         *,
         request: CounterfactualRequest,
@@ -239,6 +292,133 @@ class DiceExperimentAdapter(ExperimentEngine):
             candidates=[candidate.to_wire() for candidate in result.candidates],
         )
 
+    def _candidate_from_raw_row(
+        self,
+        *,
+        candidate_id: str,
+        row: pd.Series,
+        prepared: PreparedExperimentRequest,
+        postprocessor: ExperimentPostprocessor,
+    ) -> CounterfactualCandidate:
+        candidate_features: dict[str, int | float | bool | str] = {}
+        for column in prepared.model_columns:
+            raw_value = row[column] if column in row.index else prepared.instance_features[column]
+            if pd.isna(raw_value):
+                raw_value = prepared.instance_features[column]
+            candidate_features[column] = prepared.registry.coerce_value(column, raw_value)
+
+        candidate_df = pd.DataFrame([candidate_features], columns=prepared.model_columns)
+        candidate_df = postprocessor.as_model_input_df(candidate_df)
+        prediction = postprocessor.predict_info(candidate_df)
+        delta = self._build_full_delta(
+            candidate_features=candidate_features,
+            baseline_features=prepared.instance_features,
+        )
+        distance_l1 = postprocessor._normalized_l1(  # noqa: SLF001
+            candidate_features,
+            prepared.instance_features,
+            prepared.registry,
+        )
+        lof_score = postprocessor._lof_score(candidate_df)  # noqa: SLF001
+        return CounterfactualCandidate(
+            candidate_id=candidate_id,
+            features=candidate_features,
+            delta=delta,
+            prediction=prediction,
+            metrics=CandidateMetrics(
+                distance_l1=distance_l1,
+                changed_feature_count=len(delta),
+                lof_score=lof_score,
+                constraint_violations=0,
+            ),
+        )
+
+    @staticmethod
+    def _build_full_delta(
+        *,
+        candidate_features: dict[str, int | float | bool | str],
+        baseline_features: dict[str, int | float | bool | str],
+    ) -> dict[str, float]:
+        delta: dict[str, float] = {}
+        for feature_name, candidate_value in candidate_features.items():
+            if feature_name not in baseline_features:
+                continue
+            diff = float(candidate_value) - float(baseline_features[feature_name])
+            if abs(diff) >= 1e-9:
+                delta[feature_name] = round(diff, 6)
+        return delta
+
     @staticmethod
     def _elapsed_ms(started: float) -> int:
         return int((perf_counter() - started) * 1000)
+
+
+class DicePlainExperimentAdapter(DiceExperimentAdapter):
+    name = "dice_plain"
+
+    def generate(self, request: CounterfactualRequest) -> EngineRunResult:
+        started = perf_counter()
+        if self.artifacts is None:
+            message = "Experiment DiCE generator is not fully configured yet."
+            if self.initialization_error:
+                message += f" Initialization error: {self.initialization_error}"
+            return self._to_processed_run_result(
+                request=request,
+                result=ExperimentPostprocessResult(
+                    status=Status.ERROR,
+                    reason_code=ReasonCode.ENGINE_NOT_READY,
+                    message=message,
+                    runtime_ms=self._elapsed_ms(started),
+                    candidates=[],
+                    input_prediction=None,
+                    validation=ValidationSummary(
+                        immutable_violation=False,
+                        mutable_compliance=True,
+                        medical_rules_passed=True,
+                    ),
+                ),
+            )
+
+        postprocessor = ExperimentPostprocessor(
+            artifacts=self.artifacts,
+            max_lof_score=self.settings.max_lof_score,
+        )
+        try:
+            prepared = postprocessor.prepare(request)
+            raw_candidates = self.engine.generate_raw(
+                request=request,
+                prepared=prepared,
+                postprocessor=postprocessor,
+                use_native_constraints=False,
+            )
+            return self._to_raw_run_result(
+                request=request,
+                prepared=prepared,
+                postprocessor=postprocessor,
+                raw_candidates=raw_candidates,
+                started=started,
+            )
+        except ValueError as err:
+            return EngineRunResult(
+                engine_name=self.name,
+                request_id=request.request_id,
+                status=Status.ERROR.value,
+                reason_code=ReasonCode.INVALID_INPUT_SCHEMA.value,
+                message=str(err),
+                runtime_ms=self._elapsed_ms(started),
+                candidate_count=0,
+                candidates=[],
+                raw_error=repr(err),
+            )
+        except Exception as err:
+            return EngineRunResult(
+                engine_name=self.name,
+                request_id=request.request_id,
+                status=Status.ERROR.value,
+                reason_code=ReasonCode.INTERNAL_ERROR.value,
+                message=f"Unhandled experiment generator error: {err}",
+                runtime_ms=self._elapsed_ms(started),
+                candidate_count=0,
+                candidates=[],
+                raw_error=repr(err),
+            )

@@ -3,16 +3,22 @@
   "description": "Native one-environment benchmark scope for the thesis comparison pipeline.",
   "core_engines": [
     {
-      "engine": "dice",
-      "config_path": "experiments/configs/engines/dice.json",
-      "category": "external_library",
-      "notes": "General-purpose counterfactual library integrated natively in the main environment."
+      "engine": "dice_plain",
+      "config_path": "experiments/configs/engines/dice_plain.json",
+      "category": "library_baseline",
+      "notes": "Plain DiCE baseline with native library behavior and no added pipeline constraints."
     },
     {
-      "engine": "nn",
+      "engine": "dice_constrained_native",
+      "config_path": "experiments/configs/engines/dice.json",
+      "category": "library_constrained",
+      "notes": "DiCE with native features_to_vary and permitted_range constraints, without production post-filtering."
+    },
+    {
+      "engine": "nn_production",
       "config_path": "experiments/configs/engines/nn.json",
-      "category": "custom_baseline",
-      "notes": "Nearest-neighbor projection baseline implemented for the main pipeline."
+      "category": "production_pipeline",
+      "notes": "Nearest-neighbor production pipeline used by the microservice with mature validation and ranking."
     }
   ],
   "excluded_candidates": [

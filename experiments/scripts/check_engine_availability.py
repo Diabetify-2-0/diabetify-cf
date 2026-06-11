@@ -18,9 +18,10 @@ from diabetify_cf.config import Settings
 from experiments.engines.factory import SUPPORTED_ENGINES, build_experiment_engine
 
 ENGINE_IMPORTS = {
-    "dice": ["dice_ml"],
+    "dice_plain": ["dice_ml"],
+    "dice_constrained_native": ["dice_ml"],
     "carla": ["carla"],
-    "nn": ["sklearn"],
+    "nn_production": ["sklearn"],
     "focus": ["focus"],
 }
 

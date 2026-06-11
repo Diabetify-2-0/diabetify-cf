@@ -29,11 +29,11 @@ from experiments.scripts.run_metadata import build_run_metadata
 from experiments.scripts.summarize_results import summarize_run, write_summary_csv
 
 DEFAULT_SCENARIO_CONFIGS = [
-    Path("experiments/configs/scenarios/all_mutable.json"),
-    Path("experiments/configs/scenarios/lifestyle_combo.json"),
-    Path("experiments/configs/scenarios/minimal_realistic_combo.json"),
-    Path("experiments/configs/scenarios/bmi_only.json"),
-    Path("experiments/configs/scenarios/activity_only.json"),
+    Path("experiments/configs/scenarios/default_mutable.json"),
+    Path("experiments/configs/scenarios/bmi_activity_smoking_hypertension.json"),
+    Path("experiments/configs/scenarios/bmi_activity.json"),
+    Path("experiments/configs/scenarios/bmi.json"),
+    Path("experiments/configs/scenarios/activity.json"),
     Path("experiments/configs/scenarios/no_mutable.json"),
 ]
 DEFAULT_SCENARIO_TIMEOUT_SECONDS = 300
@@ -160,6 +160,8 @@ def _failed_scenario_summary(
         "scenario": scenario_name,
         "run_dir": "",
         "total_cases": 0,
+        "validity_success_cases": 0,
+        "validity_success_rate": 0.0,
         "feasible_cases": 0,
         "feasible_rate": 0.0,
         "mean_runtime_ms": 0.0,

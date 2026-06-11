@@ -26,7 +26,7 @@ from experiments.evaluation import evaluate_candidate
 from experiments.scripts.run_metadata import build_run_metadata
 
 DEFAULT_ENGINE_CONFIG_PATH = Path("experiments/configs/engines/dice.json")
-DEFAULT_SCENARIO_CONFIG_PATH = Path("experiments/configs/scenarios/all_mutable.json")
+DEFAULT_SCENARIO_CONFIG_PATH = Path("experiments/configs/scenarios/default_mutable.json")
 DEFAULT_OUTPUT_ROOT = Path("experiments/results")
 
 

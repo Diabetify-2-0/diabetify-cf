@@ -4,12 +4,18 @@ from typing import Any
 
 from diabetify_cf.config import Settings
 from experiments.engines.base import ExperimentEngine
-from experiments.engines.dice_adapter import DiceExperimentAdapter
+from experiments.engines.dice_adapter import (
+    DiceExperimentAdapter,
+    DicePlainExperimentAdapter,
+)
 from experiments.engines.nn_adapter import NearestNeighborExperimentAdapter
 
 ENGINE_ADAPTERS = {
     "dice": DiceExperimentAdapter,
+    "dice_plain": DicePlainExperimentAdapter,
+    "dice_constrained_native": DiceExperimentAdapter,
     "nn": NearestNeighborExperimentAdapter,
+    "nn_production": NearestNeighborExperimentAdapter,
 }
 SUPPORTED_ENGINES = set(ENGINE_ADAPTERS)
 

@@ -53,7 +53,7 @@ def build_checkpoint_report(audit_payload: dict[str, Any]) -> str:
         "",
         "## Scenario Summary",
         "",
-        "| Engine | Scenarios | Completed | Timeout | Failed | Mean feasible | Max violation |",
+        "| Engine | Scenarios | Completed | Timeout | Failed | Mean validity | Max violation |",
         "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
 
@@ -67,7 +67,7 @@ def build_checkpoint_report(audit_payload: dict[str, Any]) -> str:
                     str(item["completed_count"]),
                     str(item["timeout_count"]),
                     str(item["failed_count"]),
-                    _percent(float(item["mean_feasible_rate"])),
+                    _percent(float(item["mean_validity_success_rate"])),
                     _number(float(item["max_violation_rate"])),
                 ]
             )
@@ -79,7 +79,7 @@ def build_checkpoint_report(audit_payload: dict[str, Any]) -> str:
             "",
             "## Stability Summary",
             "",
-            "| Engine | Cases | Mean feasible | Evaluable | Feasible-only Jaccard |",
+            "| Engine | Cases | Mean success | Evaluable | Successful-only Jaccard |",
             "| --- | ---: | ---: | ---: | ---: |",
         ]
     )
@@ -88,15 +88,15 @@ def build_checkpoint_report(audit_payload: dict[str, Any]) -> str:
         lines.append(
             "| "
             + " | ".join(
-                [
-                    engine,
-                    str(item["case_count"]),
-                    _percent(float(item["mean_feasible_rate"])),
-                    _percent(float(item["stability_evaluable_case_rate"])),
-                    _number(float(item["mean_feasible_only_jaccard_changed_features"])),
-                ]
-            )
-            + " |"
+                    [
+                        engine,
+                        str(item["case_count"]),
+                        _percent(float(item["mean_success_rate"])),
+                        _percent(float(item["stability_evaluable_case_rate"])),
+                        _number(float(item["mean_feasible_only_jaccard_changed_features"])),
+                    ]
+                )
+                + " |"
         )
 
     if audit_payload["errors"]:

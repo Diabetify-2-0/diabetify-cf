@@ -1,6 +1,6 @@
 {
-  "engine": "nn",
-  "engine_label": "nn",
+  "engine": "nn_production",
+  "engine_label": "nn_production",
   "generation_method": "nearest_neighbor_projection",
   "total_cfs": 3,
   "timeout_ms": 5000,

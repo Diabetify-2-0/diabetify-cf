@@ -21,6 +21,7 @@ bootstrap_path(__file__)
 from diabetify_cf.config import Settings
 from diabetify_cf.schemas import CounterfactualRequest
 from experiments.engines.factory import build_experiment_engine
+from experiments.evaluation import evaluate_candidate
 from experiments.scripts.run_benchmark import (
     DEFAULT_ENGINE_CONFIG_PATH,
     DEFAULT_OUTPUT_ROOT,
@@ -95,20 +96,25 @@ def _mean(rows: list[dict[str, Any]], key: str) -> float:
 
 
 def _aggregate_summary(summary_rows: list[dict[str, Any]]) -> dict[str, Any]:
-    fully_feasible_case_count = sum(
+    fully_successful_case_count = sum(
         1
         for row in summary_rows
-        if int(row.get("feasible_count") or 0) == int(row.get("repeat_count") or 0)
+        if int(row.get("success_count") or 0) == int(row.get("repeat_count") or 0)
     )
     stability_evaluable_case_count = sum(
         1 for row in summary_rows if bool(row.get("stability_evaluable"))
     )
     return {
         "case_count": len(summary_rows),
-        "mean_feasible_rate": _mean(summary_rows, "feasible_rate"),
-        "fully_feasible_case_count": fully_feasible_case_count,
+        "mean_success_rate": _mean(summary_rows, "success_rate"),
+        "mean_feasible_rate": _mean(summary_rows, "success_rate"),
+        "fully_successful_case_count": fully_successful_case_count,
+        "fully_successful_case_rate": (
+            fully_successful_case_count / len(summary_rows) if summary_rows else 0.0
+        ),
+        "fully_feasible_case_count": fully_successful_case_count,
         "fully_feasible_case_rate": (
-            fully_feasible_case_count / len(summary_rows) if summary_rows else 0.0
+            fully_successful_case_count / len(summary_rows) if summary_rows else 0.0
         ),
         "stability_evaluable_case_count": stability_evaluable_case_count,
         "stability_evaluable_case_rate": (
@@ -165,7 +171,7 @@ def evaluate_stability(
         changed_sets: list[set[str]] = []
         feasible_deltas: list[dict[str, float]] = []
         feasible_changed_sets: list[set[str]] = []
-        feasible_count = 0
+        success_count = 0
         print(f"Running stability case {case_index}/{len(selected)}...", flush=True)
 
         for repeat_index in range(repeat_count):
@@ -195,8 +201,16 @@ def evaluate_stability(
             changed = set(delta_float)
             deltas.append(delta_float)
             changed_sets.append(changed)
-            if result.status == "FEASIBLE":
-                feasible_count += 1
+            evaluation = evaluate_candidate(
+                candidate=top_candidate if isinstance(top_candidate, dict) else {},
+                baseline=row.to_dict(),
+                request=request,
+                registry=artifacts.feature_registry,
+                max_lof_score=settings.max_lof_score,
+            )
+            target_success = bool(evaluation["target_success"])
+            if target_success:
+                success_count += 1
                 feasible_deltas.append(delta_float)
                 feasible_changed_sets.append(changed)
 
@@ -209,21 +223,25 @@ def evaluate_stability(
                     "reason_code": result.reason_code,
                     "runtime_ms": result.runtime_ms,
                     "candidate_count": result.candidate_count,
+                    "target_success": target_success,
                     "top_delta": json.dumps(delta_float, ensure_ascii=True),
                 }
             )
 
         all_repeat_jaccard = _changed_feature_jaccard(changed_sets)
         feasible_only_jaccard = _changed_feature_jaccard(feasible_changed_sets)
-        stability_evaluable = feasible_count >= 2
+        stability_evaluable = success_count >= 2
         summary_rows.append(
             {
                 "case_id": f"case-{case_index:05d}",
                 "repeat_count": repeat_count,
-                "feasible_count": feasible_count,
-                "feasible_rate": feasible_count / repeat_count if repeat_count else 0.0,
+                "success_count": success_count,
+                "success_rate": success_count / repeat_count if repeat_count else 0.0,
+                "feasible_count": success_count,
+                "feasible_rate": success_count / repeat_count if repeat_count else 0.0,
                 "stability_evaluable": stability_evaluable,
-                "fully_feasible": feasible_count == repeat_count,
+                "fully_successful": success_count == repeat_count,
+                "fully_feasible": success_count == repeat_count,
                 "mean_jaccard_changed_features": (
                     all_repeat_jaccard if all_repeat_jaccard is not None else 1.0
                 ),
@@ -238,7 +256,7 @@ def evaluate_stability(
         )
         print(
             f"Finished stability case {case_index}/{len(selected)} "
-            f"with feasible_rate={summary_rows[-1]['feasible_rate']:.3f}.",
+            f"with success_rate={summary_rows[-1]['success_rate']:.3f}.",
             flush=True,
         )
 

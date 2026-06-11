@@ -169,7 +169,7 @@ def build_markdown_report(baseline_root: Path, top_n: int = 10) -> str:
     ]
     if scenario_rows:
         lines.append(
-            "| Scenario | Status | Feasible | Target | Immutable | Mutable | "
+            "| Scenario | Status | Validity | Plausibility | Immutable | Mutable | "
             "Direction | Runtime ms | LOF |"
         )
         lines.append("| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
@@ -180,8 +180,8 @@ def build_markdown_report(baseline_root: Path, top_n: int = 10) -> str:
                     [
                         row.get("scenario", "-"),
                         row.get("step_status") or "completed",
-                        _percent(_as_float(row, "feasible_rate")),
-                        _percent(_as_float(row, "target_success_rate")),
+                        _percent(_as_float(row, "validity_success_rate")),
+                        _percent(_as_float(row, "plausibility_pass_rate")),
                         _percent(_as_float(row, "immutable_violation_rate")),
                         _percent(_as_float(row, "mutable_violation_rate")),
                         _percent(_as_float(row, "directional_violation_rate")),
@@ -197,8 +197,8 @@ def build_markdown_report(baseline_root: Path, top_n: int = 10) -> str:
     lines.extend(["", "## Stability Summary", ""])
     if stability_rows:
         lines.append(
-            "| Case count | Mean feasible | Fully feasible cases | Stability evaluable cases | "
-            "Feasible-only Jaccard | Feasible-only std norm | All-repeat Jaccard |"
+            "| Case count | Mean success | Fully successful cases | Stability evaluable cases | "
+            "Successful-only Jaccard | Successful-only std norm | All-repeat Jaccard |"
         )
         lines.append("| ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
         for row in stability_rows:
@@ -207,8 +207,8 @@ def build_markdown_report(baseline_root: Path, top_n: int = 10) -> str:
                 + " | ".join(
                     [
                         row.get("case_count", "0"),
-                        _percent(_as_float(row, "mean_feasible_rate")),
-                        _percent(_as_float(row, "fully_feasible_case_rate")),
+                        _percent(_as_float(row, "mean_success_rate")),
+                        _percent(_as_float(row, "fully_successful_case_rate")),
                         _percent(_as_float(row, "stability_evaluable_case_rate")),
                         _number(_as_float(row, "mean_feasible_only_jaccard_changed_features")),
                         _number(_as_float(row, "mean_feasible_only_stability_std_norm")),
@@ -266,8 +266,8 @@ def _print_scenarios(rows: list[dict[str, str]]) -> None:
     header = (
         "scenario",
         "status",
-        "feasible",
-        "target",
+        "validity",
+        "plausibility",
         "immutable",
         "mutable",
         "direction",
@@ -283,8 +283,8 @@ def _print_scenarios(rows: list[dict[str, str]]) -> None:
                 [
                     row.get("scenario", "-"),
                     row.get("step_status") or "completed",
-                    _percent(_as_float(row, "feasible_rate")),
-                    _percent(_as_float(row, "target_success_rate")),
+                    _percent(_as_float(row, "validity_success_rate")),
+                    _percent(_as_float(row, "plausibility_pass_rate")),
                     _percent(_as_float(row, "immutable_violation_rate")),
                     _percent(_as_float(row, "mutable_violation_rate")),
                     _percent(_as_float(row, "directional_violation_rate")),
@@ -305,9 +305,9 @@ def _print_stability(rows: list[dict[str, str]]) -> None:
         print(
             "  "
             f"case_count={row.get('case_count', '0')} | "
-            f"mean_feasible_rate={_percent(_as_float(row, 'mean_feasible_rate'))} | "
-            "fully_feasible_case_rate="
-            f"{_percent(_as_float(row, 'fully_feasible_case_rate'))} | "
+            f"mean_success_rate={_percent(_as_float(row, 'mean_success_rate'))} | "
+            "fully_successful_case_rate="
+            f"{_percent(_as_float(row, 'fully_successful_case_rate'))} | "
             "stability_evaluable_case_rate="
             f"{_percent(_as_float(row, 'stability_evaluable_case_rate'))} | "
             "feasible_only_jaccard="

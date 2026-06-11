@@ -1,5 +1,5 @@
 {
-  "name": "minimal_realistic_combo",
+  "name": "bmi_activity",
   "limit": 10,
   "only_high_risk": true,
   "target_class": "low_risk",

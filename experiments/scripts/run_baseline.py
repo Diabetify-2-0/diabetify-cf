@@ -167,6 +167,8 @@ def _failed_scenario_summary(
         "scenario": scenario_name,
         "run_dir": "",
         "total_cases": 0,
+        "validity_success_cases": 0,
+        "validity_success_rate": 0.0,
         "feasible_cases": 0,
         "feasible_rate": 0.0,
         "mean_runtime_ms": 0.0,
