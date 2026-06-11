@@ -20,7 +20,6 @@ from experiments.engines.factory import SUPPORTED_ENGINES, build_experiment_engi
 ENGINE_IMPORTS = {
     "dice": ["dice_ml"],
     "carla": ["carla"],
-    "ft": ["xgboost"],
     "nn": ["sklearn"],
     "ocean": ["ocean"],
     "focus": ["focus"],

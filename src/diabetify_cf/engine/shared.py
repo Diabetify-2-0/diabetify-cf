@@ -953,7 +953,14 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
         for feature_name, diff in candidate.delta.items():
             feature = registry.get(feature_name)
             weight = 1.0 if feature is None else feature.cost_weight
-            action_cost_score += abs(float(diff)) * weight
+            span = 1.0
+            if (
+                feature is not None
+                and feature.global_min is not None
+                and feature.global_max is not None
+            ):
+                span = max(float(feature.global_max) - float(feature.global_min), 1e-6)
+            action_cost_score += (abs(float(diff)) / span) * weight
 
         return (
             w_proximity * proximity_score

@@ -8,6 +8,8 @@ from diabetify_cf.engine.artifacts import ModelArtifacts
 from diabetify_cf.engine.feature_registry import FeatureDefinition, FeatureRegistry
 from diabetify_cf.reason_codes import ReasonCode, Status
 from diabetify_cf.schemas import (
+    CandidateMetrics,
+    CounterfactualCandidate,
     CounterfactualRequest,
     PredictionInfo,
 )
@@ -349,6 +351,79 @@ def test_target_satisfied_enforces_min_probability() -> None:
     assert not engine._target_satisfied(high_prediction, "high_risk", 0.90)
     assert engine._target_satisfied(moderate_high_prediction, "low_risk", 0.30)
     assert not engine._target_satisfied(moderate_high_prediction, "low_risk", 0.40)
+
+
+def test_objective_score_normalizes_action_cost_by_feature_range() -> None:
+    registry = FeatureRegistry(
+        version="test_v1",
+        features=[
+            FeatureDefinition(
+                name="wide_scale",
+                feature_type="continuous",
+                immutable=False,
+                actionable=True,
+                default_mutable=True,
+                global_min=0,
+                global_max=100,
+                cost_weight=1.0,
+                preferred_direction="any",
+                aliases=[],
+            ),
+            FeatureDefinition(
+                name="narrow_scale",
+                feature_type="continuous",
+                immutable=False,
+                actionable=True,
+                default_mutable=True,
+                global_min=0,
+                global_max=1,
+                cost_weight=1.0,
+                preferred_direction="any",
+                aliases=[],
+            ),
+        ],
+    )
+    metrics = CandidateMetrics(
+        distance_l1=0.0,
+        changed_feature_count=1,
+        lof_score=1.0,
+        constraint_violations=0,
+    )
+    prediction = PredictionInfo(class_name="low_risk", probability_low_risk=0.8)
+    wide_candidate = CounterfactualCandidate(
+        candidate_id="wide",
+        features={"wide_scale": 10.0, "narrow_scale": 0.0},
+        delta={"wide_scale": 10.0},
+        prediction=prediction,
+        metrics=metrics,
+    )
+    narrow_candidate = CounterfactualCandidate(
+        candidate_id="narrow",
+        features={"wide_scale": 0.0, "narrow_scale": 0.1},
+        delta={"narrow_scale": 0.1},
+        prediction=prediction,
+        metrics=metrics,
+    )
+    engine = DiceCounterfactualEngine()
+    weights = {
+        "proximity": 0.0,
+        "sparsity": 0.0,
+        "plausibility": 0.0,
+        "action_cost": 1.0,
+    }
+
+    wide_score = engine._objective_score(
+        candidate=wide_candidate,
+        preferences=weights,
+        registry=registry,
+    )
+    narrow_score = engine._objective_score(
+        candidate=narrow_candidate,
+        preferences=weights,
+        registry=registry,
+    )
+
+    assert wide_score == narrow_score == 0.1
 
 
 def test_build_mutable_allowed_filters_immutable_non_actionable_and_duplicates() -> None:

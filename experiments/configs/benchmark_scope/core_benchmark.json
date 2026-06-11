@@ -15,12 +15,6 @@
       "notes": "Tree-ensemble optimization method compatible with the main XGBoost model."
     },
     {
-      "engine": "ft",
-      "config_path": "experiments/configs/engines/ft.json",
-      "category": "custom_baseline",
-      "notes": "FeatureTweak-inspired tree-threshold search baseline implemented for the main pipeline."
-    },
-    {
       "engine": "nn",
       "config_path": "experiments/configs/engines/nn.json",
       "category": "custom_baseline",
