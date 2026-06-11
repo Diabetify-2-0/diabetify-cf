@@ -11,7 +11,6 @@ from typing import Any
 TRACKED_PACKAGES = [
     "dice-ml",
     "numpy",
-    "oceanpy",
     "pandas",
     "scikit-learn",
     "xgboost",
