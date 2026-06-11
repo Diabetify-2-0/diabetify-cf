@@ -34,19 +34,6 @@ def _write_minimal_comparison(root: Path) -> None:
         ],
     )
     _write_csv(
-        root / "baselines" / "ocean" / "run-1" / "scenarios" / "scenario_summary.csv",
-        [
-            {
-                "scenario": "all_mutable",
-                "step_status": "timeout",
-                "feasible_rate": "0.0",
-                "immutable_violation_rate": "0.0",
-                "mutable_violation_rate": "0.0",
-                "directional_violation_rate": "0.0",
-            }
-        ],
-    )
-    _write_csv(
         root / "baselines" / "dice" / "run-1" / "stability" / "run-1" / "stability_aggregate.csv",
         [
             {
@@ -60,52 +47,38 @@ def _write_minimal_comparison(root: Path) -> None:
         ],
     )
     _write_csv(
-        root / "baselines" / "ocean" / "run-1" / "stability" / "run-1" / "stability_aggregate.csv",
-        [
-            {
-                "case_count": "1",
-                "mean_feasible_rate": "0.0",
-                "fully_feasible_case_rate": "0.0",
-                "stability_evaluable_case_rate": "0.0",
-                "mean_feasible_only_jaccard_changed_features": "0.0",
-                "mean_feasible_only_stability_std_norm": "0.0",
-            }
-        ],
-    )
-    _write_csv(
         root / "baselines" / "dice" / "run-1" / "scenarios" / "all_mutable" / "candidates.csv",
         [{"engine_name": "dice", "request_id": "req-1", "delta": "{}"}],
     )
 
 
-def test_audit_comparison_passes_with_timeout_warning(tmp_path: Path) -> None:
+def test_audit_comparison_passes_for_single_required_engine(tmp_path: Path) -> None:
     _write_minimal_comparison(tmp_path)
 
     payload = audit_comparison(
         tmp_path,
-        required_engines=["dice", "ocean"],
+        required_engines=["dice"],
         max_allowed_violation_rate=0.0,
     )
 
     assert payload["ok"] is True
     assert payload["errors"] == []
-    assert "ocean/all_mutable timed out." in payload["warnings"]
+    assert payload["warnings"] == []
     assert payload["scenario_summary"]["dice"]["completed_count"] == 1
     assert (tmp_path / "audit_report.json").exists()
 
 
-def test_audit_comparison_can_fail_on_timeout(tmp_path: Path) -> None:
+def test_audit_comparison_fails_when_required_engine_is_missing(tmp_path: Path) -> None:
     _write_minimal_comparison(tmp_path)
 
     payload = audit_comparison(
         tmp_path,
-        required_engines=["dice", "ocean"],
+        required_engines=["dice", "nn"],
         max_allowed_violation_rate=0.0,
-        fail_on_timeout=True,
     )
 
     assert payload["ok"] is False
-    assert "ocean/all_mutable timed out." in payload["errors"]
+    assert "Missing required engine rows: nn" in payload["errors"]
 
 
 def test_audit_comparison_fails_on_constraint_violation(tmp_path: Path) -> None:
@@ -126,7 +99,7 @@ def test_audit_comparison_fails_on_constraint_violation(tmp_path: Path) -> None:
 
     payload = audit_comparison(
         tmp_path,
-        required_engines=["dice", "ocean"],
+        required_engines=["dice"],
         max_allowed_violation_rate=0.0,
     )
 

@@ -13,12 +13,7 @@ def test_load_scope_reads_core_benchmark_definition() -> None:
     scope = load_scope(Path("experiments/configs/benchmark_scope/core_benchmark.json"))
 
     assert scope["name"] == "core_benchmark_v1"
-    assert [entry["engine"] for entry in scope["core_engines"]] == [
-        "dice",
-        "ocean",
-        "ft",
-        "nn",
-    ]
+    assert [entry["engine"] for entry in scope["core_engines"]] == ["dice", "nn"]
 
 
 def test_core_engine_helpers_preserve_locked_engine_order() -> None:
@@ -27,8 +22,8 @@ def test_core_engine_helpers_preserve_locked_engine_order() -> None:
     config_names = [path.name for path in core_engine_config_paths(scope)]
     engine_names = core_engine_names(scope)
 
-    assert config_names == ["dice.json", "ocean.json", "ft.json", "nn.json"]
-    assert engine_names == ["dice", "ocean", "ft", "nn"]
+    assert config_names == ["dice.json", "nn.json"]
+    assert engine_names == ["dice", "nn"]
 
 
 def test_build_checkpoint_command_uses_core_scope_and_required_engines() -> None:
@@ -49,7 +44,7 @@ def test_build_checkpoint_command_uses_core_scope_and_required_engines() -> None
     assert "--fail-on-timeout" in command
     required_index = command.index("--required-engines")
     strict_index = command.index("--fail-on-timeout")
-    assert command[required_index + 1 : strict_index] == ["dice", "ocean", "ft", "nn"]
+    assert command[required_index + 1 : strict_index] == ["dice", "nn"]
     path_names = {Path(value).name for value in command if value.endswith(".json")}
     assert "dice.json" in path_names
     assert "nn.json" in path_names

@@ -21,7 +21,6 @@ ENGINE_IMPORTS = {
     "dice": ["dice_ml"],
     "carla": ["carla"],
     "nn": ["sklearn"],
-    "ocean": ["ocean"],
     "focus": ["focus"],
 }
 

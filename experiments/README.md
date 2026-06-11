@@ -10,7 +10,6 @@ Fungsi utamanya:
 
 Benchmark inti final yang dipakai di repo ini:
 - `dice`
-- `ocean`
 - `nn`
 
 ## Struktur Singkat
@@ -32,7 +31,7 @@ experiments/
 
 ### 1. Jalankan benchmark inti final
 
-Gunakan ini untuk run resmi yang membandingkan `dice`, `ocean`, dan `nn` dalam desain yang sama.
+Gunakan ini untuk run resmi yang membandingkan `dice` dan `nn` dalam desain yang sama.
 
 ```powershell
 .\.venv\Scripts\python.exe experiments\scripts\run_core_checkpoint.py `
@@ -70,18 +69,6 @@ Untuk debug satu engine dan satu scenario:
 ```powershell
 .\.venv\Scripts\python.exe experiments\scripts\run_benchmark.py --engine-config experiments\configs\engines\dice.json --scenario-config experiments\configs\scenarios\all_mutable.json
 ```
-
-### 4. Diagnosa hasil comparison
-
-Untuk membaca gap satu engine terhadap baseline:
-
-```powershell
-.\.venv\Scripts\python.exe experiments\scripts\diagnose_engine.py --target-engine ocean --baseline-engine dice
-```
-
-Output:
-- `<target_engine>_diagnostics.md`
-- `<target_engine>_diagnostics.json`
 
 ## Folder `results/`
 

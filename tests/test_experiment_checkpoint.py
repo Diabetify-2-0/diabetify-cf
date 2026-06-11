@@ -14,9 +14,9 @@ def _audit_payload(ok: bool = True) -> dict:
         "ok": ok,
         "errors": [] if ok else ["dice/all_mutable failed."],
         "warnings": ["dice/bmi_only timed out."],
-        "required_engines": ["dice", "ocean"],
-        "observed_engines": ["dice", "ocean"],
-        "row_counts": {"scenario": 12, "stability": 2, "candidates": 35},
+        "required_engines": ["dice"],
+        "observed_engines": ["dice"],
+        "row_counts": {"scenario": 6, "stability": 1, "candidates": 35},
         "scenario_summary": {
             "dice": {
                 "scenario_count": 6,
@@ -24,14 +24,6 @@ def _audit_payload(ok: bool = True) -> dict:
                 "timeout_count": 3,
                 "failed_count": 0,
                 "mean_feasible_rate": 0.3333,
-                "max_violation_rate": 0.0,
-            },
-            "ocean": {
-                "scenario_count": 6,
-                "completed_count": 6,
-                "timeout_count": 0,
-                "failed_count": 0,
-                "mean_feasible_rate": 0.2667,
                 "max_violation_rate": 0.0,
             },
         },
@@ -44,14 +36,6 @@ def _audit_payload(ok: bool = True) -> dict:
                 "mean_feasible_only_jaccard_changed_features": 0.8667,
                 "mean_feasible_only_stability_std_norm": 0.0571,
             },
-            "ocean": {
-                "case_count": 5,
-                "mean_feasible_rate": 0.6,
-                "fully_feasible_case_rate": 0.6,
-                "stability_evaluable_case_rate": 0.6,
-                "mean_feasible_only_jaccard_changed_features": 1.0,
-                "mean_feasible_only_stability_std_norm": 0.0,
-            },
         },
     }
 
@@ -62,7 +46,6 @@ def test_build_checkpoint_report_contains_audit_summary() -> None:
     assert "# Experiment Checkpoint" in report
     assert "- Status: `PASS`" in report
     assert "| dice | 6 | 3 | 3 | 0 | 33.3% | 0.0000 |" in report
-    assert "| ocean | 5 | 60.0% | 60.0% | 1.0000 |" in report
     assert "dice/bmi_only timed out." in report
 
 

@@ -9,12 +9,6 @@
       "notes": "General-purpose counterfactual library integrated natively in the main environment."
     },
     {
-      "engine": "ocean",
-      "config_path": "experiments/configs/engines/ocean.json",
-      "category": "external_library",
-      "notes": "Tree-ensemble optimization method compatible with the main XGBoost model."
-    },
-    {
       "engine": "nn",
       "config_path": "experiments/configs/engines/nn.json",
       "category": "custom_baseline",

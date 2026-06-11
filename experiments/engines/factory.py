@@ -6,12 +6,10 @@ from diabetify_cf.config import Settings
 from experiments.engines.base import ExperimentEngine
 from experiments.engines.dice_adapter import DiceExperimentAdapter
 from experiments.engines.nn_adapter import NearestNeighborExperimentAdapter
-from experiments.engines.ocean_adapter import OceanExperimentAdapter
 
 ENGINE_ADAPTERS = {
     "dice": DiceExperimentAdapter,
     "nn": NearestNeighborExperimentAdapter,
-    "ocean": OceanExperimentAdapter,
 }
 SUPPORTED_ENGINES = set(ENGINE_ADAPTERS)
 

@@ -111,49 +111,6 @@ def test_dice_engine_config_explicit_generation_defaults() -> None:
     assert config["timeout_ms"] == 5000
 
 
-def test_ocean_engine_config_explicit_solver_options() -> None:
-    config = load_effective_config(
-        engine_config_path=Path("experiments/configs/engines/ocean.json"),
-        scenario_config_path=Path("experiments/configs/scenarios/all_mutable.json"),
-    )
-
-    assert config["engine"] == "ocean"
-    assert config["engine_label"] == "ocean"
-    assert config["generation_method"] == "ocean_cp"
-    assert config["total_cfs"] == 1
-    assert config["timeout_ms"] == 15000
-    assert config["engine_options"] == {
-        "norm": 1,
-        "attempt_count": 2,
-        "seed_step": 997,
-        "max_time_per_attempt_seconds": None,
-        "num_workers": None,
-    }
-
-
-def test_ft_engine_config_explicit_search_options() -> None:
-    config = load_effective_config(
-        engine_config_path=Path("experiments/configs/engines/ft.json"),
-        scenario_config_path=Path("experiments/configs/scenarios/all_mutable.json"),
-    )
-
-    assert config["engine"] == "ft"
-    assert config["engine_label"] == "ft"
-    assert config["generation_method"] == "feature_tweak_style"
-    assert config["total_cfs"] == 3
-    assert config["timeout_ms"] == 15000
-    assert config["engine_options"] == {
-        "max_changed_features": 2,
-        "beam_width": 24,
-        "max_candidates_to_evaluate": 300,
-        "max_thresholds_per_feature": 16,
-        "reference_values_per_feature": 16,
-        "single_feature_grid_size": 25,
-        "threshold_epsilon": 0.0001,
-        "search_patience": 2,
-    }
-
-
 def test_nn_engine_config_explicit_search_options() -> None:
     config = load_effective_config(
         engine_config_path=Path("experiments/configs/engines/nn.json"),
@@ -175,9 +132,9 @@ def test_nn_engine_config_explicit_search_options() -> None:
 
 def test_engine_output_label_can_distinguish_explicit_variant_labels() -> None:
     config = {
-        "engine": "ocean",
-        "engine_label": "ocean_variant_a",
+        "engine": "nn",
+        "engine_label": "nn_variant_a",
     }
 
-    assert engine_adapter_name(config) == "ocean"
-    assert engine_output_label(config) == "ocean_variant_a"
+    assert engine_adapter_name(config) == "nn"
+    assert engine_output_label(config) == "nn_variant_a"

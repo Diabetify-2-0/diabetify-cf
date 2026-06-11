@@ -114,7 +114,6 @@ docker compose up --build -d
 ```powershell
 python experiments/scripts/check_engine_availability.py
 python experiments/scripts/run_benchmark.py --engine-config experiments/configs/engines/dice.json --scenario-config experiments/configs/scenarios/all_mutable.json
-python experiments/scripts/run_benchmark.py --engine-config experiments/configs/engines/ocean.json --scenario-config experiments/configs/scenarios/all_mutable.json
 python experiments/scripts/summarize_results.py experiments/results/<run-folder>
 python experiments/scripts/run_scenarios.py --limit 1 --timeout-seconds 60
 python experiments/scripts/evaluate_stability.py --engine-config experiments/configs/engines/dice.json --scenario-config experiments/configs/scenarios/stability.json --limit 1 --repeat-count 2

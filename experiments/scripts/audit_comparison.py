@@ -18,7 +18,7 @@ from experiments.scripts.collect_results import collect_results
 from experiments.scripts.run_benchmark import DEFAULT_OUTPUT_ROOT
 from experiments.scripts.run_comparison import engine_from_source_file
 
-DEFAULT_REQUIRED_ENGINES = ["dice", "ocean"]
+DEFAULT_REQUIRED_ENGINES = ["dice"]
 VIOLATION_RATE_FIELDS = [
     "immutable_violation_rate",
     "mutable_violation_rate",

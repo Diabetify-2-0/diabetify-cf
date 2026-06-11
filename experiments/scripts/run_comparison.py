@@ -32,7 +32,6 @@ from experiments.scripts.run_scenarios import DEFAULT_SCENARIO_CONFIGS
 
 DEFAULT_ENGINE_CONFIGS = [
     Path("experiments/configs/engines/dice.json"),
-    Path("experiments/configs/engines/ocean.json"),
 ]
 
 
