@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -58,79 +57,17 @@ def _boolean_rate_over_total_cases(
     return sum(1 for row in rows if _truthy(row.get(key))) / total_cases
 
 
-def _top_candidate_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    top_by_request: dict[str, dict[str, Any]] = {}
-    ordered_request_ids: list[str] = []
-    for row in rows:
-        request_id = str(row.get("request_id", "")).strip()
-        if not request_id:
-            continue
-        if request_id in top_by_request:
-            continue
-        top_by_request[request_id] = row
-        ordered_request_ids.append(request_id)
-    return [top_by_request[request_id] for request_id in ordered_request_ids]
-
-
 def summarize_run(run_dir: Path) -> dict[str, Any]:
-    cases = _read_jsonl(run_dir / "cases.jsonl")
     candidates = _read_csv(run_dir / "candidates.csv")
-    top_candidates = _top_candidate_rows(candidates)
-    status_counts = Counter(str(row.get("status", "UNKNOWN")) for row in cases)
-    reason_counts = Counter(str(row.get("reason_code", "UNKNOWN")) for row in cases)
-    runtimes = [float(row["runtime_ms"]) for row in cases if row.get("runtime_ms") is not None]
-    candidate_counts = [
-        int(row["candidate_count"]) for row in cases if row.get("candidate_count") is not None
-    ]
-
-    total_cases = len(cases)
-    validity_success_cases = sum(1 for row in top_candidates if _truthy(row.get("target_success")))
-    validity_success_rate = (
-        validity_success_cases / total_cases if total_cases else 0.0
-    )
     return {
-        "run_dir": str(run_dir),
-        "total_cases": total_cases,
-        "validity_success_cases": validity_success_cases,
-        "validity_success_rate": validity_success_rate,
-        "feasible_cases": validity_success_cases,
-        "feasible_rate": validity_success_rate,
-        "mean_runtime_ms": sum(runtimes) / len(runtimes) if runtimes else 0.0,
-        "mean_candidate_count": (
-            sum(candidate_counts) / len(candidate_counts) if candidate_counts else 0.0
-        ),
-        "candidate_rows": len(candidates),
-        "requests_with_candidates": len(top_candidates),
-        "target_success_rate": _boolean_rate_over_total_cases(
-            top_candidates,
-            "target_success",
-            total_cases,
-        ),
-        "plausibility_pass_rate": _boolean_rate(top_candidates, "plausibility_pass"),
-        "immutable_violation_rate": _positive_rate(top_candidates, "immutable_violation_count"),
-        "mutable_violation_rate": _positive_rate(top_candidates, "mutable_violation_count"),
-        "directional_violation_rate": _positive_rate(top_candidates, "directional_violation_count"),
-        "mean_lof_score": _mean_float(top_candidates, "lof_score"),
-        "mean_distance_l1": _mean_float(top_candidates, "distance_l1"),
-        "mean_changed_feature_count": _mean_float(top_candidates, "changed_feature_count"),
         "target_success_rate_all_candidates": _boolean_rate(candidates, "target_success"),
-        "plausibility_pass_rate_all_candidates": _boolean_rate(candidates, "plausibility_pass"),
-        "immutable_violation_rate_all_candidates": _positive_rate(
-            candidates, "immutable_violation_count"
-        ),
-        "mutable_violation_rate_all_candidates": _positive_rate(
-            candidates, "mutable_violation_count"
-        ),
-        "directional_violation_rate_all_candidates": _positive_rate(
-            candidates, "directional_violation_count"
-        ),
-        "mean_lof_score_all_candidates": _mean_float(candidates, "lof_score"),
-        "mean_distance_l1_all_candidates": _mean_float(candidates, "distance_l1"),
-        "mean_changed_feature_count_all_candidates": _mean_float(
-            candidates, "changed_feature_count"
-        ),
-        "status_counts": dict(status_counts),
-        "reason_counts": dict(reason_counts),
+        "plausibility_pass_rate": _boolean_rate(candidates, "plausibility_pass"),
+        "mean_lof_score": _mean_float(candidates, "lof_score"),
+        "mean_changed_feature_count": _mean_float(candidates, "changed_feature_count"),
+        "mean_distance_l1": _mean_float(candidates, "distance_l1"),
+        "mean_runtime_ms": _mean_float(_read_jsonl(run_dir / "cases.jsonl"), "runtime_ms"),
+        "immutable_violation_rate": _positive_rate(candidates, "immutable_violation_count"),
+        "mutable_violation_rate": _positive_rate(candidates, "mutable_violation_count"),
     }
 
 

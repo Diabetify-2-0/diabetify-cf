@@ -158,28 +158,14 @@ def _failed_scenario_summary(
 ) -> dict[str, Any]:
     return {
         "scenario": scenario_name,
-        "run_dir": "",
-        "total_cases": 0,
-        "validity_success_cases": 0,
-        "validity_success_rate": 0.0,
-        "feasible_cases": 0,
-        "feasible_rate": 0.0,
-        "mean_runtime_ms": 0.0,
-        "mean_candidate_count": 0.0,
-        "candidate_rows": 0,
-        "target_success_rate": 0.0,
+        "target_success_rate_all_candidates": 0.0,
         "plausibility_pass_rate": 0.0,
+        "mean_lof_score": 0.0,
+        "mean_changed_feature_count": 0.0,
+        "mean_distance_l1": 0.0,
+        "mean_runtime_ms": 0.0,
         "immutable_violation_rate": 0.0,
         "mutable_violation_rate": 0.0,
-        "directional_violation_rate": 0.0,
-        "mean_lof_score": 0.0,
-        "mean_distance_l1": 0.0,
-        "mean_changed_feature_count": 0.0,
-        "status_counts": json.dumps({status.upper(): 1}, ensure_ascii=True),
-        "reason_counts": json.dumps({reason: 1}, ensure_ascii=True),
-        "step_status": status,
-        "step_reason": reason,
-        "step_runtime_seconds": runtime_seconds,
     }
 
 
@@ -249,21 +235,9 @@ def run_scenarios(
         if step["status"] == "completed" and run_dir is not None:
             summary = summarize_run(run_dir)
             write_summary_csv(run_dir / "summary.csv", summary)
-            flattened = _flatten_summary(summary, scenario_name=scenario_name)
-            flattened["step_status"] = step["status"]
-            flattened["step_reason"] = ""
-            flattened["step_runtime_seconds"] = step["runtime_seconds"]
-            summary_rows.append(flattened)
+            summary_rows.append(_flatten_summary(summary, scenario_name=scenario_name))
         else:
-            reason = "timeout" if step["status"] == "timeout" else "subprocess_failed"
-            summary_rows.append(
-                _failed_scenario_summary(
-                    scenario_name=scenario_name,
-                    status=str(step["status"]),
-                    reason=reason,
-                    runtime_seconds=float(step["runtime_seconds"]),
-                )
-            )
+            continue
 
     metadata = build_run_metadata(
         repo_root=REPO_ROOT,

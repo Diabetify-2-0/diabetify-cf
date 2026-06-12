@@ -122,6 +122,22 @@ def _manifest_engine(baseline_root: Path) -> str | None:
     return str(engine) if engine else None
 
 
+def _scenario_status_lookup(baseline_root: Path) -> dict[str, dict[str, str]]:
+    manifest_path = baseline_root / "baseline_manifest.json"
+    if not manifest_path.exists():
+        return {}
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    lookup: dict[str, dict[str, str]] = {}
+    for step in manifest.get("scenario_steps", []):
+        scenario = str(step.get("scenario") or "")
+        if scenario:
+            lookup[scenario] = {"status": str(step.get("status") or "completed")}
+    return lookup
+
+
 def _top_changed_features(candidates: list[dict[str, str]], top_n: int) -> list[tuple[str, int]]:
     counts: Counter[str] = Counter()
     for row in candidates:
@@ -137,10 +153,10 @@ def _top_changed_features(candidates: list[dict[str, str]], top_n: int) -> list[
     return counts.most_common(top_n)
 
 
-def _scenario_status_counts(rows: list[dict[str, str]]) -> Counter[str]:
+def _scenario_status_counts(status_lookup: dict[str, dict[str, str]]) -> Counter[str]:
     counts: Counter[str] = Counter()
-    for row in rows:
-        counts[row.get("step_status") or "completed"] += 1
+    for item in status_lookup.values():
+        counts[item.get("status") or "completed"] += 1
     return counts
 
 
@@ -153,7 +169,8 @@ def build_markdown_report(baseline_root: Path, top_n: int = 10) -> str:
     scenario_rows = _scenario_rows(baseline_root)
     stability_rows = _stability_rows(baseline_root)
     candidate_rows = _candidate_rows(baseline_root)
-    status_counts = _scenario_status_counts(scenario_rows)
+    status_lookup = _scenario_status_lookup(baseline_root)
+    status_counts = _scenario_status_counts(status_lookup)
 
     lines = [
         "# Baseline Report",
@@ -169,24 +186,27 @@ def build_markdown_report(baseline_root: Path, top_n: int = 10) -> str:
     ]
     if scenario_rows:
         lines.append(
-            "| Scenario | Status | Validity | Plausibility | Immutable | Mutable | "
-            "Direction | Runtime ms | LOF |"
+            "| Scenario | Status | Success | Plausibility | LOF | Changed | Distance | "
+            "Runtime ms | Immutable | Mutable |"
         )
-        lines.append("| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+        lines.append("| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
         for row in scenario_rows:
+            scenario = row.get("scenario", "-")
+            step = status_lookup.get(scenario, {})
             lines.append(
                 "| "
                 + " | ".join(
                     [
-                        row.get("scenario", "-"),
-                        row.get("step_status") or "completed",
-                        _percent(_as_float(row, "validity_success_rate")),
+                        scenario,
+                        step.get("status") or "completed",
+                        _percent(_as_float(row, "target_success_rate_all_candidates")),
                         _percent(_as_float(row, "plausibility_pass_rate")),
+                        _number(_as_float(row, "mean_lof_score")),
+                        _number(_as_float(row, "mean_changed_feature_count")),
+                        _number(_as_float(row, "mean_distance_l1")),
+                        _number(_as_float(row, "mean_runtime_ms")),
                         _percent(_as_float(row, "immutable_violation_rate")),
                         _percent(_as_float(row, "mutable_violation_rate")),
-                        _percent(_as_float(row, "directional_violation_rate")),
-                        _number(_as_float(row, "mean_runtime_ms")),
-                        _number(_as_float(row, "mean_lof_score")),
                     ]
                 )
                 + " |"
@@ -196,23 +216,15 @@ def build_markdown_report(baseline_root: Path, top_n: int = 10) -> str:
 
     lines.extend(["", "## Stability Summary", ""])
     if stability_rows:
-        lines.append(
-            "| Case count | Mean success | Fully successful cases | Stability evaluable cases | "
-            "Successful-only Jaccard | Successful-only std norm | All-repeat Jaccard |"
-        )
-        lines.append("| ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+        lines.append("| Successful-only Jaccard | Successful-only std norm |")
+        lines.append("| ---: | ---: |")
         for row in stability_rows:
             lines.append(
                 "| "
                 + " | ".join(
                     [
-                        row.get("case_count", "0"),
-                        _percent(_as_float(row, "mean_success_rate")),
-                        _percent(_as_float(row, "fully_successful_case_rate")),
-                        _percent(_as_float(row, "stability_evaluable_case_rate")),
                         _number(_as_float(row, "mean_feasible_only_jaccard_changed_features")),
                         _number(_as_float(row, "mean_feasible_only_stability_std_norm")),
-                        _number(_as_float(row, "mean_jaccard_changed_features")),
                     ]
                 )
                 + " |"
@@ -235,7 +247,7 @@ def build_markdown_report(baseline_root: Path, top_n: int = 10) -> str:
             "",
             "## Important Files",
             "",
-            "- Primary rates in this report use the top-ranked candidate per request.",
+            "- Primary rates in this report use the stored notebook-aligned summary metrics.",
             "- `baseline_manifest.json`",
             "- `combined/scenario_summary.csv`",
             "- `combined/stability_summary.csv`",
@@ -257,7 +269,7 @@ def write_markdown_report(baseline_root: Path, top_n: int = 10) -> Path:
     return report_path
 
 
-def _print_scenarios(rows: list[dict[str, str]]) -> None:
+def _print_scenarios(baseline_root: Path, rows: list[dict[str, str]]) -> None:
     print("\nScenario Summary")
     if not rows:
         print("  No scenario summary rows found.")
@@ -266,30 +278,35 @@ def _print_scenarios(rows: list[dict[str, str]]) -> None:
     header = (
         "scenario",
         "status",
-        "validity",
+        "success",
         "plausibility",
+        "lof",
+        "changed",
+        "distance",
+        "runtime_ms",
         "immutable",
         "mutable",
-        "direction",
-        "runtime_ms",
-        "lof",
     )
     print("  " + " | ".join(header))
-    print("  " + "-" * 104)
+    print("  " + "-" * 118)
+    status_lookup = _scenario_status_lookup(baseline_root)
     for row in rows:
+        scenario = row.get("scenario", "-")
+        step = status_lookup.get(scenario, {})
         print(
             "  "
             + " | ".join(
                 [
-                    row.get("scenario", "-"),
-                    row.get("step_status") or "completed",
-                    _percent(_as_float(row, "validity_success_rate")),
+                    scenario,
+                    step.get("status") or "completed",
+                    _percent(_as_float(row, "target_success_rate_all_candidates")),
                     _percent(_as_float(row, "plausibility_pass_rate")),
+                    _number(_as_float(row, "mean_lof_score")),
+                    _number(_as_float(row, "mean_changed_feature_count")),
+                    _number(_as_float(row, "mean_distance_l1")),
+                    _number(_as_float(row, "mean_runtime_ms")),
                     _percent(_as_float(row, "immutable_violation_rate")),
                     _percent(_as_float(row, "mutable_violation_rate")),
-                    _percent(_as_float(row, "directional_violation_rate")),
-                    _number(_as_float(row, "mean_runtime_ms")),
-                    _number(_as_float(row, "mean_lof_score")),
                 ]
             )
         )
@@ -304,17 +321,10 @@ def _print_stability(rows: list[dict[str, str]]) -> None:
     for row in rows:
         print(
             "  "
-            f"case_count={row.get('case_count', '0')} | "
-            f"mean_success_rate={_percent(_as_float(row, 'mean_success_rate'))} | "
-            "fully_successful_case_rate="
-            f"{_percent(_as_float(row, 'fully_successful_case_rate'))} | "
-            "stability_evaluable_case_rate="
-            f"{_percent(_as_float(row, 'stability_evaluable_case_rate'))} | "
             "feasible_only_jaccard="
             f"{_number(_as_float(row, 'mean_feasible_only_jaccard_changed_features'))} | "
             "feasible_only_std_norm="
-            f"{_number(_as_float(row, 'mean_feasible_only_stability_std_norm'))} | "
-            f"all_repeat_jaccard={_number(_as_float(row, 'mean_jaccard_changed_features'))}"
+            f"{_number(_as_float(row, 'mean_feasible_only_stability_std_norm'))}"
         )
 
 
@@ -337,7 +347,7 @@ def print_report(baseline_root: Path, top_n: int) -> None:
     engine = _manifest_engine(baseline_root)
     if engine is not None:
         print(f"Engine: {engine}")
-    _print_scenarios(_scenario_rows(baseline_root))
+    _print_scenarios(baseline_root, _scenario_rows(baseline_root))
     _print_stability(_stability_rows(baseline_root))
     _print_top_features(_candidate_rows(baseline_root), top_n=top_n)
 

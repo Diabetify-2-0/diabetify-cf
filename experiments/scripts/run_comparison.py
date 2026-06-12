@@ -95,10 +95,34 @@ def _mean(values: list[float]) -> float:
     return sum(values) / len(values) if values else 0.0
 
 
-def _status_counts(rows: list[dict[str, str]]) -> Counter[str]:
+def _read_json(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _baseline_manifests(comparison_root: Path) -> dict[str, dict[str, Any]]:
+    manifests: dict[str, dict[str, Any]] = {}
+    for path in sorted(comparison_root.rglob("baseline_manifest.json")):
+        try:
+            manifest = _read_json(path)
+        except (OSError, json.JSONDecodeError):
+            continue
+        engine = str(manifest.get("engine") or "")
+        if engine:
+            manifests[engine] = manifest
+    return manifests
+
+
+def _scenario_steps_by_engine(comparison_root: Path) -> dict[str, list[dict[str, Any]]]:
+    return {
+        engine: list(manifest.get("scenario_steps", []))
+        for engine, manifest in _baseline_manifests(comparison_root).items()
+    }
+
+
+def _status_counts(steps: list[dict[str, Any]]) -> Counter[str]:
     counts: Counter[str] = Counter()
-    for row in rows:
-        counts[row.get("step_status") or "completed"] += 1
+    for step in steps:
+        counts[str(step.get("status") or "completed")] += 1
     return counts
 
 
@@ -144,11 +168,23 @@ def _stability_rows_by_engine(rows: list[dict[str, str]]) -> dict[str, list[dict
     return dict(sorted(grouped.items()))
 
 
+def _scenario_status_lookup(comparison_root: Path) -> dict[tuple[str, str], dict[str, Any]]:
+    lookup: dict[tuple[str, str], dict[str, Any]] = {}
+    for engine, steps in _scenario_steps_by_engine(comparison_root).items():
+        for step in steps:
+            scenario = str(step.get("scenario") or "")
+            if scenario:
+                lookup[(engine, scenario)] = step
+    return lookup
+
+
 def build_comparison_report(comparison_root: Path, top_n: int = 10) -> str:
     collect_results(comparison_root)
     scenario_rows = _read_csv(comparison_root / "combined" / "scenario_summary.csv")
     stability_rows = _read_csv(comparison_root / "combined" / "stability_summary.csv")
     candidate_rows = _read_csv(comparison_root / "combined" / "candidates.csv")
+    scenario_steps = _scenario_steps_by_engine(comparison_root)
+    scenario_status_lookup = _scenario_status_lookup(comparison_root)
     scenarios_by_engine = _scenario_rows_by_engine(scenario_rows)
     stability_by_engine = _stability_rows_by_engine(stability_rows)
     candidate_counts = _candidate_counts_by_engine(candidate_rows)
@@ -165,14 +201,16 @@ def build_comparison_report(comparison_root: Path, top_n: int = 10) -> str:
         "",
     ]
 
-    if scenarios_by_engine:
+    engine_names = sorted(set(scenarios_by_engine) | set(scenario_steps))
+    if engine_names:
         lines.append(
-            "| Engine | Scenarios | Completed | Timeout | Failed | Mean validity | "
+            "| Engine | Scenarios | Completed | Timeout | Failed | Mean success | "
             "Candidate rows |"
         )
         lines.append("| --- | ---: | ---: | ---: | ---: | ---: | ---: |")
-        for engine, rows in scenarios_by_engine.items():
-            statuses = _status_counts(rows)
+        for engine in engine_names:
+            rows = scenarios_by_engine.get(engine, [])
+            statuses = _status_counts(scenario_steps.get(engine, []))
             lines.append(
                 "| "
                 + " | ".join(
@@ -183,7 +221,12 @@ def build_comparison_report(comparison_root: Path, top_n: int = 10) -> str:
                         str(statuses.get("timeout", 0)),
                         str(statuses.get("failed", 0)),
                         _percent(
-                            _mean([_as_float(row, "validity_success_rate") for row in rows])
+                            _mean(
+                                [
+                                    _as_float(row, "target_success_rate_all_candidates")
+                                    for row in rows
+                                ]
+                            )
                         ),
                         str(candidate_counts.get(engine, 0)),
                     ]
@@ -196,24 +239,29 @@ def build_comparison_report(comparison_root: Path, top_n: int = 10) -> str:
     lines.extend(["", "## Scenario Matrix", ""])
     if scenario_rows:
         lines.append(
-            "| Engine | Scenario | Status | Validity | Plausibility | Runtime ms | Step runtime s | "
-            "Reason counts |"
+            "| Engine | Scenario | Status | Success | Plausibility | LOF | Changed | Distance | "
+            "Runtime ms | Immutable | Mutable |"
         )
-        lines.append("| --- | --- | --- | ---: | ---: | ---: | ---: | --- |")
+        lines.append("| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
         for row in scenario_rows:
             engine = engine_from_source_file(row.get("source_file", ""))
+            scenario = row.get("scenario", "-")
+            step = scenario_status_lookup.get((engine, scenario), {})
             lines.append(
                 "| "
                 + " | ".join(
                     [
                         engine,
-                        row.get("scenario", "-"),
-                        row.get("step_status") or "completed",
-                        _percent(_as_float(row, "validity_success_rate")),
+                        scenario,
+                        str(step.get("status") or "completed"),
+                        _percent(_as_float(row, "target_success_rate_all_candidates")),
                         _percent(_as_float(row, "plausibility_pass_rate")),
+                        _number(_as_float(row, "mean_lof_score")),
+                        _number(_as_float(row, "mean_changed_feature_count")),
+                        _number(_as_float(row, "mean_distance_l1")),
                         _number(_as_float(row, "mean_runtime_ms")),
-                        _number(_as_float(row, "step_runtime_seconds")),
-                        row.get("reason_counts", "{}").replace("|", "\\|"),
+                        _percent(_as_float(row, "immutable_violation_rate")),
+                        _percent(_as_float(row, "mutable_violation_rate")),
                     ]
                 )
                 + " |"
@@ -224,28 +272,15 @@ def build_comparison_report(comparison_root: Path, top_n: int = 10) -> str:
     lines.extend(["", "## Stability", ""])
     if stability_by_engine:
         lines.append(
-            "| Engine | Case count | Mean success | Fully successful cases | "
-            "Stability evaluable cases | Successful-only Jaccard | "
-            "Successful-only std norm | All-repeat Jaccard |"
+            "| Engine | Successful-only Jaccard | Successful-only std norm |"
         )
-        lines.append("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+        lines.append("| --- | ---: | ---: |")
         for engine, rows in stability_by_engine.items():
-            case_count = sum(int(_as_float(row, "case_count")) for row in rows)
             lines.append(
                 "| "
                 + " | ".join(
                     [
                         engine,
-                        str(case_count),
-                        _percent(_mean([_as_float(row, "mean_success_rate") for row in rows])),
-                        _percent(
-                            _mean(
-                                [_as_float(row, "fully_successful_case_rate") for row in rows]
-                            )
-                        ),
-                        _percent(
-                            _mean([_as_float(row, "stability_evaluable_case_rate") for row in rows])
-                        ),
                         _number(
                             _mean(
                                 [
@@ -264,9 +299,6 @@ def build_comparison_report(comparison_root: Path, top_n: int = 10) -> str:
                                     for row in rows
                                 ]
                             )
-                        ),
-                        _number(
-                            _mean([_as_float(row, "mean_jaccard_changed_features") for row in rows])
                         ),
                     ]
                 )
@@ -295,14 +327,11 @@ def build_comparison_report(comparison_root: Path, top_n: int = 10) -> str:
             "",
             "- Engine comparison uses the same scenario configs, limits, repeat count, "
             "and timeouts.",
-            "- `completed` means the subprocess finished; success is measured by validity "
-            "rate and violations.",
-            "- Validity is measured only as target-class flipping on the top candidate "
-            "per request; constraint and plausibility checks remain separate metrics.",
-            "- Scenario summary rates are computed from the top-ranked candidate per request; "
-            "all-candidate statistics remain available in raw CSV outputs.",
-            "- Successful-only stability is computed only from repeats whose top candidate "
-            "reached the target class.",
+            "- Scenario summary is intentionally reduced to the notebook's core metrics.",
+            "- Scenario step statuses come from baseline manifests, not from summary CSV rows.",
+            "- `success_rate` in the notebook/report is `target_success_rate_all_candidates`.",
+            "- Successful-only stability metrics are preserved because they are used directly "
+            "in the notebook decision matrix.",
             "- Small limits are smoke-level evidence. Increase limits before drawing final "
             "research claims.",
             "",

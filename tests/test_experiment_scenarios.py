@@ -37,30 +37,22 @@ def test_aggregate_stability_summary_computes_means() -> None:
         ]
     )
 
-    assert summary["case_count"] == 2
-    assert summary["mean_feasible_rate"] == 0.75
-    assert summary["fully_feasible_case_count"] == 1
-    assert summary["fully_feasible_case_rate"] == 0.5
-    assert summary["stability_evaluable_case_count"] == 1
-    assert summary["stability_evaluable_case_rate"] == 0.5
-    assert summary["mean_jaccard_changed_features"] == 0.75
-    assert summary["mean_stability_std_norm"] == 0.2
     assert summary["mean_feasible_only_jaccard_changed_features"] == 0.5
     assert summary["mean_feasible_only_stability_std_norm"] == 0.1
 
 
-def test_flatten_summary_serializes_nested_counts() -> None:
+def test_flatten_summary_keeps_metric_fields() -> None:
     row = _flatten_summary(
         {
-            "total_cases": 2,
-            "status_counts": {"FEASIBLE": 1, "INFEASIBLE": 1},
+            "target_success_rate_all_candidates": 1.0,
+            "plausibility_pass_rate": 0.5,
         },
         scenario_name="test_scenario",
     )
 
     assert row["scenario"] == "test_scenario"
-    assert row["total_cases"] == 2
-    assert row["status_counts"] == '{"FEASIBLE": 1, "INFEASIBLE": 1}'
+    assert row["target_success_rate_all_candidates"] == 1.0
+    assert row["plausibility_pass_rate"] == 0.5
 
 
 def test_scenario_configs_do_not_define_engine_generation_fields() -> None:

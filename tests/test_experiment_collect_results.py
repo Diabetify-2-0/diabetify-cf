@@ -20,11 +20,16 @@ def _read_csv(path: Path) -> list[dict[str, str]]:
 def test_collect_results_combines_scenario_and_stability_summaries(tmp_path: Path) -> None:
     _write_csv(
         tmp_path / "run_a" / "scenario_summary.csv",
-        [{"scenario": "all_mutable", "feasible_rate": "1.0"}],
+        [{"scenario": "all_mutable", "target_success_rate_all_candidates": "1.0"}],
     )
     _write_csv(
         tmp_path / "run_b" / "stability_aggregate.csv",
-        [{"case_count": "2", "mean_stability_std_norm": "0.1"}],
+        [
+            {
+                "mean_feasible_only_jaccard_changed_features": "0.8",
+                "mean_feasible_only_stability_std_norm": "0.1",
+            }
+        ],
     )
     _write_csv(
         tmp_path / "run_c" / "candidates.csv",
@@ -48,10 +53,11 @@ def test_collect_results_combines_scenario_and_stability_summaries(tmp_path: Pat
     candidate_rows = _read_csv(outputs["candidates"])
 
     assert scenario_rows[0]["scenario"] == "all_mutable"
-    assert scenario_rows[0]["feasible_rate"] == "1.0"
-    assert stability_rows[0]["case_count"] == "2"
-    assert stability_rows[0]["mean_stability_std_norm"] == "0.1"
+    assert scenario_rows[0]["target_success_rate_all_candidates"] == "1.0"
+    assert stability_rows[0]["mean_feasible_only_jaccard_changed_features"] == "0.8"
+    assert stability_rows[0]["mean_feasible_only_stability_std_norm"] == "0.1"
     assert input_rows[0]["engine_name"] == "dice"
     assert input_rows[0]["request_id"] == "req-1"
+    assert "source_file" not in input_rows[0]
     assert candidate_rows[0]["engine_name"] == "dice"
     assert candidate_rows[0]["request_id"] == "req-1"

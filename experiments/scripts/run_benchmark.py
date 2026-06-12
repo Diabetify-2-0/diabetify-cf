@@ -233,6 +233,12 @@ def _candidate_rows(
             registry=registry,
             max_lof_score=max_lof_score,
         )
+        filtered_evaluation = {
+            "target_success": evaluation.get("target_success"),
+            "immutable_violation_count": evaluation.get("immutable_violation_count"),
+            "mutable_violation_count": evaluation.get("mutable_violation_count"),
+            "plausibility_pass": evaluation.get("plausibility_pass"),
+        }
         rows.append(
             {
                 "engine_name": result.engine_name,
@@ -244,7 +250,7 @@ def _candidate_rows(
                 "changed_feature_count": metrics.get("changed_feature_count"),
                 "lof_score": metrics.get("lof_score"),
                 "delta": json.dumps(candidate.get("delta", {}), ensure_ascii=True),
-                **evaluation,
+                **filtered_evaluation,
             }
         )
     return rows

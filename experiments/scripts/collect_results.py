@@ -71,7 +71,7 @@ def collect_candidates(results_root: Path) -> list[dict[str, Any]]:
         if _is_generated_combined_path(path):
             continue
         for row in _read_csv(path):
-            rows.append({"source_file": str(path), **row})
+            rows.append(row)
     return rows
 
 
@@ -81,7 +81,7 @@ def collect_inputs(results_root: Path) -> list[dict[str, Any]]:
         if _is_generated_combined_path(path):
             continue
         for row in _read_csv(path):
-            rows.append({"source_file": str(path), **row})
+            rows.append(row)
     return rows
 
 

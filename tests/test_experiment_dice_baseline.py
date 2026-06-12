@@ -91,8 +91,8 @@ def test_run_baseline_scenarios_records_completed_subprocess(
     assert effective_config["limit"] == 3
     assert steps[0]["status"] == "completed"
     assert rows[0]["scenario"] == "dice_case"
-    assert rows[0]["step_status"] == "completed"
-    assert rows[0]["total_cases"] == "1"
+    assert rows[0]["target_success_rate_all_candidates"] == "0.0"
+    assert rows[0]["mean_runtime_ms"] == "12.0"
 
 
 def test_run_baseline_scenarios_records_timeout_without_stopping(
@@ -136,7 +136,4 @@ def test_run_baseline_scenarios_records_timeout_without_stopping(
 
     assert steps[0]["status"] == "timeout"
     assert step_results["steps"][0]["status"] == "timeout"
-    assert rows[0]["scenario"] == "dice_slow"
-    assert rows[0]["step_status"] == "timeout"
-    assert rows[0]["step_reason"] == "timeout"
-    assert rows[0]["total_cases"] == "0"
+    assert rows == []

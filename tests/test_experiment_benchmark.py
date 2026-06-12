@@ -102,7 +102,7 @@ def test_build_request_payload_can_disable_default_mutable_allowed() -> None:
 def test_dice_engine_config_explicit_generation_defaults() -> None:
     config = load_effective_config(
         engine_config_path=Path("experiments/configs/engines/dice.json"),
-        scenario_config_path=Path("experiments/configs/scenarios/all_mutable.json"),
+        scenario_config_path=Path("experiments/configs/scenarios/default_mutable.json"),
     )
 
     assert config["engine"] == "dice"
@@ -115,7 +115,7 @@ def test_dice_engine_config_explicit_generation_defaults() -> None:
 def test_nn_engine_config_explicit_search_options() -> None:
     config = load_effective_config(
         engine_config_path=Path("experiments/configs/engines/nn.json"),
-        scenario_config_path=Path("experiments/configs/scenarios/all_mutable.json"),
+        scenario_config_path=Path("experiments/configs/scenarios/default_mutable.json"),
     )
 
     assert config["engine"] == "nn"

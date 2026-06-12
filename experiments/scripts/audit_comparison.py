@@ -53,6 +53,23 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=True), encoding="utf-8")
 
 
+def _read_json(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _scenario_steps_by_engine(comparison_root: Path) -> dict[str, list[dict[str, Any]]]:
+    steps_by_engine: dict[str, list[dict[str, Any]]] = {}
+    for path in sorted(comparison_root.rglob("baseline_manifest.json")):
+        try:
+            manifest = _read_json(path)
+        except (OSError, json.JSONDecodeError):
+            continue
+        engine = str(manifest.get("engine") or "")
+        if engine:
+            steps_by_engine[engine] = list(manifest.get("scenario_steps", []))
+    return steps_by_engine
+
+
 def _scenario_engine_summary(rows: list[dict[str, str]]) -> dict[str, dict[str, Any]]:
     summary: dict[str, dict[str, Any]] = {}
     for row in rows:
@@ -64,22 +81,15 @@ def _scenario_engine_summary(rows: list[dict[str, str]]) -> dict[str, dict[str, 
                 "completed_count": 0,
                 "timeout_count": 0,
                 "failed_count": 0,
-                "mean_validity_success_rate": 0.0,
+                "mean_success_rate": 0.0,
             },
         )
         item["scenario_count"] += 1
-        status = row.get("step_status") or "completed"
-        if status == "completed":
-            item["completed_count"] += 1
-        elif status == "timeout":
-            item["timeout_count"] += 1
-        elif status == "failed":
-            item["failed_count"] += 1
-        item["mean_validity_success_rate"] += _as_float(row, "validity_success_rate")
+        item["mean_success_rate"] += _as_float(row, "target_success_rate_all_candidates")
 
     for item in summary.values():
         count = max(int(item["scenario_count"]), 1)
-        item["mean_validity_success_rate"] = item["mean_validity_success_rate"] / count
+        item["mean_success_rate"] = item["mean_success_rate"] / count
     return dict(sorted(summary.items()))
 
 
@@ -88,13 +98,6 @@ def _stability_engine_summary(rows: list[dict[str, str]]) -> dict[str, dict[str,
     for row in rows:
         engine = engine_from_source_file(row.get("source_file", ""))
         summary[engine] = {
-            "case_count": int(_as_float(row, "case_count")),
-            "mean_success_rate": _as_float(row, "mean_success_rate"),
-            "fully_successful_case_rate": _as_float(row, "fully_successful_case_rate"),
-            "stability_evaluable_case_rate": _as_float(
-                row,
-                "stability_evaluable_case_rate",
-            ),
             "mean_feasible_only_jaccard_changed_features": _as_float(
                 row,
                 "mean_feasible_only_jaccard_changed_features",
@@ -123,7 +126,8 @@ def audit_comparison(
     scenario_rows = _read_csv(scenario_path)
     stability_rows = _read_csv(stability_path)
     candidate_rows = _read_csv(candidate_path)
-    engines = _engines_from_rows(scenario_rows)
+    scenario_steps = _scenario_steps_by_engine(comparison_root)
+    engines = _engines_from_rows(scenario_rows) | set(scenario_steps)
     required = set(required_engines)
 
     errors: list[str] = []
@@ -142,29 +146,35 @@ def audit_comparison(
     if missing_engines:
         errors.append(f"Missing required engine rows: {', '.join(missing_engines)}")
 
-    for row in scenario_rows:
-        engine = engine_from_source_file(row.get("source_file", ""))
-        scenario = row.get("scenario", "unknown")
-        status = row.get("step_status") or "completed"
-        if status == "failed":
-            errors.append(f"{engine}/{scenario} failed.")
-        if status == "timeout":
-            message = f"{engine}/{scenario} timed out."
-            if fail_on_timeout:
-                errors.append(message)
-            else:
-                warnings.append(message)
-
-    for row in stability_rows:
-        engine = engine_from_source_file(row.get("source_file", ""))
-        evaluable_rate = _as_float(row, "stability_evaluable_case_rate")
-        success_rate = _as_float(row, "mean_success_rate")
-        if evaluable_rate <= 0.0:
-            warnings.append(f"{engine} has no stability-evaluable feasible cases.")
-        if success_rate <= 0.0:
-            warnings.append(f"{engine} has zero mean successful stability rate.")
-
     scenario_summary = _scenario_engine_summary(scenario_rows)
+    for engine, steps in scenario_steps.items():
+        summary_item = scenario_summary.setdefault(
+            engine,
+            {
+                "scenario_count": 0,
+                "completed_count": 0,
+                "timeout_count": 0,
+                "failed_count": 0,
+                "mean_success_rate": 0.0,
+            },
+        )
+        summary_item["scenario_count"] = len(steps)
+        for step in steps:
+            status = str(step.get("status") or "completed")
+            scenario = str(step.get("scenario") or "unknown")
+            if status == "completed":
+                summary_item["completed_count"] += 1
+            elif status == "timeout":
+                summary_item["timeout_count"] += 1
+                message = f"{engine}/{scenario} timed out."
+                if fail_on_timeout:
+                    errors.append(message)
+                else:
+                    warnings.append(message)
+            elif status == "failed":
+                summary_item["failed_count"] += 1
+                errors.append(f"{engine}/{scenario} failed.")
+
     stability_summary = _stability_engine_summary(stability_rows)
     payload = {
         "comparison_root": str(comparison_root),
@@ -215,17 +225,17 @@ def print_audit(payload: dict[str, Any]) -> None:
             f"completed={item['completed_count']} "
             f"timeout={item['timeout_count']} "
             f"failed={item['failed_count']} "
-            f"mean_validity={item['mean_validity_success_rate']:.3f}"
+            f"mean_success={item['mean_success_rate']:.3f}"
         )
 
     print("\nStability Summary")
     for engine, item in payload["stability_summary"].items():
         print(
-            f"- {engine}: case_count={item['case_count']} "
-            f"mean_success={item['mean_success_rate']:.3f} "
-            f"evaluable={item['stability_evaluable_case_rate']:.3f} "
+            f"- {engine}: "
             f"feasible_only_jaccard="
-            f"{item['mean_feasible_only_jaccard_changed_features']:.3f}"
+            f"{item['mean_feasible_only_jaccard_changed_features']:.3f} "
+            f"feasible_only_std_norm="
+            f"{item['mean_feasible_only_stability_std_norm']:.3f}"
         )
 
 

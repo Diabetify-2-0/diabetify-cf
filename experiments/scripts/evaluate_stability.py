@@ -97,32 +97,7 @@ def _mean(rows: list[dict[str, Any]], key: str) -> float:
 
 
 def _aggregate_summary(summary_rows: list[dict[str, Any]]) -> dict[str, Any]:
-    fully_successful_case_count = sum(
-        1
-        for row in summary_rows
-        if int(row.get("success_count") or 0) == int(row.get("repeat_count") or 0)
-    )
-    stability_evaluable_case_count = sum(
-        1 for row in summary_rows if bool(row.get("stability_evaluable"))
-    )
     return {
-        "case_count": len(summary_rows),
-        "mean_success_rate": _mean(summary_rows, "success_rate"),
-        "mean_feasible_rate": _mean(summary_rows, "success_rate"),
-        "fully_successful_case_count": fully_successful_case_count,
-        "fully_successful_case_rate": (
-            fully_successful_case_count / len(summary_rows) if summary_rows else 0.0
-        ),
-        "fully_feasible_case_count": fully_successful_case_count,
-        "fully_feasible_case_rate": (
-            fully_successful_case_count / len(summary_rows) if summary_rows else 0.0
-        ),
-        "stability_evaluable_case_count": stability_evaluable_case_count,
-        "stability_evaluable_case_rate": (
-            stability_evaluable_case_count / len(summary_rows) if summary_rows else 0.0
-        ),
-        "mean_jaccard_changed_features": _mean(summary_rows, "mean_jaccard_changed_features"),
-        "mean_stability_std_norm": _mean(summary_rows, "stability_std_norm"),
         "mean_feasible_only_jaccard_changed_features": _mean(
             summary_rows,
             "feasible_only_mean_jaccard_changed_features",

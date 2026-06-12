@@ -1,4 +1,5 @@
 import csv
+import json
 from pathlib import Path
 
 import pytest
@@ -20,16 +21,28 @@ def _write_csv(path: Path, rows: list[dict[str, str]]) -> None:
 def _write_minimal_comparison(root: Path) -> None:
     (root / "comparison_manifest.json").write_text("{}", encoding="utf-8")
     (root / "comparison_report.md").write_text("# Comparison Report\n", encoding="utf-8")
+    (root / "baselines" / "dice" / "run-1" / "baseline_manifest.json").write_text(
+        json.dumps(
+            {
+                "engine": "dice",
+                "scenario_steps": [{"scenario": "all_mutable", "status": "completed"}],
+            }
+        ),
+        encoding="utf-8",
+    )
     _write_csv(
         root / "baselines" / "dice" / "run-1" / "scenarios" / "scenario_summary.csv",
         [
             {
                 "scenario": "all_mutable",
-                "step_status": "completed",
-                "feasible_rate": "1.0",
+                "target_success_rate_all_candidates": "1.0",
+                "plausibility_pass_rate": "1.0",
+                "mean_lof_score": "1.0",
+                "mean_changed_feature_count": "1.0",
+                "mean_distance_l1": "0.1",
+                "mean_runtime_ms": "12.0",
                 "immutable_violation_rate": "0.0",
                 "mutable_violation_rate": "0.0",
-                "directional_violation_rate": "0.0",
             }
         ],
     )
@@ -37,10 +50,6 @@ def _write_minimal_comparison(root: Path) -> None:
         root / "baselines" / "dice" / "run-1" / "stability" / "run-1" / "stability_aggregate.csv",
         [
             {
-                "case_count": "1",
-                "mean_feasible_rate": "1.0",
-                "fully_feasible_case_rate": "1.0",
-                "stability_evaluable_case_rate": "1.0",
                 "mean_feasible_only_jaccard_changed_features": "1.0",
                 "mean_feasible_only_stability_std_norm": "0.0",
             }
@@ -58,7 +67,6 @@ def test_audit_comparison_passes_for_single_required_engine(tmp_path: Path) -> N
     payload = audit_comparison(
         tmp_path,
         required_engines=["dice"],
-        max_allowed_violation_rate=0.0,
     )
 
     assert payload["ok"] is True
@@ -74,37 +82,31 @@ def test_audit_comparison_fails_when_required_engine_is_missing(tmp_path: Path) 
     payload = audit_comparison(
         tmp_path,
         required_engines=["dice", "nn"],
-        max_allowed_violation_rate=0.0,
     )
 
     assert payload["ok"] is False
     assert "Missing required engine rows: nn" in payload["errors"]
 
 
-def test_audit_comparison_fails_on_constraint_violation(tmp_path: Path) -> None:
+def test_audit_comparison_fails_on_failed_scenario_status(tmp_path: Path) -> None:
     _write_minimal_comparison(tmp_path)
-    _write_csv(
-        tmp_path / "baselines" / "dice" / "run-1" / "scenarios" / "scenario_summary.csv",
-        [
+    (tmp_path / "baselines" / "dice" / "run-1" / "baseline_manifest.json").write_text(
+        json.dumps(
             {
-                "scenario": "all_mutable",
-                "step_status": "completed",
-                "feasible_rate": "1.0",
-                "immutable_violation_rate": "0.1",
-                "mutable_violation_rate": "0.0",
-                "directional_violation_rate": "0.0",
+                "engine": "dice",
+                "scenario_steps": [{"scenario": "all_mutable", "status": "failed"}],
             }
-        ],
+        ),
+        encoding="utf-8",
     )
 
     payload = audit_comparison(
         tmp_path,
         required_engines=["dice"],
-        max_allowed_violation_rate=0.0,
     )
 
     assert payload["ok"] is False
-    assert any("immutable_violation_rate" in error for error in payload["errors"])
+    assert "dice/all_mutable failed." in payload["errors"]
 
 
 def test_latest_comparison_root_reads_pointer(tmp_path: Path) -> None:
