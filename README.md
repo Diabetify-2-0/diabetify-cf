@@ -32,6 +32,7 @@ diabetify-cf/
     scripts/
     configs/
     results/
+    tests/
   src/diabetify_cf/
     engine/
     messaging/
@@ -83,6 +84,14 @@ python -m ruff check --no-cache src tests
 python -m black --check src tests experiments --exclude notebooks
 python -m mypy src
 python -m pytest -q tests
+```
+
+Test di `tests/` dikhususkan untuk counterfactual service yang dipakai
+Diabetify 2.0. Test eksperimen dipisahkan di `experiments/tests/` dan
+dijalankan terpisah saat memang mengevaluasi pipeline riset:
+
+```powershell
+python -m pytest -q experiments/tests
 ```
 
 ## Docker
