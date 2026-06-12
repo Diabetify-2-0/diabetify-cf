@@ -21,10 +21,12 @@ REPO_ROOT = bootstrap_path(__file__)
 from experiments.scripts.collect_results import collect_results
 from experiments.scripts.print_baseline_report import write_markdown_report
 from experiments.scripts.run_benchmark import (
+    DEFAULT_ENGINE_CONFIG_PATH,
     DEFAULT_OUTPUT_ROOT,
     engine_output_label,
     load_config,
     merge_configs,
+    output_path_label,
 )
 from experiments.scripts.run_scenarios import DEFAULT_SCENARIO_CONFIGS
 from experiments.scripts.summarize_results import summarize_run, write_summary_csv
@@ -190,6 +192,10 @@ def _failed_scenario_summary(
     }
 
 
+def _scenario_output_dirname(scenario_name: str) -> str:
+    return output_path_label(scenario_name, max_length=20)
+
+
 def run_baseline_scenarios(
     *,
     config_paths: list[Path],
@@ -211,7 +217,7 @@ def run_baseline_scenarios(
             scenario_limit,
         )
         scenario_name = str(scenario_config.get("name") or config_path.stem)
-        scenario_output_root = scenario_root / scenario_name
+        scenario_output_root = scenario_root / _scenario_output_dirname(scenario_name)
         scenario_output_root.mkdir(parents=True, exist_ok=False)
         effective_config_path = scenario_output_root / "effective_config.json"
         _write_json(effective_config_path, config)

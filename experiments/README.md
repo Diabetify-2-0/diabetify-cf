@@ -109,6 +109,7 @@ Kelompok skenario yang dipakai:
 - **Operasional**
   - `default_mutable`
   - `bmi_activity_smoking_hypertension`
+  - `bmi_activity_cholesterol`
   - `bmi_activity`
   - `bmi`
 - **Stabilitas**

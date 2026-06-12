@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -53,6 +54,29 @@ def engine_adapter_name(config: dict[str, Any]) -> str:
 def engine_output_label(config: dict[str, Any]) -> str:
     label = str(config.get("engine_label") or engine_adapter_name(config)).strip().lower()
     return label or engine_adapter_name(config)
+
+
+OUTPUT_PATH_LABEL_ALIASES = {
+    "dice_plain": "dp",
+    "dice_constrained_native": "dcn",
+    "nn_production": "nnp",
+}
+
+
+def output_path_label(label: str, max_length: int = 24) -> str:
+    normalized = "".join(
+        char if char.isalnum() or char in {"-", "_"} else "_" for char in label.strip().lower()
+    ).strip("_")
+    if not normalized:
+        normalized = "engine"
+    aliased = OUTPUT_PATH_LABEL_ALIASES.get(normalized)
+    if aliased is not None:
+        return aliased
+    if len(normalized) <= max_length:
+        return normalized
+    digest = hashlib.sha1(normalized.encode("utf-8")).hexdigest()[:8]
+    prefix_length = max(max_length - len(digest) - 1, 8)
+    return f"{normalized[:prefix_length].rstrip('_')}_{digest}"
 
 
 def _default_mutable_allowed(registry: FeatureRegistry, feature_columns: list[str]) -> list[str]:
@@ -239,7 +263,7 @@ def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
 
 def _make_output_dir(output_root: Path, engine_name: str) -> Path:
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    output_dir = output_root / "benchmarks" / engine_name / timestamp
+    output_dir = output_root / "benchmarks" / output_path_label(engine_name) / timestamp
     output_dir.mkdir(parents=True, exist_ok=False)
     return output_dir
 

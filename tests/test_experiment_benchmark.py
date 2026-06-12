@@ -7,6 +7,7 @@ from experiments.scripts.run_benchmark import (
     engine_adapter_name,
     engine_output_label,
     load_effective_config,
+    output_path_label,
 )
 
 
@@ -138,3 +139,20 @@ def test_engine_output_label_can_distinguish_explicit_variant_labels() -> None:
 
     assert engine_adapter_name(config) == "nn"
     assert engine_output_label(config) == "nn_variant_a"
+
+
+def test_output_path_label_keeps_unknown_short_labels_readable() -> None:
+    assert output_path_label("custom_engine") == "custom_engine"
+
+
+def test_output_path_label_uses_known_engine_aliases() -> None:
+    assert output_path_label("dice_constrained_native") == "dcn"
+    assert output_path_label("nn_production") == "nnp"
+
+
+def test_output_path_label_shortens_unknown_long_labels_deterministically() -> None:
+    shortened = output_path_label("very_long_engine_variant_label", max_length=20)
+
+    assert shortened.startswith("very_long_e")
+    assert len(shortened) <= 20
+    assert shortened == output_path_label("very_long_engine_variant_label", max_length=20)

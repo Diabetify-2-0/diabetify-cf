@@ -24,6 +24,7 @@ from experiments.scripts.run_benchmark import (
     REPO_ROOT,
     load_config,
     merge_configs,
+    output_path_label,
 )
 from experiments.scripts.run_metadata import build_run_metadata
 from experiments.scripts.summarize_results import summarize_run, write_summary_csv
@@ -31,6 +32,7 @@ from experiments.scripts.summarize_results import summarize_run, write_summary_c
 DEFAULT_SCENARIO_CONFIGS = [
     Path("experiments/configs/scenarios/default_mutable.json"),
     Path("experiments/configs/scenarios/bmi_activity_smoking_hypertension.json"),
+    Path("experiments/configs/scenarios/bmi_activity_cholesterol.json"),
     Path("experiments/configs/scenarios/bmi_activity.json"),
     Path("experiments/configs/scenarios/bmi.json"),
 ]
@@ -185,6 +187,10 @@ def _scenario_name(config: dict[str, Any], config_path: Path) -> str:
     return str(config.get("name") or config_path.stem)
 
 
+def _scenario_output_dirname(scenario_name: str) -> str:
+    return output_path_label(scenario_name, max_length=20)
+
+
 def run_scenarios(
     config_paths: list[Path],
     output_root: Path,
@@ -205,7 +211,7 @@ def run_scenarios(
             scenario_limit,
         )
         scenario_name = _scenario_name(scenario_config, config_path)
-        scenario_output_root = scenario_root / scenario_name
+        scenario_output_root = scenario_root / _scenario_output_dirname(scenario_name)
         scenario_output_root.mkdir(parents=True, exist_ok=False)
         effective_config_path = scenario_output_root / "effective_config.json"
         _write_json(effective_config_path, config)

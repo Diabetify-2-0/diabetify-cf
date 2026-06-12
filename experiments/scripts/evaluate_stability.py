@@ -32,6 +32,7 @@ from experiments.scripts.run_benchmark import (
     engine_output_label,
     load_config,
     load_effective_config,
+    output_path_label,
     select_evaluation_rows,
 )
 from experiments.scripts.run_metadata import build_run_metadata
@@ -39,7 +40,7 @@ from experiments.scripts.run_metadata import build_run_metadata
 
 def _make_output_dir(output_root: Path, engine_name: str) -> Path:
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    output_dir = output_root / "stability" / engine_name / timestamp
+    output_dir = output_root / "stability" / output_path_label(engine_name) / timestamp
     output_dir.mkdir(parents=True, exist_ok=False)
     return output_dir
 

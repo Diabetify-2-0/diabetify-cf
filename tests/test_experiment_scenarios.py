@@ -90,6 +90,25 @@ def test_bmi_activity_smoking_hypertension_uses_actionable_registry_features() -
         assert not feature.immutable
 
 
+def test_bmi_activity_cholesterol_uses_actionable_registry_features() -> None:
+    registry = FeatureRegistry.from_file("configs/feature_registry.json")
+    config = json.loads(
+        (SCENARIO_DIR / "bmi_activity_cholesterol.json").read_text(encoding="utf-8")
+    )
+
+    assert config["name"] == "bmi_activity_cholesterol"
+    assert config["mutable_allowed"] == [
+        "BMI",
+        "moderate_physical_activity_frequency",
+        "is_cholesterol",
+    ]
+    for feature_name in config["mutable_allowed"]:
+        feature = registry.get(feature_name)
+        assert feature is not None
+        assert feature.actionable
+        assert not feature.immutable
+
+
 def test_default_mutable_uses_default_registry_flags() -> None:
     config = json.loads((SCENARIO_DIR / "default_mutable.json").read_text(encoding="utf-8"))
 
@@ -103,3 +122,9 @@ def test_bmi_activity_declares_scenario_role() -> None:
     activity = json.loads((SCENARIO_DIR / "bmi_activity.json").read_text(encoding="utf-8"))
 
     assert activity["scenario_role"] == "operational_bridge"
+
+
+def test_bmi_activity_cholesterol_declares_scenario_role() -> None:
+    config = json.loads((SCENARIO_DIR / "bmi_activity_cholesterol.json").read_text(encoding="utf-8"))
+
+    assert config["scenario_role"] == "operational_expansion"
