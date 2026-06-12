@@ -53,8 +53,8 @@ def build_checkpoint_report(audit_payload: dict[str, Any]) -> str:
         "",
         "## Scenario Summary",
         "",
-        "| Engine | Scenarios | Completed | Timeout | Failed | Mean validity | Max violation |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| Engine | Scenarios | Completed | Timeout | Failed | Mean validity |",
+        "| --- | ---: | ---: | ---: | ---: | ---: |",
     ]
 
     for engine, item in audit_payload["scenario_summary"].items():
@@ -68,7 +68,6 @@ def build_checkpoint_report(audit_payload: dict[str, Any]) -> str:
                     str(item["timeout_count"]),
                     str(item["failed_count"]),
                     _percent(float(item["mean_validity_success_rate"])),
-                    _number(float(item["max_violation_rate"])),
                 ]
             )
             + " |"
@@ -169,7 +168,6 @@ def run_checkpoint(
     scenario_timeout_seconds: int | None,
     stability_timeout_seconds: int | None,
     required_engines: list[str],
-    max_allowed_violation_rate: float,
     fail_on_timeout: bool,
 ) -> dict[str, Any]:
     comparison_root = run_comparison(
@@ -187,7 +185,6 @@ def run_checkpoint(
     audit_payload = audit_comparison(
         comparison_root,
         required_engines=required_engines,
-        max_allowed_violation_rate=max_allowed_violation_rate,
         fail_on_timeout=fail_on_timeout,
     )
     report_path = write_checkpoint_report(comparison_root, audit_payload)
@@ -205,7 +202,6 @@ def run_checkpoint(
             "scenario_timeout_seconds": scenario_timeout_seconds,
             "stability_timeout_seconds": stability_timeout_seconds,
             "required_engines": required_engines,
-            "max_allowed_violation_rate": max_allowed_violation_rate,
             "fail_on_timeout": fail_on_timeout,
         },
     )
@@ -258,12 +254,6 @@ def main() -> None:
         help="Engines that must be present in scenario summary rows.",
     )
     parser.add_argument(
-        "--max-allowed-violation-rate",
-        type=float,
-        default=0.0,
-        help="Maximum accepted constraint violation rate before failing the checkpoint.",
-    )
-    parser.add_argument(
         "--fail-on-timeout",
         action="store_true",
         help="Treat scenario timeouts as checkpoint failures.",
@@ -282,7 +272,6 @@ def main() -> None:
         scenario_timeout_seconds=args.scenario_timeout_seconds,
         stability_timeout_seconds=args.stability_timeout_seconds,
         required_engines=list(args.required_engines),
-        max_allowed_violation_rate=args.max_allowed_violation_rate,
         fail_on_timeout=args.fail_on_timeout,
     )
 

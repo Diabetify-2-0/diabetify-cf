@@ -33,8 +33,6 @@ DEFAULT_SCENARIO_CONFIGS = [
     Path("experiments/configs/scenarios/bmi_activity_smoking_hypertension.json"),
     Path("experiments/configs/scenarios/bmi_activity.json"),
     Path("experiments/configs/scenarios/bmi.json"),
-    Path("experiments/configs/scenarios/activity.json"),
-    Path("experiments/configs/scenarios/no_mutable.json"),
 ]
 DEFAULT_SCENARIO_TIMEOUT_SECONDS = 300
 

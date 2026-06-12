@@ -70,11 +70,13 @@ def test_scenario_configs_do_not_define_engine_generation_fields() -> None:
         assert GENERATION_FIELDS.isdisjoint(config), path
 
 
-def test_lifestyle_combo_uses_actionable_registry_features() -> None:
+def test_bmi_activity_smoking_hypertension_uses_actionable_registry_features() -> None:
     registry = FeatureRegistry.from_file("configs/feature_registry.json")
-    config = json.loads((SCENARIO_DIR / "lifestyle_combo.json").read_text(encoding="utf-8"))
+    config = json.loads(
+        (SCENARIO_DIR / "bmi_activity_smoking_hypertension.json").read_text(encoding="utf-8")
+    )
 
-    assert config["name"] == "lifestyle_combo"
+    assert config["name"] == "bmi_activity_smoking_hypertension"
     assert config["mutable_allowed"] == [
         "BMI",
         "moderate_physical_activity_frequency",
@@ -88,20 +90,16 @@ def test_lifestyle_combo_uses_actionable_registry_features() -> None:
         assert not feature.immutable
 
 
-def test_no_mutable_declares_expected_infeasible_control() -> None:
-    config = json.loads((SCENARIO_DIR / "no_mutable.json").read_text(encoding="utf-8"))
+def test_default_mutable_uses_default_registry_flags() -> None:
+    config = json.loads((SCENARIO_DIR / "default_mutable.json").read_text(encoding="utf-8"))
 
+    assert config["name"] == "default_mutable"
     assert config["mutable_allowed"] == []
-    assert config["use_default_mutable"] is False
-    assert config["expected_outcome"] == {
-        "category": "expected_infeasible_control",
-        "feasible": False,
-        "reason_codes": ["NO_MUTABLE_FEATURE"],
-        "notes": "Control scenario: no features are mutable, so infeasibility is expected.",
-    }
+    assert config["use_default_mutable"] is True
+    assert config["use_default_immutable"] is True
 
 
-def test_stress_scenarios_declare_scenario_role() -> None:
-    activity = json.loads((SCENARIO_DIR / "activity_only.json").read_text(encoding="utf-8"))
+def test_bmi_activity_declares_scenario_role() -> None:
+    activity = json.loads((SCENARIO_DIR / "bmi_activity.json").read_text(encoding="utf-8"))
 
-    assert activity["scenario_role"] == "single_feature_stress_test"
+    assert activity["scenario_role"] == "operational_bridge"

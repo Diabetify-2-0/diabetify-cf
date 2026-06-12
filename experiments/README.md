@@ -111,10 +111,6 @@ Kelompok skenario yang dipakai:
   - `bmi_activity_smoking_hypertension`
   - `bmi_activity`
   - `bmi`
-- **Stress test**
-  - `activity`
-- **Kontrol infeasible**
-  - `no_mutable`
 - **Stabilitas**
   - `stability`
 

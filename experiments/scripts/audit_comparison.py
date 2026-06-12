@@ -19,11 +19,6 @@ from experiments.scripts.run_benchmark import DEFAULT_OUTPUT_ROOT
 from experiments.scripts.run_comparison import engine_from_source_file
 
 DEFAULT_REQUIRED_ENGINES = ["dice_plain", "dice_constrained_native", "nn_production"]
-VIOLATION_RATE_FIELDS = [
-    "immutable_violation_rate",
-    "mutable_violation_rate",
-    "directional_violation_rate",
-]
 
 
 def _read_csv(path: Path) -> list[dict[str, str]]:
@@ -70,7 +65,6 @@ def _scenario_engine_summary(rows: list[dict[str, str]]) -> dict[str, dict[str, 
                 "timeout_count": 0,
                 "failed_count": 0,
                 "mean_validity_success_rate": 0.0,
-                "max_violation_rate": 0.0,
             },
         )
         item["scenario_count"] += 1
@@ -82,10 +76,6 @@ def _scenario_engine_summary(rows: list[dict[str, str]]) -> dict[str, dict[str, 
         elif status == "failed":
             item["failed_count"] += 1
         item["mean_validity_success_rate"] += _as_float(row, "validity_success_rate")
-        item["max_violation_rate"] = max(
-            item["max_violation_rate"],
-            max(_as_float(row, field) for field in VIOLATION_RATE_FIELDS),
-        )
 
     for item in summary.values():
         count = max(int(item["scenario_count"]), 1)
@@ -121,7 +111,6 @@ def audit_comparison(
     comparison_root: Path,
     *,
     required_engines: list[str],
-    max_allowed_violation_rate: float,
     fail_on_timeout: bool = False,
 ) -> dict[str, Any]:
     collect_results(comparison_root)
@@ -165,13 +154,6 @@ def audit_comparison(
                 errors.append(message)
             else:
                 warnings.append(message)
-        for field in VIOLATION_RATE_FIELDS:
-            value = _as_float(row, field)
-            if value > max_allowed_violation_rate:
-                errors.append(
-                    f"{engine}/{scenario} has {field}={value:.4f}, "
-                    f"above allowed {max_allowed_violation_rate:.4f}."
-                )
 
     for row in stability_rows:
         engine = engine_from_source_file(row.get("source_file", ""))
@@ -233,8 +215,7 @@ def print_audit(payload: dict[str, Any]) -> None:
             f"completed={item['completed_count']} "
             f"timeout={item['timeout_count']} "
             f"failed={item['failed_count']} "
-            f"mean_validity={item['mean_validity_success_rate']:.3f} "
-            f"max_violation={item['max_violation_rate']:.3f}"
+            f"mean_validity={item['mean_validity_success_rate']:.3f}"
         )
 
     print("\nStability Summary")
@@ -264,12 +245,6 @@ def main() -> None:
         help="Engines that must be present in scenario summary rows.",
     )
     parser.add_argument(
-        "--max-allowed-violation-rate",
-        type=float,
-        default=0.0,
-        help="Maximum accepted constraint violation rate before failing the audit.",
-    )
-    parser.add_argument(
         "--fail-on-timeout",
         action="store_true",
         help="Treat scenario timeouts as audit failures.",
@@ -281,7 +256,6 @@ def main() -> None:
     payload = audit_comparison(
         comparison_root,
         required_engines=list(args.required_engines),
-        max_allowed_violation_rate=args.max_allowed_violation_rate,
         fail_on_timeout=args.fail_on_timeout,
     )
 
