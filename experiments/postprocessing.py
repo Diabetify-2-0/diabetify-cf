@@ -51,7 +51,7 @@ class _CandidateEvaluation:
 class ExperimentPostprocessor:
     """Shared experiment validation, scoring, and ranking for CF generators."""
 
-    def __init__(self, artifacts: ModelArtifacts, max_lof_score: float = 2.5) -> None:
+    def __init__(self, artifacts: ModelArtifacts, max_lof_score: float = 1.5) -> None:
         self.artifacts = artifacts
         self.max_lof_score = max(1.0, float(max_lof_score))
 

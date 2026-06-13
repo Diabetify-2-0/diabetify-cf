@@ -76,7 +76,7 @@ def _postprocessor() -> ExperimentPostprocessor:
         feature_registry=_registry(),
         lof_model=None,
     )
-    return ExperimentPostprocessor(artifacts=artifacts, max_lof_score=2.5)
+    return ExperimentPostprocessor(artifacts=artifacts, max_lof_score=1.5)
 
 
 def test_postprocessor_accepts_valid_candidate() -> None:

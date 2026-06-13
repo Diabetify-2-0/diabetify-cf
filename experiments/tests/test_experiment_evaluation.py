@@ -71,7 +71,7 @@ def test_evaluate_candidate_marks_valid_candidate() -> None:
         baseline={"age": 45, "BMI": 31.2, "is_bloodline": 1},
         request=_request(),
         registry=_registry(),
-        max_lof_score=2.5,
+        max_lof_score=1.5,
     )
 
     assert report["target_success"] is True
@@ -91,7 +91,7 @@ def test_evaluate_candidate_counts_constraint_violations() -> None:
         baseline={"age": 45, "BMI": 31.2, "is_bloodline": 1},
         request=_request(),
         registry=_registry(),
-        max_lof_score=2.5,
+        max_lof_score=1.5,
     )
 
     assert report["target_success"] is False
