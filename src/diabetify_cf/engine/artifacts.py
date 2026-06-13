@@ -1,14 +1,3 @@
-"""Helpers for loading model-side artifacts used by the CF engine.
-
-The engine needs more than the trained model itself. It also depends on:
-- the exact feature column order expected by the model,
-- reference/background data used by DiCE and plausibility scoring,
-- feature metadata that defines domain constraints.
-
-This module centralizes that loading logic so the engine can focus on the
-counterfactual workflow instead of file and fallback handling.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -176,7 +165,7 @@ def _load_feature_registry(path: str, feature_columns: list[str]) -> FeatureRegi
 
 
 def _load_reference_data(path: str, feature_columns: list[str]) -> pd.DataFrame:
-    """Load reference data used by DiCE and LOF plausibility scoring."""
+    """Load reference data used by the NN engine and LOF plausibility scoring."""
 
     if not path:
         return _empty_reference(feature_columns)

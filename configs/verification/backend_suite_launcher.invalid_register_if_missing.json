@@ -1,0 +1,12 @@
+{
+  "backend_base_url": "http://localhost:8080",
+  "scenarios_path": "configs/verification",
+  "output_dir": "configs/verification/backend_suite_reports",
+  "suites": ["feasible_core"],
+  "auth_mode": "login",
+  "register_if_missing": true,
+  "login": {
+    "email": "tester@example.com",
+    "password": "test-password"
+  }
+}

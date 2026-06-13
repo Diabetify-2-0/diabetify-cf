@@ -3,9 +3,9 @@ from time import perf_counter, sleep
 
 import pandas as pd
 
-from diabetify_cf.engine import DiceCounterfactualEngine
 from diabetify_cf.engine.artifacts import ModelArtifacts
 from diabetify_cf.engine.feature_registry import FeatureDefinition, FeatureRegistry
+from diabetify_cf.engine.shared import ArtifactBackedCounterfactualEngine
 from diabetify_cf.reason_codes import ReasonCode, Status
 from diabetify_cf.schemas import (
     CandidateMetrics,
@@ -13,6 +13,17 @@ from diabetify_cf.schemas import (
     CounterfactualRequest,
     PredictionInfo,
 )
+
+
+class TestCounterfactualEngine(ArtifactBackedCounterfactualEngine):
+    __test__ = False
+    engine_version = "test_engine_v1"
+
+    def _generate_raw_candidates(self, **_kwargs: object) -> pd.DataFrame:
+        return pd.DataFrame()
+
+    def _as_test_input_df(self, frame: pd.DataFrame) -> pd.DataFrame:
+        return self._as_model_input_df(frame)
 
 
 def _request_payload(mutable_allowed: list[str]) -> dict:
@@ -30,7 +41,7 @@ def _request_payload(mutable_allowed: list[str]) -> dict:
         },
         "generation": {
             "total_cfs": 3,
-            "method": "dice_genetic",
+            "method": "nn_search",
             "random_seed": 42,
             "timeout_ms": 5000,
         },
@@ -40,7 +51,7 @@ def _request_payload(mutable_allowed: list[str]) -> dict:
 
 def test_engine_returns_infeasible_when_no_mutable_feature() -> None:
     req = CounterfactualRequest.model_validate(_request_payload([]))
-    engine = DiceCounterfactualEngine()
+    engine = TestCounterfactualEngine()
 
     result = engine.generate(req)
 
@@ -51,7 +62,7 @@ def test_engine_returns_infeasible_when_no_mutable_feature() -> None:
 
 def test_engine_returns_feasible_when_input_already_satisfies_target() -> None:
     req = CounterfactualRequest.model_validate(_request_payload(["bmi"]))
-    engine = DiceCounterfactualEngine()
+    engine = TestCounterfactualEngine()
     engine.artifacts = object()  # type: ignore[assignment]
 
     def _prepared_request(request: CounterfactualRequest) -> object:
@@ -89,7 +100,7 @@ def test_engine_returns_feasible_when_high_risk_is_already_below_requested_thres
     payload = _request_payload(["bmi"])
     payload["target"]["min_target_probability"] = 0.30
     req = CounterfactualRequest.model_validate(payload)
-    engine = DiceCounterfactualEngine()
+    engine = TestCounterfactualEngine()
     engine.artifacts = object()  # type: ignore[assignment]
 
     def _prepared_request(request: CounterfactualRequest) -> object:
@@ -124,7 +135,7 @@ def test_engine_returns_feasible_when_high_risk_is_already_below_requested_thres
 
 def test_engine_returns_not_ready_when_artifacts_are_missing() -> None:
     req = CounterfactualRequest.model_validate(_request_payload(["bmi"]))
-    engine = DiceCounterfactualEngine()
+    engine = TestCounterfactualEngine()
 
     result = engine.generate(req)
 
@@ -136,7 +147,7 @@ def test_engine_timeout_returns_terminal_response_without_waiting_for_generator(
     payload = _request_payload(["bmi"])
     payload["generation"]["timeout_ms"] = 100
     req = CounterfactualRequest.model_validate(payload)
-    engine = DiceCounterfactualEngine()
+    engine = TestCounterfactualEngine()
     engine.artifacts = object()  # type: ignore[assignment]
 
     def _prepared_request(request: CounterfactualRequest) -> object:
@@ -175,7 +186,7 @@ def test_engine_timeout_returns_terminal_response_without_waiting_for_generator(
     assert result.planner_input.input_prediction is not None
 
 
-def test_as_dice_input_df_coerces_numeric_columns() -> None:
+def test_as_model_input_df_coerces_numeric_columns() -> None:
     registry = FeatureRegistry.from_columns(["feature_a", "feature_b"])
     artifacts = ModelArtifacts(
         model=object(),
@@ -184,11 +195,11 @@ def test_as_dice_input_df_coerces_numeric_columns() -> None:
         feature_registry=registry,
         lof_model=None,
     )
-    engine = DiceCounterfactualEngine()
+    engine = TestCounterfactualEngine()
     engine.artifacts = artifacts
 
     raw = pd.DataFrame({"feature_a": ["1.5"], "feature_b": ["2"]})
-    typed = engine._as_dice_input_df(raw)
+    typed = engine._as_test_input_df(raw)
 
     assert str(typed["feature_a"].dtype) == "float64"
     assert str(typed["feature_b"].dtype) == "float64"
@@ -216,9 +227,9 @@ def _bmi_registry() -> FeatureRegistry:
     )
 
 
-def _engine_with_bmi_artifacts() -> DiceCounterfactualEngine:
+def _engine_with_bmi_artifacts() -> TestCounterfactualEngine:
     registry = _bmi_registry()
-    engine = DiceCounterfactualEngine()
+    engine = TestCounterfactualEngine()
     engine.artifacts = ModelArtifacts(
         model=object(),
         feature_columns=["BMI"],
@@ -285,7 +296,7 @@ def test_permitted_range_includes_binary_mutable_feature() -> None:
             ),
         ],
     )
-    engine = DiceCounterfactualEngine()
+    engine = TestCounterfactualEngine()
 
     permitted = engine._build_permitted_range(
         mutable_allowed=["is_hypertension", "BMI"],
@@ -327,7 +338,7 @@ def test_permitted_range_applies_directional_constraints() -> None:
             ),
         ],
     )
-    engine = DiceCounterfactualEngine()
+    engine = TestCounterfactualEngine()
 
     permitted = engine._build_permitted_range(
         mutable_allowed=["moderate_physical_activity_frequency", "BMI"],
@@ -340,7 +351,7 @@ def test_permitted_range_applies_directional_constraints() -> None:
 
 
 def test_target_satisfied_enforces_min_probability() -> None:
-    engine = DiceCounterfactualEngine()
+    engine = TestCounterfactualEngine()
     low_prediction = PredictionInfo(class_name="low_risk", probability_low_risk=0.72)
     high_prediction = PredictionInfo(class_name="high_risk", probability_low_risk=0.22)
     moderate_high_prediction = PredictionInfo(class_name="high_risk", probability_low_risk=0.35)
@@ -404,7 +415,7 @@ def test_objective_score_normalizes_action_cost_by_feature_range() -> None:
         prediction=prediction,
         metrics=metrics,
     )
-    engine = DiceCounterfactualEngine()
+    engine = TestCounterfactualEngine()
     weights = {
         "proximity": 0.0,
         "sparsity": 0.0,
@@ -468,7 +479,7 @@ def test_build_mutable_allowed_filters_immutable_non_actionable_and_duplicates()
             ),
         ],
     )
-    engine = DiceCounterfactualEngine()
+    engine = TestCounterfactualEngine()
     mutable = engine._build_mutable_allowed(
         mutable_input=["age", "BMI", "BMI", "smoking_status", "unknown_feature"],
         model_columns=["age", "BMI", "smoking_status"],
@@ -509,7 +520,7 @@ def test_directional_ok_rejects_physical_activity_decrease() -> None:
             ),
         ],
     )
-    engine = DiceCounterfactualEngine()
+    engine = TestCounterfactualEngine()
 
     baseline = {"moderate_physical_activity_frequency": 2, "BMI": 31.2}
     invalid_candidate = {"moderate_physical_activity_frequency": 1, "BMI": 28.0}
@@ -572,7 +583,7 @@ def test_apply_feature_specific_mutability_keeps_brinkman_index_immutable() -> N
             ),
         ],
     )
-    engine = DiceCounterfactualEngine()
+    engine = TestCounterfactualEngine()
 
     mutable_former = engine._apply_feature_specific_mutability(
         mutable_allowed=["smoking_status", "brinkman_index", "BMI"],
@@ -614,7 +625,7 @@ def test_transition_ok_enforces_smoking_status_allowed_transitions() -> None:
             )
         ],
     )
-    engine = DiceCounterfactualEngine()
+    engine = TestCounterfactualEngine()
 
     assert engine._transition_ok(
         candidate={"smoking_status": 1},
@@ -650,7 +661,7 @@ def test_transition_ok_enforces_smoking_status_allowed_transitions() -> None:
 
 def test_infeasible_response_preserves_request_context_in_planner_input() -> None:
     req = CounterfactualRequest.model_validate(_request_payload(["bmi"]))
-    engine = DiceCounterfactualEngine()
+    engine = TestCounterfactualEngine()
     prepared = type(
         "Prepared",
         (),
@@ -684,7 +695,7 @@ def test_infeasible_response_preserves_request_context_in_planner_input() -> Non
 
 def test_process_candidates_surfaces_medical_only_infeasible_reason() -> None:
     req = CounterfactualRequest.model_validate(_request_payload(["bmi"]))
-    engine = DiceCounterfactualEngine()
+    engine = TestCounterfactualEngine()
     prepared = type(
         "Prepared",
         (),

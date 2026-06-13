@@ -1,0 +1,149 @@
+{
+  "metadata": {
+    "generated_at": "2026-06-13T05:28:24.675604+00:00",
+    "suite_name": "infeasible_core",
+    "suite_description": "Infeasible production scenarios covering no-mutable, target-unreachable, and medical-only outcomes.",
+    "suite_include_tags": [
+      "infeasible"
+    ],
+    "suite_exclude_tags": [],
+    "runner_mode": "backend_suite_member",
+    "launcher_mode": "config",
+    "backend_base_url": "http://127.0.0.1:8080",
+    "health_check_enabled": true,
+    "health_payload": {
+      "data": {
+        "service_status": {
+          "rabbitmq_connected": true,
+          "request_queue": "ml.cf.request",
+          "response_queue": "ml.cf.response",
+          "running": true
+        }
+      },
+      "message": "Counterfactual service is healthy",
+      "status": "success"
+    },
+    "auth_mode": "login"
+  },
+  "summary": {
+    "immutable_violation_rate": null,
+    "mutable_violation_rate": null,
+    "externally_verified_target_satisfaction_rate": null,
+    "infeasible_handling_accuracy": 1.0,
+    "end_to_end_scenario_pass_rate": 1.0,
+    "external_lof_verification_accuracy": null,
+    "repeatability_rate": null,
+    "average_latency_ms": 699.6666666666666,
+    "p95_latency_ms": 1041.2,
+    "constraint_gate_compliance_rate": null,
+    "total_scenarios": 3,
+    "total_runs": 3,
+    "total_candidates": 0
+  },
+  "scenarios": [
+    {
+      "name": "infeasible_medical_rule_only_high_target",
+      "description": "Scenario expecting infeasible handling when candidates exist but fail production plausibility gates under a very strict target.",
+      "tags": [
+        "infeasible",
+        "medical-only",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "passed": true,
+      "repeatability_consistent": true,
+      "average_duration_ms": 1043,
+      "runs": [
+        {
+          "iteration": 1,
+          "duration_ms": 1043,
+          "passed": true,
+          "expectation_matched": true,
+          "response_status": "INFEASIBLE",
+          "response_reason_code": "MEDICAL_RULE_VIOLATION_ONLY",
+          "candidate_count": 0,
+          "verification": {
+            "outcome_consistent": true,
+            "candidate_count": 0,
+            "immutable_violation_rate": null,
+            "mutable_violation_rate": null,
+            "externally_verified_target_satisfaction_rate": null,
+            "external_lof_verification_accuracy": null,
+            "constraint_gate_compliance_rate": null,
+            "candidates": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "infeasible_no_mutable",
+      "description": "Scenario expecting infeasible handling when the user allows no mutable feature.",
+      "tags": [
+        "infeasible",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "passed": true,
+      "repeatability_consistent": true,
+      "average_duration_ms": 31,
+      "runs": [
+        {
+          "iteration": 1,
+          "duration_ms": 31,
+          "passed": true,
+          "expectation_matched": true,
+          "response_status": "INFEASIBLE",
+          "response_reason_code": "NO_MUTABLE_FEATURE",
+          "candidate_count": 0,
+          "verification": {
+            "outcome_consistent": true,
+            "candidate_count": 0,
+            "immutable_violation_rate": null,
+            "mutable_violation_rate": null,
+            "externally_verified_target_satisfaction_rate": null,
+            "external_lof_verification_accuracy": null,
+            "constraint_gate_compliance_rate": null,
+            "candidates": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "infeasible_target_unreachable_bmi_only",
+      "description": "Scenario expecting infeasible handling when only BMI is mutable and the requested probability target is too strict to reach.",
+      "tags": [
+        "infeasible",
+        "target-unreachable",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "passed": true,
+      "repeatability_consistent": true,
+      "average_duration_ms": 1025,
+      "runs": [
+        {
+          "iteration": 1,
+          "duration_ms": 1025,
+          "passed": true,
+          "expectation_matched": true,
+          "response_status": "INFEASIBLE",
+          "response_reason_code": "TARGET_UNREACHABLE_UNDER_CONSTRAINTS",
+          "candidate_count": 0,
+          "verification": {
+            "outcome_consistent": true,
+            "candidate_count": 0,
+            "immutable_violation_rate": null,
+            "mutable_violation_rate": null,
+            "externally_verified_target_satisfaction_rate": null,
+            "external_lof_verification_accuracy": null,
+            "constraint_gate_compliance_rate": null,
+            "candidates": []
+          }
+        }
+      ]
+    }
+  ]
+}

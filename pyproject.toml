@@ -19,9 +19,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dice = [
-  "dice-ml==0.12",
-]
 experiments = [
   "dice-ml==0.12",
 ]

@@ -11,8 +11,7 @@ Phase 4 (counterfactual service hardening):
 
 - Contract schema (request/response) sudah dibuat.
 - RabbitMQ consumer/publisher sudah dibuat.
-- `NN` counterfactual engine aktif sebagai default service engine jika artifact tersedia.
-- `DiCE` tetap tersedia sebagai provider alternatif untuk debugging atau pembandingan.
+- `NN` counterfactual engine aktif sebagai satu-satunya production engine jika artifact tersedia.
 - Hardening aktif: target probability enforcement, actionable-feature filtering, timeout-aware reason code, dan plausibility gate via LOF threshold.
 - Hardening klinis tambahan: directional constraints per fitur (mis. aktivitas fisik tidak boleh direkomendasikan menurun).
 
@@ -62,15 +61,9 @@ python -m diabetify_cf.app
 ```
 
 Default local runtime memakai `CF_ENGINE_PROVIDER=nn`, jadi dependency runtime
-tetap ringan dan tidak meng-install `dice-ml`.
+tetap ringan dan tidak membawa dependency eksperimen seperti `dice-ml`.
 
-Jika ingin menjalankan provider DiCE pada service, install extra `dice`:
-
-```powershell
-pip install -e ".[dev,dice]"
-```
-
-For experiment engines beyond DiCE, install the experiment extra:
+Untuk stack eksperimen yang terpisah dari service produksi, install extra `experiments`:
 
 ```powershell
 pip install -e ".[dev,experiments]"
@@ -113,6 +106,9 @@ docker compose up --build -d
 ## Research and Experiment Layout
 
 - `src/` berisi kode service yang dipakai modul Diabetify.
+- `src/diabetify_cf/verification/` berisi verifier eksternal untuk memvalidasi
+  kandidat returned dari service produksi secara independen, serta scenario
+  runner untuk mengagregasi metrik evaluasi produksi.
 - `experiments/notebooks/` berisi notebook eksplorasi counterfactual engine.
 - `experiments/scripts/` disiapkan untuk benchmark dan evaluasi metrik.
 - `experiments/results/` disiapkan untuk output eksperimen lokal dan tidak ditujukan untuk Git.
@@ -133,6 +129,95 @@ python experiments/scripts/audit_comparison.py
 python experiments/scripts/print_baseline_report.py experiments/results/<baseline-folder>
 ```
 
+## Production Verification
+
+Layer verifikasi produksi dibagi menjadi dua:
+
+- `ExternalCounterfactualVerifier` untuk memvalidasi ulang kandidat returned
+  secara independen terhadap model, LOF, dan gate constraint produksi.
+- `ScenarioRunner` untuk menjalankan kumpulan skenario dan mengagregasi
+  metrik seperti immutable violation rate, target satisfaction, infeasible
+  handling accuracy, repeatability, dan latency.
+- `BackendCounterfactualEngineAdapter` untuk menjalankan fixture yang sama
+  melalui alur asynchronous `diabetify-be`, sehingga metrik dihitung dari
+  flow backend produksi, bukan hanya pemanggilan engine langsung.
+
+Fixture skenario produksi dapat disimpan di `configs/verification/` lalu
+dijalankan melalui entry point berikut:
+
+```powershell
+python -m diabetify_cf.verification.run_service_scenarios --scenarios configs/verification
+```
+
+Secara default report JSON akan ditulis ke
+`artifacts/verification/service_verification_report.json`.
+
+Runner juga dapat difilter berdasarkan tag fixture agar suite feasible,
+infeasible, atau repeatability dapat dijalankan terpisah:
+
+```powershell
+python -m diabetify_cf.verification.run_service_scenarios --scenarios configs/verification --include-tag repeatability
+python -m diabetify_cf.verification.run_service_scenarios --scenarios configs/verification --exclude-tag repeatability
+```
+
+Fixture produksi yang saat ini sudah dikalibrasi terhadap engine mencakup:
+
+- `feasible_bmi_activity`
+- `feasible_bmi_activity_repeatability`
+- `feasible_target_already_satisfied`
+- `infeasible_no_mutable`
+- `infeasible_target_unreachable_bmi_only`
+- `infeasible_medical_rule_only_high_target`
+
+Untuk menjalankan fixture yang sama melalui backend Diabetify yang sudah
+terautentikasi:
+
+```powershell
+python -m diabetify_cf.verification.run_backend_scenarios --scenarios configs/verification --backend-base-url http://localhost:8080 --backend-bearer-token <token>
+```
+
+Secara default report JSON backend akan ditulis ke
+`artifacts/verification/backend_verification_report.json`.
+
+Runner backend secara default akan melakukan preflight ke
+`/counterfactual/health` dan menunggu sampai backend melaporkan
+`running=true` serta `rabbitmq_connected=true`. Preflight ini dapat dilewati
+secara eksplisit bila environment integrasi memang tidak mengekspos route
+health:
+
+```powershell
+python -m diabetify_cf.verification.run_backend_scenarios --scenarios configs/verification --backend-base-url http://localhost:8080 --backend-bearer-token <token> --skip-health-check
+```
+
+Untuk menjalankan beberapa suite backend sekaligus dan menghasilkan satu
+report JSON per suite plus manifest `index.json`:
+
+```powershell
+python -m diabetify_cf.verification.run_backend_suite --scenarios configs/verification --backend-base-url http://localhost:8080 --backend-bearer-token <token>
+python -m diabetify_cf.verification.run_backend_suite --scenarios configs/verification --backend-base-url http://localhost:8080 --backend-bearer-token <token> --suite infeasible_core --suite repeatability_core
+```
+
+Untuk eksekusi yang repeatable tanpa perlu mengisi argumen panjang atau
+menyalin bearer token manual setiap kali, tersedia launcher berbasis config:
+
+```powershell
+set DIABETIFY_BACKEND_BASE_URL=http://localhost:8080
+set DIABETIFY_TEST_USER_EMAIL=tester@example.com
+set DIABETIFY_TEST_USER_PASSWORD=replace-with-test-password
+python -m diabetify_cf.verification.run_backend_suite_from_config --config configs/verification/backend_suite_launcher.example.json
+```
+
+Launcher config mendukung dua mode autentikasi:
+
+- `auth_mode = "bearer_token"` untuk token JWT yang sudah disiapkan
+- `auth_mode = "login"` untuk memperoleh token otomatis dari endpoint
+  `POST /users/login` menggunakan kredensial user uji
+- `register_if_missing = true` untuk membuat user uji terlebih dahulu lewat
+  `POST /users` saat login gagal karena akun belum ada di environment target
+
+Placeholder `${ENV_VAR}` di launcher config akan di-resolve saat runtime,
+sehingga secret pengujian tidak perlu disimpan literal di file JSON.
+
 Baseline runs create a readable `report.md` in the baseline folder and update
 `experiments/results/latest/baseline.txt`.
 Comparison runs create `comparison_report.md` and update
@@ -144,9 +229,9 @@ generator.
 
 ## Notes
 
-- Service default menjalankan engine `NN`; set `CF_ENGINE_PROVIDER=dice` untuk provider DiCE.
-- Runtime Docker/service default tidak meng-install `dice-ml`; gunakan extra `dice`
-  atau `experiments` hanya saat memang butuh jalur DiCE.
+- Service production hanya menjalankan engine `NN`.
+- Runtime Docker/service default tidak meng-install `dice-ml`; gunakan extra
+  `experiments` hanya saat memang butuh jalur riset.
 - Service membutuhkan `CF_MODEL_PATH` dan `CF_COLUMNS_PATH` valid.
 - Default `CF_REFERENCE_DATA_PATH` mengarah ke `artifacts/reference/reference_data.parquet`.
 - Input `instance.features` wajib berisi seluruh fitur model pada `x_columns.pkl`.

@@ -29,7 +29,7 @@ def _valid_payload() -> dict:
         },
         "generation": {
             "total_cfs": 3,
-            "method": "dice_genetic",
+            "method": "nn_search",
             "random_seed": 42,
             "timeout_ms": 5000,
         },

@@ -1,0 +1,37 @@
+{
+  "name": "feasible_target_already_satisfied",
+  "description": "Scenario expecting a feasible no-change outcome because the baseline already satisfies the requested low-risk target.",
+  "tags": ["feasible", "target-already-satisfied", "service", "production"],
+  "repeat_count": 1,
+  "request": {
+    "request_id": "verify-target-already-satisfied",
+    "model_version": "xgb_v1",
+    "target": {
+      "target_class": "low_risk",
+      "min_target_probability": 0.5
+    },
+    "instance": {
+      "features": {
+        "age": 30,
+        "smoking_status": 0,
+        "is_cholesterol": 0,
+        "is_macrosomic_baby": 0,
+        "moderate_physical_activity_frequency": 3,
+        "is_bloodline": 0,
+        "brinkman_index": 0,
+        "BMI": 22.0,
+        "is_hypertension": 0
+      }
+    },
+    "constraints": {
+      "immutable_features": ["age", "is_bloodline", "is_macrosomic_baby", "brinkman_index"],
+      "mutable_allowed": ["BMI", "moderate_physical_activity_frequency", "is_hypertension", "is_cholesterol"],
+      "must_not_change": []
+    }
+  },
+  "expectation": {
+    "expected_status": "FEASIBLE",
+    "expected_reason_codes": ["TARGET_ALREADY_SATISFIED"],
+    "no_solution_expected": false
+  }
+}

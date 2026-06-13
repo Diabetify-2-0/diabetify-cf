@@ -1,0 +1,243 @@
+{
+  "metadata": {
+    "generated_at": "2026-06-13T05:28:22.555623+00:00",
+    "suite_name": "feasible_core",
+    "suite_description": "Feasible production scenarios, including target-already-satisfied cases.",
+    "suite_include_tags": [
+      "feasible"
+    ],
+    "suite_exclude_tags": [],
+    "runner_mode": "backend_suite_member",
+    "launcher_mode": "config",
+    "backend_base_url": "http://127.0.0.1:8080",
+    "health_check_enabled": true,
+    "health_payload": {
+      "data": {
+        "service_status": {
+          "rabbitmq_connected": true,
+          "request_queue": "ml.cf.request",
+          "response_queue": "ml.cf.response",
+          "running": true
+        }
+      },
+      "message": "Counterfactual service is healthy",
+      "status": "success"
+    },
+    "auth_mode": "login"
+  },
+  "summary": {
+    "immutable_violation_rate": 0.0,
+    "mutable_violation_rate": 0.0,
+    "externally_verified_target_satisfaction_rate": 1.0,
+    "infeasible_handling_accuracy": null,
+    "end_to_end_scenario_pass_rate": 1.0,
+    "external_lof_verification_accuracy": 1.0,
+    "repeatability_rate": 1.0,
+    "average_latency_ms": 1035.8,
+    "p95_latency_ms": 1063.2,
+    "constraint_gate_compliance_rate": 1.0,
+    "total_scenarios": 3,
+    "total_runs": 5,
+    "total_candidates": 4
+  },
+  "scenarios": [
+    {
+      "name": "feasible_bmi_activity",
+      "description": "Scenario expecting a feasible counterfactual when BMI and activity remain mutable.",
+      "tags": [
+        "feasible",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "passed": true,
+      "repeatability_consistent": true,
+      "average_duration_ms": 1069,
+      "runs": [
+        {
+          "iteration": 1,
+          "duration_ms": 1069,
+          "passed": true,
+          "expectation_matched": true,
+          "response_status": "FEASIBLE",
+          "response_reason_code": "OK",
+          "candidate_count": 1,
+          "verification": {
+            "outcome_consistent": true,
+            "candidate_count": 1,
+            "immutable_violation_rate": 0.0,
+            "mutable_violation_rate": 0.0,
+            "externally_verified_target_satisfaction_rate": 1.0,
+            "external_lof_verification_accuracy": 1.0,
+            "constraint_gate_compliance_rate": 1.0,
+            "candidates": [
+              {
+                "candidate_id": "cf_80",
+                "immutable_ok": true,
+                "mutable_ok": true,
+                "target_satisfied": true,
+                "prediction_matches_returned": true,
+                "external_lof_score": 1.3051702995050594,
+                "external_lof_within_threshold": true,
+                "medical_ok": true,
+                "directional_ok": true,
+                "transition_ok": true,
+                "constraint_gate_ok": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "feasible_bmi_activity_repeatability",
+      "description": "Repeatability scenario using the same feasible BMI and activity request across multiple runs.",
+      "tags": [
+        "feasible",
+        "repeatability",
+        "service",
+        "production"
+      ],
+      "repeat_count": 3,
+      "passed": true,
+      "repeatability_consistent": true,
+      "average_duration_ms": 1025,
+      "runs": [
+        {
+          "iteration": 1,
+          "duration_ms": 1011,
+          "passed": true,
+          "expectation_matched": true,
+          "response_status": "FEASIBLE",
+          "response_reason_code": "OK",
+          "candidate_count": 1,
+          "verification": {
+            "outcome_consistent": true,
+            "candidate_count": 1,
+            "immutable_violation_rate": 0.0,
+            "mutable_violation_rate": 0.0,
+            "externally_verified_target_satisfaction_rate": 1.0,
+            "external_lof_verification_accuracy": 1.0,
+            "constraint_gate_compliance_rate": 1.0,
+            "candidates": [
+              {
+                "candidate_id": "cf_80",
+                "immutable_ok": true,
+                "mutable_ok": true,
+                "target_satisfied": true,
+                "prediction_matches_returned": true,
+                "external_lof_score": 1.3051702995050594,
+                "external_lof_within_threshold": true,
+                "medical_ok": true,
+                "directional_ok": true,
+                "transition_ok": true,
+                "constraint_gate_ok": true
+              }
+            ]
+          }
+        },
+        {
+          "iteration": 2,
+          "duration_ms": 1040,
+          "passed": true,
+          "expectation_matched": true,
+          "response_status": "FEASIBLE",
+          "response_reason_code": "OK",
+          "candidate_count": 1,
+          "verification": {
+            "outcome_consistent": true,
+            "candidate_count": 1,
+            "immutable_violation_rate": 0.0,
+            "mutable_violation_rate": 0.0,
+            "externally_verified_target_satisfaction_rate": 1.0,
+            "external_lof_verification_accuracy": 1.0,
+            "constraint_gate_compliance_rate": 1.0,
+            "candidates": [
+              {
+                "candidate_id": "cf_80",
+                "immutable_ok": true,
+                "mutable_ok": true,
+                "target_satisfied": true,
+                "prediction_matches_returned": true,
+                "external_lof_score": 1.3051702995050594,
+                "external_lof_within_threshold": true,
+                "medical_ok": true,
+                "directional_ok": true,
+                "transition_ok": true,
+                "constraint_gate_ok": true
+              }
+            ]
+          }
+        },
+        {
+          "iteration": 3,
+          "duration_ms": 1024,
+          "passed": true,
+          "expectation_matched": true,
+          "response_status": "FEASIBLE",
+          "response_reason_code": "OK",
+          "candidate_count": 1,
+          "verification": {
+            "outcome_consistent": true,
+            "candidate_count": 1,
+            "immutable_violation_rate": 0.0,
+            "mutable_violation_rate": 0.0,
+            "externally_verified_target_satisfaction_rate": 1.0,
+            "external_lof_verification_accuracy": 1.0,
+            "constraint_gate_compliance_rate": 1.0,
+            "candidates": [
+              {
+                "candidate_id": "cf_80",
+                "immutable_ok": true,
+                "mutable_ok": true,
+                "target_satisfied": true,
+                "prediction_matches_returned": true,
+                "external_lof_score": 1.3051702995050594,
+                "external_lof_within_threshold": true,
+                "medical_ok": true,
+                "directional_ok": true,
+                "transition_ok": true,
+                "constraint_gate_ok": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "feasible_target_already_satisfied",
+      "description": "Scenario expecting a feasible no-change outcome because the baseline already satisfies the requested low-risk target.",
+      "tags": [
+        "feasible",
+        "target-already-satisfied",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "passed": true,
+      "repeatability_consistent": true,
+      "average_duration_ms": 1035,
+      "runs": [
+        {
+          "iteration": 1,
+          "duration_ms": 1035,
+          "passed": true,
+          "expectation_matched": true,
+          "response_status": "FEASIBLE",
+          "response_reason_code": "TARGET_ALREADY_SATISFIED",
+          "candidate_count": 0,
+          "verification": {
+            "outcome_consistent": true,
+            "candidate_count": 0,
+            "immutable_violation_rate": null,
+            "mutable_violation_rate": null,
+            "externally_verified_target_satisfaction_rate": null,
+            "external_lof_verification_accuracy": null,
+            "constraint_gate_compliance_rate": null,
+            "candidates": []
+          }
+        }
+      ]
+    }
+  ]
+}

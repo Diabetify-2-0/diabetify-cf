@@ -1,0 +1,22 @@
+{
+  "backend_base_url": "${DIABETIFY_BACKEND_BASE_URL}",
+  "scenarios_path": "configs/verification",
+  "output_dir": "configs/verification/backend_suite_reports",
+  "suites": ["feasible_core", "infeasible_core", "repeatability_core"],
+  "auth_mode": "login",
+  "register_if_missing": true,
+  "login": {
+    "email": "${DIABETIFY_TEST_USER_EMAIL}",
+    "password": "${DIABETIFY_TEST_USER_PASSWORD}"
+  },
+  "bootstrap_user": {
+    "name": "Counterfactual E2E",
+    "gender": "male",
+    "dob": "1990-01-01"
+  },
+  "skip_health_check": false,
+  "health_timeout_seconds": 60.0,
+  "health_poll_interval_seconds": 2.0,
+  "poll_interval_seconds": 1.0,
+  "poll_timeout_seconds": 300.0
+}

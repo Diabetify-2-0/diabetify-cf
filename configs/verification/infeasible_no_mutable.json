@@ -1,0 +1,37 @@
+{
+  "name": "infeasible_no_mutable",
+  "description": "Scenario expecting infeasible handling when the user allows no mutable feature.",
+  "tags": ["infeasible", "service", "production"],
+  "repeat_count": 1,
+  "request": {
+    "request_id": "verify-infeasible-no-mutable",
+    "model_version": "xgb_v1",
+    "target": {
+      "target_class": "low_risk",
+      "min_target_probability": 0.5
+    },
+    "instance": {
+      "features": {
+        "age": 45,
+        "smoking_status": 0,
+        "is_cholesterol": 1,
+        "is_macrosomic_baby": 0,
+        "moderate_physical_activity_frequency": 1,
+        "is_bloodline": 0,
+        "brinkman_index": 0,
+        "BMI": 31.2,
+        "is_hypertension": 1
+      }
+    },
+    "constraints": {
+      "immutable_features": ["age", "is_bloodline", "is_macrosomic_baby", "brinkman_index"],
+      "mutable_allowed": [],
+      "must_not_change": []
+    }
+  },
+  "expectation": {
+    "expected_status": "INFEASIBLE",
+    "expected_reason_codes": ["NO_MUTABLE_FEATURE"],
+    "no_solution_expected": true
+  }
+}

@@ -41,7 +41,7 @@ class GenerationSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     total_cfs: int = Field(default=1, ge=1, le=20)
-    method: str = "dice_genetic"
+    method: str = "nn_search"
     random_seed: int = 42
     timeout_ms: int = Field(default=5000, ge=100, le=60000)
 

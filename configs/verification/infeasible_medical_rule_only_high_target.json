@@ -1,0 +1,43 @@
+{
+  "name": "infeasible_medical_rule_only_high_target",
+  "description": "Scenario expecting infeasible handling when candidates exist but fail production plausibility gates under a very strict target.",
+  "tags": ["infeasible", "medical-only", "service", "production"],
+  "repeat_count": 1,
+  "request": {
+    "request_id": "verify-infeasible-medical-rule-only-high-target",
+    "model_version": "xgb_v1",
+    "target": {
+      "target_class": "low_risk",
+      "min_target_probability": 0.99
+    },
+    "instance": {
+      "features": {
+        "age": 45,
+        "smoking_status": 0,
+        "is_cholesterol": 1,
+        "is_macrosomic_baby": 0,
+        "moderate_physical_activity_frequency": 1,
+        "is_bloodline": 0,
+        "brinkman_index": 0,
+        "BMI": 31.2,
+        "is_hypertension": 1
+      }
+    },
+    "constraints": {
+      "immutable_features": ["age", "is_bloodline", "is_macrosomic_baby", "brinkman_index"],
+      "mutable_allowed": ["BMI", "moderate_physical_activity_frequency", "is_hypertension", "is_cholesterol"],
+      "must_not_change": []
+    },
+    "generation": {
+      "total_cfs": 1,
+      "method": "nearest_neighbor_projection",
+      "random_seed": 42,
+      "timeout_ms": 5000
+    }
+  },
+  "expectation": {
+    "expected_status": "INFEASIBLE",
+    "expected_reason_codes": ["MEDICAL_RULE_VIOLATION_ONLY"],
+    "no_solution_expected": true
+  }
+}
