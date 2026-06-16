@@ -84,11 +84,6 @@ class ExperimentPostprocessor:
             immutable_set=immutable_set,
             registry=registry,
         )
-        mutable_allowed = self._apply_feature_specific_mutability(
-            mutable_allowed=mutable_allowed,
-            baseline_features=instance_features,
-            registry=registry,
-        )
         instance_series = self._to_series(model_columns, instance_features, registry)
         query_df = pd.DataFrame([instance_series], columns=model_columns)
         query_df = self.as_model_input_df(query_df)
@@ -366,28 +361,7 @@ class ExperimentPostprocessor:
         registry: FeatureRegistry,
         baseline_features: dict[str, JSONFeatureValue],
     ) -> dict[str, list[float]]:
-        merged = dict(registry.default_permitted_range(mutable_allowed))
-
-        for feature_name in mutable_allowed:
-            if feature_name not in merged or feature_name not in baseline_features:
-                continue
-            feature = registry.get(feature_name)
-            if feature is None or feature.preferred_direction == "any":
-                continue
-            try:
-                baseline = float(baseline_features[feature_name])
-            except (TypeError, ValueError):
-                continue
-
-            lower, upper = merged[feature_name]
-            if feature.preferred_direction == "increase":
-                lower = max(lower, baseline)
-            elif feature.preferred_direction == "decrease":
-                upper = min(upper, baseline)
-            if lower <= upper:
-                merged[feature_name] = [float(lower), float(upper)]
-
-        return merged
+        return dict(registry.default_permitted_range(mutable_allowed))
 
     def _build_mutable_allowed(
         self,
@@ -407,27 +381,6 @@ class ExperimentPostprocessor:
             allowed.append(name)
             seen.add(name)
         return allowed
-
-    def _apply_feature_specific_mutability(
-        self,
-        mutable_allowed: list[str],
-        baseline_features: dict[str, JSONFeatureValue],
-        registry: FeatureRegistry,
-    ) -> list[str]:
-        smoking_status_feature = registry.get("smoking_status")
-        if smoking_status_feature is None:
-            return mutable_allowed
-
-        try:
-            baseline_smoking_status = int(float(baseline_features.get("smoking_status", 0)))
-        except (TypeError, ValueError):
-            return mutable_allowed
-
-        if baseline_smoking_status == 2:
-            return [name for name in mutable_allowed if name != "brinkman_index"]
-
-        blocked_features = {"smoking_status", "brinkman_index"}
-        return [name for name in mutable_allowed if name not in blocked_features]
 
     def _to_series(
         self,

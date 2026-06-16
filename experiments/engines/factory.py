@@ -5,6 +5,7 @@ from typing import Any
 from diabetify_cf.config import Settings
 from experiments.engines.base import ExperimentEngine
 from experiments.engines.dice_adapter import (
+    DiceConstrainedGatedExperimentAdapter,
     DiceExperimentAdapter,
     DicePlainExperimentAdapter,
 )
@@ -14,6 +15,7 @@ ENGINE_ADAPTERS = {
     "dice": DiceExperimentAdapter,
     "dice_plain": DicePlainExperimentAdapter,
     "dice_constrained_native": DiceExperimentAdapter,
+    "dice_constrained_gated": DiceConstrainedGatedExperimentAdapter,
     "nn": NearestNeighborExperimentAdapter,
     "nn_production": NearestNeighborExperimentAdapter,
 }

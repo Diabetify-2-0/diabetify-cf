@@ -68,6 +68,8 @@ def summarize_run(run_dir: Path) -> dict[str, Any]:
         "mean_runtime_ms": _mean_float(_read_jsonl(run_dir / "cases.jsonl"), "runtime_ms"),
         "immutable_violation_rate": _positive_rate(candidates, "immutable_violation_count"),
         "mutable_violation_rate": _positive_rate(candidates, "mutable_violation_count"),
+        "directional_violation_rate": _positive_rate(candidates, "directional_violation_count"),
+        "transition_violation_rate": _positive_rate(candidates, "transition_violation_count"),
     }
 
 

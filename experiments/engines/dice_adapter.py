@@ -85,10 +85,7 @@ class DiceCandidateGenerator:
             kwargs["permitted_range"] = prepared.permitted_range
 
         try:
-            result = dice.generate_counterfactuals(**kwargs)
-        except TypeError:
-            kwargs.pop("random_seed", None)
-            result = dice.generate_counterfactuals(**kwargs)
+            result = self._invoke_dice(dice, kwargs)
         except Exception as exc:
             if self._is_no_counterfactual_error(exc):
                 return pd.DataFrame()
@@ -103,6 +100,14 @@ class DiceCandidateGenerator:
         if not present:
             return pd.DataFrame()
         return raw[present]
+
+    @staticmethod
+    def _invoke_dice(dice: Any, kwargs: dict[str, Any]) -> Any:
+        try:
+            return dice.generate_counterfactuals(**kwargs)
+        except TypeError:
+            retry_kwargs = {key: value for key, value in kwargs.items() if key != "random_seed"}
+            return dice.generate_counterfactuals(**retry_kwargs)
 
     @staticmethod
     def _is_no_counterfactual_error(exc: Exception) -> bool:
@@ -135,6 +140,7 @@ class DiceCandidateGenerator:
 
 class DiceExperimentAdapter(ExperimentEngine):
     name = "dice_constrained_native"
+    apply_production_gates = False
 
     def __init__(
         self,
@@ -198,6 +204,14 @@ class DiceExperimentAdapter(ExperimentEngine):
                 postprocessor=postprocessor,
                 use_native_constraints=True,
             )
+            if self.apply_production_gates:
+                result = postprocessor.process(
+                    request=request,
+                    prepared=prepared,
+                    raw_candidates=raw_candidates,
+                    started=started,
+                )
+                return self._to_processed_run_result(request=request, result=result)
             return self._to_raw_run_result(
                 request=request,
                 prepared=prepared,
@@ -351,6 +365,11 @@ class DiceExperimentAdapter(ExperimentEngine):
     @staticmethod
     def _elapsed_ms(started: float) -> int:
         return int((perf_counter() - started) * 1000)
+
+
+class DiceConstrainedGatedExperimentAdapter(DiceExperimentAdapter):
+    name = "dice_constrained_gated"
+    apply_production_gates = True
 
 
 class DicePlainExperimentAdapter(DiceExperimentAdapter):

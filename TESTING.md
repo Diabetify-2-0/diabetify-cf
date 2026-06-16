@@ -23,7 +23,7 @@ Repository yang terlibat dalam pengujian:
 - `diabetify-be`
   Diuji sebagai komponen integrasi nyata melalui endpoint backend dan lifecycle job asynchronous.
 - `diabetify-mobile`
-  Diuji pada level unit test JVM dan Compose instrumentation test untuk memastikan flow input dan hasil counterfactual benar di sisi UI.
+  Diuji pada level unit test JVM, Compose instrumentation test untuk flow input dan hasil counterfactual, serta end-to-end on-device test (`CounterfactualE2ETest`) yang menjadi sumber utama metrik 5 dan 8 pada level mobile->mobile.
 
 Hal yang **tidak** menjadi fokus dokumen ini:
 
@@ -89,13 +89,21 @@ Peran lapisan ini:
 
 ### 3. Mobile Verification
 
-Lapisan ini memastikan UI counterfactual di mobile benar pada sisi input dan hasil.
+Lapisan ini memastikan flow counterfactual di mobile benar, mulai dari input,
+hasil, sampai integrasi ujung-ke-ujung yang sebenarnya dialami pengguna.
 
 Cakupan mobile:
 
 - unit test JVM untuk repository, async use case, polling manager, dan flow helper,
 - Compose instrumentation test untuk screen input counterfactual,
-- Compose instrumentation test untuk result screen counterfactual.
+- Compose instrumentation test untuk result screen counterfactual,
+- **End-to-End on-device test** (`CounterfactualE2ETest`) yang menembus jalur
+  produksi nyata `mobile -> diabetify-be -> RabbitMQ -> diabetify-cf -> diabetify-be -> mobile`.
+  Test ini memakai `@UninstallModules(TestAppModule::class)` sehingga jalur
+  counterfactual (API service, job manager, repository) berjalan dengan stack
+  produksi sesungguhnya, bukan mock. Lapisan inilah yang menjadi **sumber utama
+  metrik 5 (End-to-End Scenario Pass Rate) dan metrik 8 (End-to-End Latency)**
+  pada level mobile->mobile.
 
 ## Artefak Pengujian
 
@@ -172,7 +180,8 @@ Target:
 
 Definisi:
 
-Persentase skenario user end-to-end yang lulus penuh dari submit request sampai hasil akhir tervalidasi.
+Persentase skenario user end-to-end yang lulus penuh dari submit di mobile
+sampai hasil kembali tervalidasi dan tampil di mobile.
 
 Rumus:
 
@@ -181,6 +190,14 @@ Rumus:
 Target:
 
 `100%`
+
+Sumber pengukuran:
+
+- **Utama (mobile->mobile):** `CounterfactualE2ETest` on-device. Skenario
+  dianggap lulus bila alur penuh dari UI mencapai state `Feasible`
+  (`CounterfactualResultState_Feasible`) melalui stack produksi nyata.
+- **Pendukung (lapis layanan):** backend suite (`ScenarioRunner`) yang menilai
+  `end_to_end_scenario_pass_rate` pada jalur `diabetify-be -> RabbitMQ -> diabetify-cf`.
 
 ### 6. External LOF Verification Accuracy
 
@@ -221,7 +238,9 @@ Target:
 
 Definisi:
 
-Waktu total dari request di-submit melalui backend sampai hasil siap diverifikasi dan diambil kembali dari backend.
+Waktu total yang dialami pengguna, dari saat request di-submit di mobile sampai
+hasil siap ditampilkan di mobile. Latency ini sudah mencakup overhead polling
+status dan render UI, bukan hanya round-trip layanan.
 
 Ukuran yang dilaporkan:
 
@@ -232,6 +251,16 @@ Target:
 
 - `average < 5 detik`
 - `p95 < 5 detik`
+
+Sumber pengukuran:
+
+- **Utama (mobile->mobile):** `CounterfactualE2ETest::serviceBackedLatencyStaysUnderFiveSeconds`
+  mengukur latency dari klik tombol "Cari Skenario" sampai state hasil tampil,
+  diulang `3` iterasi, lalu meng-assert `average < 5000 ms` dan `p95 < 5000 ms`
+  (`verifyLatencyWithinTarget`). Nilai presisi per iterasi tercatat di logcat
+  (`Counterfactual E2E iteration <n>: ... latencyMs=<...>`).
+- **Pendukung (lapis layanan):** backend suite melaporkan latency round-trip
+  `diabetify-be -> diabetify-cf` sebagai komponen dominan dari latency mobile.
 
 ### 9. Constraint-Gate Compliance Rate
 
@@ -354,23 +383,64 @@ Hasil:
 
 - `OK (6 tests)`
 
+### Mobile end-to-end test (mobile->mobile)
+
+Test class yang dijalankan:
+
+- `com.itb.diabetify.e2e.presentation.counterfactual.CounterfactualE2ETest`
+
+Test ini menjalankan stack produksi nyata pada device (login asli, submit asli,
+RabbitMQ asli, service `diabetify-cf` asli) dan menjadi sumber utama metrik 5
+dan 8 pada level mobile->mobile. Mencakup dua kasus:
+
+- `counterfactualFlow_serviceBackedScenarioCompletesOnDevice` — memvalidasi
+  metrik 5 (alur penuh mencapai state `Feasible`).
+- `counterfactualFlow_serviceBackedLatencyStaysUnderFiveSeconds` — memvalidasi
+  metrik 8 (`3` iterasi, assert `average < 5000 ms` dan `p95 < 5000 ms`).
+
+Perintah:
+
+```powershell
+adb shell am instrument -w -e class com.itb.diabetify.e2e.presentation.counterfactual.CounterfactualE2ETest com.itb.diabetify.test/com.itb.diabetify.HiltTestRunner
+```
+
+Hasil:
+
+- kedua kasus lulus di device nyata,
+- nilai latency per iterasi tercatat di logcat (lihat catatan pada tabel hasil).
+
 ## Hasil Aktual Pengujian
 
-Berdasarkan `overall_summary` pada `backend_suite_reports/index.json`, hasil agregat akhir adalah:
+Metrik kualitas kandidat (1, 2, 3, 4, 6, 7, 9) dan metrik E2E pada **lapis
+layanan** (5 dan 8 versi `diabetify-be -> diabetify-cf`) diambil dari
+`overall_summary` pada `backend_suite_reports/index.json`. Metrik 5 dan 8 versi
+final **mobile->mobile** diambil dari `CounterfactualE2ETest` (lihat catatan di
+bawah tabel).
 
-| Metrik | Target | Hasil Aktual | Status |
-|---|---:|---:|---|
-| Immutable Violation Rate | `0%` | `0.0` | Lulus |
-| Mutable Violation Rate | `0%` | `0.0` | Lulus |
-| Externally Verified Target Satisfaction Rate | `100%` | `1.0` | Lulus |
-| Infeasible Handling Accuracy | `100%` | `1.0` | Lulus |
-| End-to-End Scenario Pass Rate | `100%` | `1.0` | Lulus |
-| External LOF Verification Accuracy | `100%` | `1.0` | Lulus |
-| Repeatability Rate | `100%` | `1.0` | Lulus |
-| End-to-End Latency | `< 5 detik` | `average 943.73 ms`, `p95 1059.5 ms` | Lulus |
-| Constraint-Gate Compliance Rate | `100%` | `1.0` | Lulus |
+| Metrik | Target | Hasil Aktual | Sumber | Status |
+|---|---:|---|---|---|
+| Immutable Violation Rate | `0%` | `0.0` | backend suite | Lulus |
+| Mutable Violation Rate | `0%` | `0.0` | backend suite | Lulus |
+| Externally Verified Target Satisfaction Rate | `100%` | `1.0` | backend suite | Lulus |
+| Infeasible Handling Accuracy | `100%` | `1.0` | backend suite | Lulus |
+| End-to-End Scenario Pass Rate | `100%` | `1.0` (mobile->mobile, state `Feasible` tercapai); `1.0` (lapis layanan) | `CounterfactualE2ETest` + backend suite | Lulus |
+| External LOF Verification Accuracy | `100%` | `1.0` | backend suite | Lulus |
+| Repeatability Rate | `100%` | `1.0` | backend suite | Lulus |
+| End-to-End Latency | `average < 5 detik`, `p95 < 5 detik` | mobile->mobile: `average < 5000 ms` dan `p95 < 5000 ms` (assert lulus, `3` iterasi); referensi lapis layanan: `average 943.73 ms`, `p95 1059.5 ms` | `CounterfactualE2ETest` + backend suite | Lulus |
+| Constraint-Gate Compliance Rate | `100%` | `1.0` | backend suite | Lulus |
 
-Ringkasan volume pengujian:
+Catatan metrik 5 dan 8:
+
+- Definisi final keduanya adalah ujung-ke-ujung **mobile->mobile**, sehingga
+  sumber kebenarannya adalah `CounterfactualE2ETest` on-device. Backend suite
+  berperan sebagai bukti pendukung pada lapis layanan.
+- Latency mobile divalidasi melalui hard assertion `< 5000 ms` (average dan p95)
+  di `verifyLatencyWithinTarget`. Nilai numerik presisi per iterasi tidak
+  disimpan sebagai artefak JSON, melainkan tercatat di logcat saat run
+  (`Counterfactual E2E iteration <n>: state=..., latencyMs=...`). Untuk laporan,
+  nilai presisi dapat dikutip langsung dari output logcat tersebut.
+
+Ringkasan volume pengujian (lapis layanan, backend suite):
 
 - total suite: `3`
 - total scenario: `7`
@@ -456,6 +526,27 @@ Hasil:
 - kedua test class lulus di device nyata,
 - total `OK (6 tests)`.
 
+### End-to-end on-device (sumber metrik 5 dan 8)
+
+`CounterfactualE2ETest` menjalankan jalur produksi nyata
+`mobile -> diabetify-be -> RabbitMQ -> diabetify-cf -> diabetify-be -> mobile`
+di device, tanpa mock pada jalur counterfactual.
+
+Menguji:
+
+- alur penuh dari Home -> layar counterfactual -> set target -> run -> hasil,
+- metrik 5: skenario lulus bila state hasil yang tampil adalah `Feasible`,
+- metrik 8: latency user-perceived (klik tombol sampai hasil tampil) pada `3`
+  iterasi dengan assert `average < 5000 ms` dan `p95 < 5000 ms`.
+
+Hasil:
+
+- `counterfactualFlow_serviceBackedScenarioCompletesOnDevice` lulus
+  (state `Feasible` tercapai end-to-end),
+- `counterfactualFlow_serviceBackedLatencyStaysUnderFiveSeconds` lulus
+  (average dan p95 di bawah 5 detik),
+- nilai latency presisi per iterasi tercatat di logcat.
+
 ## Interpretasi Keseluruhan
 
 Berdasarkan hasil pengujian:
@@ -464,8 +555,8 @@ Berdasarkan hasil pengujian:
 2. service mampu menyatakan `infeasible` dengan benar pada skenario tanpa solusi,
 3. integrasi backend-service berjalan benar pada flow asynchronous nyata,
 4. perilaku service stabil pada input yang sama,
-5. latency sistem jauh di bawah target `5 detik`,
-6. mobile counterfactual flow pada input dan result screen tervalidasi otomatis.
+5. latency ujung-ke-ujung mobile->mobile berada di bawah target `5 detik` (average dan p95), tervalidasi on-device,
+6. mobile counterfactual flow tervalidasi otomatis pada input screen, result screen, dan jalur end-to-end produksi nyata.
 
 Dengan demikian, implementasi engineering modul counterfactual Diabetify 2.0 dapat dinyatakan **berhasil** berdasarkan 9 metrik yang telah didefinisikan.
 
@@ -474,6 +565,8 @@ Dengan demikian, implementasi engineering modul counterfactual Diabetify 2.0 dap
 - Skenario `TIMEOUT_NO_FEASIBLE_SOLUTION` tidak dijadikan bagian inti suite produksi, dan diposisikan sebagai jalur robustness service-level, bukan bagian utama dari 9 metrik produksi.
 - Engine eksperimen seperti DiCE tidak menjadi bagian dari evaluasi keberhasilan produksi.
 - Seluruh hasil pada dokumen ini merujuk pada production engine `NN` sebagai satu-satunya engine produksi service.
+- Metrik 5 dan 8 versi mobile->mobile divalidasi via hard assertion pada `CounterfactualE2ETest`; nilai latency presisi belum disimpan sebagai artefak file dan harus dikutip dari output logcat saat run.
+- Volume run produksi pada backend suite relatif kecil (`7` skenario, `11` run, `7` kandidat tervalidasi). Kepercayaan terhadap metrik ditopang juga oleh unit test yang membuktikan setiap gate mampu mendeteksi pelanggaran (rate bukan nol), bukan hanya kasus lulus.
 
 ## Kesimpulan
 

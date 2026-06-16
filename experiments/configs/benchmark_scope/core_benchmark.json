@@ -15,6 +15,12 @@
       "notes": "DiCE with native features_to_vary and permitted_range constraints, without production post-filtering."
     },
     {
+      "engine": "dice_constrained_gated",
+      "config_path": "experiments/configs/engines/dice_constrained_gated.json",
+      "category": "library_constrained_gated",
+      "notes": "DiCE with native constraints, then passed through the production hardening pipeline. Isolates the contribution of the production gates on identical DiCE generation."
+    },
+    {
       "engine": "nn_production",
       "config_path": "experiments/configs/engines/nn.json",
       "category": "production_pipeline",

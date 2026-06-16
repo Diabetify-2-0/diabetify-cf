@@ -59,6 +59,7 @@ def engine_output_label(config: dict[str, Any]) -> str:
 OUTPUT_PATH_LABEL_ALIASES = {
     "dice_plain": "dp",
     "dice_constrained_native": "dcn",
+    "dice_constrained_gated": "dcg",
     "nn_production": "nnp",
 }
 
@@ -237,6 +238,8 @@ def _candidate_rows(
             "target_success": evaluation.get("target_success"),
             "immutable_violation_count": evaluation.get("immutable_violation_count"),
             "mutable_violation_count": evaluation.get("mutable_violation_count"),
+            "directional_violation_count": evaluation.get("directional_violation_count"),
+            "transition_violation_count": evaluation.get("transition_violation_count"),
             "plausibility_pass": evaluation.get("plausibility_pass"),
         }
         rows.append(

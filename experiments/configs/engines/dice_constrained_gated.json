@@ -1,0 +1,7 @@
+{
+  "engine": "dice_constrained_gated",
+  "engine_label": "dice_constrained_gated",
+  "generation_method": "dice_random",
+  "total_cfs": 1,
+  "timeout_ms": 5000
+}

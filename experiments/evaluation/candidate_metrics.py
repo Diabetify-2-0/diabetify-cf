@@ -84,6 +84,24 @@ def evaluate_candidate(
         if feature.preferred_direction == "decrease" and delta > 0:
             directional_violations.add(feature_name)
 
+    transition_violations: set[str] = set()
+    for feature_name in changed.intersection(mutable):
+        feature = registry.get(feature_name)
+        if feature is None or not feature.allowed_transitions:
+            continue
+        if feature_name not in canonical_baseline or feature_name not in features:
+            continue
+        try:
+            baseline_value = int(float(canonical_baseline[feature_name]))
+            candidate_value = int(float(features[feature_name]))
+        except (TypeError, ValueError):
+            continue
+        allowed_targets = feature.allowed_transitions.get(baseline_value)
+        if allowed_targets is None:
+            continue
+        if candidate_value not in allowed_targets:
+            transition_violations.add(feature_name)
+
     metrics = candidate.get("metrics", {})
     lof_score = float(metrics.get("lof_score", 1.0)) if isinstance(metrics, dict) else 1.0
 
@@ -92,6 +110,7 @@ def evaluate_candidate(
         "immutable_violation_count": len(immutable_violations),
         "mutable_violation_count": len(mutable_violations),
         "directional_violation_count": len(directional_violations),
+        "transition_violation_count": len(transition_violations),
         "plausibility_pass": lof_score <= max_lof_score,
         "changed_feature_count_eval": len(changed),
     }
