@@ -3,12 +3,6 @@
   "description": "Native one-environment benchmark scope for the thesis comparison pipeline.",
   "core_engines": [
     {
-      "engine": "dice_plain",
-      "config_path": "experiments/configs/engines/dice_plain.json",
-      "category": "library_baseline",
-      "notes": "Plain DiCE baseline with native library behavior and no added pipeline constraints."
-    },
-    {
       "engine": "dice_constrained_native",
       "config_path": "experiments/configs/engines/dice.json",
       "category": "library_constrained",

@@ -18,7 +18,7 @@ from experiments.scripts.collect_results import collect_results
 from experiments.scripts.run_benchmark import DEFAULT_OUTPUT_ROOT
 from experiments.scripts.run_comparison import engine_from_source_file
 
-DEFAULT_REQUIRED_ENGINES = ["dice_plain", "dice_constrained_native", "nn_production"]
+DEFAULT_REQUIRED_ENGINES = ["dice_constrained_native", "dice_constrained_gated", "nn_production"]
 
 
 def _read_csv(path: Path) -> list[dict[str, str]]:

@@ -1,7 +1,0 @@
-{
-  "engine": "dice_plain",
-  "engine_label": "dice_plain",
-  "generation_method": "dice_random",
-  "total_cfs": 1,
-  "timeout_ms": 5000
-}

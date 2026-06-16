@@ -57,7 +57,6 @@ def engine_output_label(config: dict[str, Any]) -> str:
 
 
 OUTPUT_PATH_LABEL_ALIASES = {
-    "dice_plain": "dp",
     "dice_constrained_native": "dcn",
     "dice_constrained_gated": "dcg",
     "nn_production": "nnp",

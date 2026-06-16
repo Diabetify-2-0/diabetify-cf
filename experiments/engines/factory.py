@@ -7,13 +7,11 @@ from experiments.engines.base import ExperimentEngine
 from experiments.engines.dice_adapter import (
     DiceConstrainedGatedExperimentAdapter,
     DiceExperimentAdapter,
-    DicePlainExperimentAdapter,
 )
 from experiments.engines.nn_adapter import NearestNeighborExperimentAdapter
 
 ENGINE_ADAPTERS = {
     "dice": DiceExperimentAdapter,
-    "dice_plain": DicePlainExperimentAdapter,
     "dice_constrained_native": DiceExperimentAdapter,
     "dice_constrained_gated": DiceConstrainedGatedExperimentAdapter,
     "nn": NearestNeighborExperimentAdapter,

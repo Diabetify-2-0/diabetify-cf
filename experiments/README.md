@@ -9,8 +9,8 @@ Fungsi utamanya:
 - menyiapkan artefak analisis untuk notebook.
 
 Benchmark inti final yang dipakai di repo ini:
-- `dice_plain`
 - `dice_constrained_native`
+- `dice_constrained_gated`
 - `nn_production`
 
 ## Struktur Singkat
@@ -69,7 +69,7 @@ Ini mengecek:
 Untuk debug satu engine dan satu scenario:
 
 ```powershell
-.\.venv\Scripts\python.exe experiments\scripts\run_benchmark.py --engine-config experiments\configs\engines\dice_plain.json --scenario-config experiments\configs\scenarios\default_mutable.json
+.\.venv\Scripts\python.exe experiments\scripts\run_benchmark.py --engine-config experiments\configs\engines\dice.json --scenario-config experiments\configs\scenarios\default_mutable.json
 ```
 
 ## Folder `results/`
