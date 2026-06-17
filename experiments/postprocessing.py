@@ -579,10 +579,10 @@ class ExperimentPostprocessor:
         preferences: dict[str, float],
         registry: FeatureRegistry,
     ) -> float:
-        w_proximity = float(preferences.get("proximity", 0.30))
-        w_sparsity = float(preferences.get("sparsity", 0.20))
-        w_plausibility = float(preferences.get("plausibility", 0.20))
-        w_action_cost = float(preferences.get("action_cost", 0.20))
+        w_proximity = float(preferences.get("proximity", 0.25))
+        w_sparsity = float(preferences.get("sparsity", 0.25))
+        w_plausibility = float(preferences.get("plausibility", 0.25))
+        w_action_cost = float(preferences.get("action_cost", 0.25))
 
         proximity_score = candidate.metrics.distance_l1
         sparse_score = float(max(candidate.metrics.changed_feature_count, 1))

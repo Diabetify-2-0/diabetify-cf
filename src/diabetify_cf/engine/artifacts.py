@@ -199,18 +199,6 @@ def _empty_reference(feature_columns: list[str]) -> pd.DataFrame:
 
 
 def _build_lof_model(reference_data: pd.DataFrame) -> Pipeline | None:
-    """Fit a novelty-detection LOF model on standardized reference features.
-
-    Features are standardized (zero mean, unit variance) before the LOF
-    neighbor-distance computation. Without scaling, wide-range features such as
-    ``age`` (~18-100) and ``BMI`` (~10-60) dominate the Euclidean distance while
-    narrow-range clinical flags (``is_hypertension``, ``is_cholesterol``,
-    ``smoking_status``) contribute almost nothing, so plausibility would be
-    judged almost entirely on age and BMI. Standardizing gives every feature a
-    comparable voice in the density estimate. The ``StandardScaler`` is fit on
-    the reference data and bundled into the pipeline so that the same transform
-    is applied automatically when scoring candidates.
-    """
     if len(reference_data) < 2:
         return None
 
