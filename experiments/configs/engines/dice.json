@@ -1,7 +1,0 @@
-{
-  "engine": "dice_constrained_native",
-  "engine_label": "dice_constrained_native",
-  "generation_method": "dice_random",
-  "total_cfs": 1,
-  "timeout_ms": 5000
-}
