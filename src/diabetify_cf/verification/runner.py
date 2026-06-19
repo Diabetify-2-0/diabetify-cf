@@ -9,7 +9,7 @@ from typing import TypeVar
 
 from diabetify_cf.engine.base import CounterfactualEngine
 from diabetify_cf.reason_codes import ReasonCode, Status
-from diabetify_cf.schemas import CounterfactualRequest, CounterfactualResponse
+from diabetify_cf.schemas import CounterfactualRequest, CounterfactualResponse, PlannerInput
 from diabetify_cf.verification.external import ExternalCounterfactualVerifier, VerificationReport
 
 
@@ -177,12 +177,26 @@ def _response_signature(response: CounterfactualResponse) -> tuple[Any, ...]:
             tuple(sorted((name, round(float(delta), 6)) for name, delta in candidate.delta.items())),
             candidate.prediction.class_name,
             round(candidate.prediction.probability_low_risk, 9),
+            (
+                round(float(candidate.metrics.distance_l1), 9),
+                int(candidate.metrics.changed_feature_count),
+                round(float(candidate.metrics.lof_score), 9),
+                int(candidate.metrics.constraint_violations),
+            ),
         )
         for candidate in response.candidates
     )
     return (
         response.status,
         response.reason_code,
+        response.message,
+        _prediction_signature(response.input_prediction),
+        (
+            response.validation.immutable_violation,
+            response.validation.mutable_compliance,
+            response.validation.medical_rules_passed,
+        ),
+        _planner_input_signature(response.planner_input),
         candidate_signatures,
     )
 
@@ -197,6 +211,56 @@ def _normalized_feature_items(features: dict[str, object]) -> tuple[tuple[str, o
         else:
             normalized.append((key, value))
     return tuple(normalized)
+
+
+def _prediction_signature(prediction: Any) -> tuple[Any, ...] | None:
+    if prediction is None:
+        return None
+    return (
+        prediction.class_name,
+        round(float(prediction.probability_low_risk), 9),
+    )
+
+
+def _planner_input_signature(planner_input: PlannerInput) -> tuple[Any, ...]:
+    changed_features = tuple(
+        (
+            item.feature_name,
+            _normalized_scalar(item.baseline_value),
+            _normalized_scalar(item.candidate_value),
+            _normalized_scalar(item.delta),
+            item.direction,
+        )
+        for item in planner_input.changed_features
+    )
+    candidate_metrics = None
+    if planner_input.candidate_metrics is not None:
+        candidate_metrics = (
+            round(float(planner_input.candidate_metrics.distance_l1), 9),
+            int(planner_input.candidate_metrics.changed_feature_count),
+            round(float(planner_input.candidate_metrics.lof_score), 9),
+            int(planner_input.candidate_metrics.constraint_violations),
+        )
+
+    return (
+        planner_input.recommended_candidate_id,
+        tuple(sorted((name, round(float(delta), 6)) for name, delta in planner_input.target_deltas.items())),
+        _prediction_signature(planner_input.input_prediction),
+        _prediction_signature(planner_input.candidate_prediction),
+        candidate_metrics,
+        changed_features,
+        tuple(planner_input.mutable_allowed),
+        tuple(planner_input.immutable_features),
+        tuple(planner_input.must_not_change),
+    )
+
+
+def _normalized_scalar(value: object) -> object:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return round(float(value), 6)
+    return value
 
 
 TItem = TypeVar("TItem")

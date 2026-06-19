@@ -1,10 +1,10 @@
 {
-  "name": "feasible_bmi_activity",
-  "description": "Scenario expecting a feasible counterfactual when BMI and activity remain mutable.",
+  "name": "feasible_smoker_bmi_activity",
+  "description": "Scenario expecting a feasible counterfactual for an active smoker when smoking status, BMI, and physical activity are mutable.",
   "tags": ["actionability", "feasible", "service", "production"],
   "repeat_count": 1,
   "request": {
-    "request_id": "verify-feasible-bmi-activity",
+    "request_id": "verify-feasible-smoker-bmi-activity",
     "model_version": "xgb_v1",
     "target": {
       "target_class": "low_risk",
@@ -13,19 +13,19 @@
     "instance": {
       "features": {
         "age": 45,
-        "smoking_status": 0,
+        "smoking_status": 2,
         "is_cholesterol": 1,
         "is_macrosomic_baby": 0,
         "moderate_physical_activity_frequency": 1,
         "is_bloodline": 0,
-        "brinkman_index": 0,
+        "brinkman_index": 3,
         "BMI": 31.2,
         "is_hypertension": 1
       }
     },
     "constraints": {
       "immutable_features": ["age", "is_bloodline", "is_macrosomic_baby", "brinkman_index"],
-      "mutable_allowed": ["BMI", "moderate_physical_activity_frequency", "is_hypertension", "is_cholesterol"],
+      "mutable_allowed": ["smoking_status", "BMI", "moderate_physical_activity_frequency"],
       "must_not_change": []
     }
   },

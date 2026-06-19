@@ -1,10 +1,10 @@
 {
-  "name": "feasible_bmi_activity",
-  "description": "Scenario expecting a feasible counterfactual when BMI and activity remain mutable.",
-  "tags": ["actionability", "feasible", "service", "production"],
-  "repeat_count": 1,
+  "name": "repeatability_target_already_satisfied",
+  "description": "Repeatability scenario for the no-change outcome when the baseline already satisfies the target risk.",
+  "tags": ["repeatability", "feasible", "service", "production"],
+  "repeat_count": 10,
   "request": {
-    "request_id": "verify-feasible-bmi-activity",
+    "request_id": "verify-repeatability-target-already-satisfied",
     "model_version": "xgb_v1",
     "target": {
       "target_class": "low_risk",
@@ -12,15 +12,15 @@
     },
     "instance": {
       "features": {
-        "age": 45,
+        "age": 30,
         "smoking_status": 0,
-        "is_cholesterol": 1,
+        "is_cholesterol": 0,
         "is_macrosomic_baby": 0,
-        "moderate_physical_activity_frequency": 1,
+        "moderate_physical_activity_frequency": 3,
         "is_bloodline": 0,
         "brinkman_index": 0,
-        "BMI": 31.2,
-        "is_hypertension": 1
+        "BMI": 22.0,
+        "is_hypertension": 0
       }
     },
     "constraints": {
@@ -31,7 +31,7 @@
   },
   "expectation": {
     "expected_status": "FEASIBLE",
-    "expected_reason_codes": ["OK"],
+    "expected_reason_codes": ["TARGET_ALREADY_SATISFIED"],
     "no_solution_expected": false
   }
 }

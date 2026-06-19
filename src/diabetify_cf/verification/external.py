@@ -14,6 +14,7 @@ from diabetify_cf.schemas import (
     CounterfactualCandidate,
     CounterfactualRequest,
     CounterfactualResponse,
+    JSONFeatureValue,
     PredictionInfo,
 )
 
@@ -151,15 +152,20 @@ class ExternalCounterfactualVerifier:
         candidate_df = self._checker._as_model_input_df(candidate_df)
 
         verified_prediction = self._checker._predict_info(candidate_df)
-        immutable_ok = self._checker._immutable_ok(
-            candidate_features,
-            prepared.instance_features,
-            prepared.immutable_set,
+        immutable_set = _verification_immutable_set(
+            request=request,
+            default_immutable_features=prepared.registry.immutable_defaults(),
         )
-        mutable_ok = self._checker._mutable_ok(
+        mutable_set = _verification_mutable_set(request=request)
+        immutable_ok = _immutable_ok(
             candidate_features,
             prepared.instance_features,
-            set(prepared.mutable_allowed),
+            immutable_set,
+        )
+        mutable_ok = _mutable_ok(
+            candidate_features,
+            prepared.instance_features,
+            mutable_set,
         )
         medical_ok = self._checker._medical_ok(candidate_features, prepared.registry)
         directional_ok = self._checker._directional_ok(
@@ -243,3 +249,49 @@ def _rate(
         return None
     matched = sum(1 for item in items if predicate(item))
     return matched / len(items)
+
+
+def _verification_immutable_set(
+    *,
+    request: CounterfactualRequest,
+    default_immutable_features: list[str],
+) -> set[str]:
+    return set(default_immutable_features).union(request.constraints.immutable_features).union(
+        request.constraints.must_not_change
+    )
+
+
+def _verification_mutable_set(*, request: CounterfactualRequest) -> set[str]:
+    return set(request.constraints.mutable_allowed)
+
+
+def _immutable_ok(
+    candidate: dict[str, JSONFeatureValue],
+    baseline: dict[str, JSONFeatureValue],
+    immutable_set: set[str],
+) -> bool:
+    for feature in immutable_set:
+        if feature not in candidate or feature not in baseline:
+            continue
+        if not _equal(candidate[feature], baseline[feature]):
+            return False
+    return True
+
+
+def _mutable_ok(
+    candidate: dict[str, JSONFeatureValue],
+    baseline: dict[str, JSONFeatureValue],
+    mutable_set: set[str],
+) -> bool:
+    for feature, value in candidate.items():
+        if feature not in baseline:
+            continue
+        if not _equal(value, baseline[feature]) and feature not in mutable_set:
+            return False
+    return True
+
+
+def _equal(a: object, b: object) -> bool:
+    if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+        return abs(float(a) - float(b)) < 1e-9
+    return a == b

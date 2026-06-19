@@ -124,7 +124,28 @@ def test_load_suite_scenarios_filters_using_suite_tags() -> None:
 
     scenarios = load_suite_scenarios(Path("configs") / "verification", suite)
 
-    assert [scenario.name for scenario in scenarios] == ["feasible_bmi_activity_repeatability"]
+    assert [scenario.name for scenario in scenarios] == [
+        "feasible_bmi_activity_repeatability",
+        "repeatability_feasible_full_actionable",
+        "repeatability_infeasible_no_mutable",
+        "repeatability_infeasible_target_unreachable_bmi_only",
+        "repeatability_target_already_satisfied",
+    ]
+
+
+def test_actionability_suite_collects_all_configured_actionability_scenarios() -> None:
+    suite = VerificationSuite(
+        name="actionability_only",
+        description="actionability filter",
+        include_tags=("actionability",),
+    )
+
+    scenarios = load_suite_scenarios(Path("configs") / "verification", suite)
+
+    assert len(scenarios) == 11
+    assert "feasible_bmi_only" in [scenario.name for scenario in scenarios]
+    assert "feasible_smoker_full_actionable" in [scenario.name for scenario in scenarios]
+    assert "infeasible_no_mutable" in [scenario.name for scenario in scenarios]
 
 
 def test_build_suite_payload_includes_suite_metadata() -> None:

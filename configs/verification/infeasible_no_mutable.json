@@ -1,7 +1,7 @@
 {
   "name": "infeasible_no_mutable",
   "description": "Scenario expecting infeasible handling when the user allows no mutable feature.",
-  "tags": ["infeasible", "service", "production"],
+  "tags": ["actionability", "infeasible", "service", "production"],
   "repeat_count": 1,
   "request": {
     "request_id": "verify-infeasible-no-mutable",

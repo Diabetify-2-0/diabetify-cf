@@ -1,7 +1,7 @@
 {
   "name": "infeasible_target_unreachable_bmi_only",
   "description": "Scenario expecting infeasible handling when only BMI is mutable and the requested probability target is too strict to reach.",
-  "tags": ["infeasible", "target-unreachable", "service", "production"],
+  "tags": ["actionability", "infeasible", "target-unreachable", "service", "production"],
   "repeat_count": 1,
   "request": {
     "request_id": "verify-infeasible-target-unreachable-bmi-only",

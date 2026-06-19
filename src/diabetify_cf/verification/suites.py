@@ -19,6 +19,11 @@ class VerificationSuite:
 
 DEFAULT_BACKEND_SUITES: tuple[VerificationSuite, ...] = (
     VerificationSuite(
+        name="actionability_core",
+        description="Actionability scenarios covering diverse immutable and mutable user selections.",
+        include_tags=("actionability",),
+    ),
+    VerificationSuite(
         name="feasible_core",
         description="Feasible production scenarios, including target-already-satisfied cases.",
         include_tags=("feasible",),

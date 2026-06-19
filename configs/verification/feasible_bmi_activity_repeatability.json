@@ -2,7 +2,7 @@
   "name": "feasible_bmi_activity_repeatability",
   "description": "Repeatability scenario using the same feasible BMI and activity request across multiple runs.",
   "tags": ["feasible", "repeatability", "service", "production"],
-  "repeat_count": 3,
+  "repeat_count": 10,
   "request": {
     "request_id": "verify-feasible-bmi-activity-repeatability",
     "model_version": "xgb_v1",

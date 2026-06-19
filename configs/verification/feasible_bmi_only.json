@@ -1,10 +1,10 @@
 {
-  "name": "feasible_bmi_activity",
-  "description": "Scenario expecting a feasible counterfactual when BMI and activity remain mutable.",
+  "name": "feasible_bmi_only",
+  "description": "Scenario expecting a feasible counterfactual when only BMI is allowed to change.",
   "tags": ["actionability", "feasible", "service", "production"],
   "repeat_count": 1,
   "request": {
-    "request_id": "verify-feasible-bmi-activity",
+    "request_id": "verify-feasible-bmi-only",
     "model_version": "xgb_v1",
     "target": {
       "target_class": "low_risk",
@@ -25,7 +25,7 @@
     },
     "constraints": {
       "immutable_features": ["age", "is_bloodline", "is_macrosomic_baby", "brinkman_index"],
-      "mutable_allowed": ["BMI", "moderate_physical_activity_frequency", "is_hypertension", "is_cholesterol"],
+      "mutable_allowed": ["BMI"],
       "must_not_change": []
     }
   },

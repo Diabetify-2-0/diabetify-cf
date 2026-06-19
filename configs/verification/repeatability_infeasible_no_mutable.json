@@ -1,10 +1,10 @@
 {
-  "name": "feasible_bmi_activity",
-  "description": "Scenario expecting a feasible counterfactual when BMI and activity remain mutable.",
-  "tags": ["actionability", "feasible", "service", "production"],
-  "repeat_count": 1,
+  "name": "repeatability_infeasible_no_mutable",
+  "description": "Repeatability scenario for the deterministic infeasible outcome when the user selects no mutable feature.",
+  "tags": ["repeatability", "infeasible", "service", "production"],
+  "repeat_count": 10,
   "request": {
-    "request_id": "verify-feasible-bmi-activity",
+    "request_id": "verify-repeatability-infeasible-no-mutable",
     "model_version": "xgb_v1",
     "target": {
       "target_class": "low_risk",
@@ -25,13 +25,13 @@
     },
     "constraints": {
       "immutable_features": ["age", "is_bloodline", "is_macrosomic_baby", "brinkman_index"],
-      "mutable_allowed": ["BMI", "moderate_physical_activity_frequency", "is_hypertension", "is_cholesterol"],
+      "mutable_allowed": [],
       "must_not_change": []
     }
   },
   "expectation": {
-    "expected_status": "FEASIBLE",
-    "expected_reason_codes": ["OK"],
-    "no_solution_expected": false
+    "expected_status": "INFEASIBLE",
+    "expected_reason_codes": ["NO_MUTABLE_FEATURE"],
+    "no_solution_expected": true
   }
 }

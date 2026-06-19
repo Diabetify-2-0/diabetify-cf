@@ -192,6 +192,21 @@ def test_external_verifier_detects_target_failure_independently() -> None:
     assert report.candidate_results[0].prediction_matches_returned is False
 
 
+def test_external_verifier_detects_immutable_violation_independently() -> None:
+    verifier = ExternalCounterfactualVerifier(artifacts=_artifacts(), max_lof_score=2.5)
+
+    report = verifier.verify_response(
+        request=_request(),
+        response=_response(
+            _candidate(features={"age": 46, "BMI": 27.0, "smoking_status": 2})
+        ),
+    )
+
+    assert not report.outcome_consistent
+    assert report.immutable_violation_rate == 1.0
+    assert report.candidate_results[0].immutable_ok is False
+
+
 def test_external_verifier_detects_mutable_and_transition_violations() -> None:
     verifier = ExternalCounterfactualVerifier(artifacts=_artifacts(), max_lof_score=2.5)
 
@@ -205,6 +220,43 @@ def test_external_verifier_detects_mutable_and_transition_violations() -> None:
     assert not report.outcome_consistent
     assert report.mutable_violation_rate == 0.0
     assert report.candidate_results[0].transition_ok is False
+
+
+def test_external_verifier_detects_feature_change_outside_user_selected_mutable_set() -> None:
+    verifier = ExternalCounterfactualVerifier(artifacts=_artifacts(), max_lof_score=2.5)
+    request = CounterfactualRequest.model_validate(
+        {
+            "request_id": "req-verify-bmi-only",
+            "model_version": "xgb_v1",
+            "target": {
+                "target_class": "low_risk",
+                "min_target_probability": 0.5,
+            },
+            "instance": {
+                "features": {
+                    "age": 45,
+                    "BMI": 31.2,
+                    "smoking_status": 2,
+                }
+            },
+            "constraints": {
+                "immutable_features": ["age"],
+                "mutable_allowed": ["BMI"],
+                "must_not_change": [],
+            },
+        }
+    )
+
+    report = verifier.verify_response(
+        request=request,
+        response=_response(
+            _candidate(features={"age": 45, "BMI": 27.0, "smoking_status": 1})
+        ),
+    )
+
+    assert not report.outcome_consistent
+    assert report.mutable_violation_rate == 1.0
+    assert report.candidate_results[0].mutable_ok is False
 
 
 def test_external_verifier_rejects_candidate_outside_plausibility_threshold() -> None:

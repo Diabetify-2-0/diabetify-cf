@@ -1,14 +1,14 @@
 {
-  "name": "infeasible_medical_rule_only_high_target",
-  "description": "Scenario expecting infeasible handling when candidates exist but fail production plausibility gates under a very strict target.",
-  "tags": ["actionability", "infeasible", "medical-only", "service", "production"],
-  "repeat_count": 1,
+  "name": "repeatability_infeasible_target_unreachable_bmi_only",
+  "description": "Repeatability scenario for the deterministic infeasible outcome when only BMI is mutable and the requested target remains unreachable.",
+  "tags": ["repeatability", "infeasible", "service", "production"],
+  "repeat_count": 10,
   "request": {
-    "request_id": "verify-infeasible-medical-rule-only-high-target",
+    "request_id": "verify-repeatability-infeasible-target-unreachable-bmi-only",
     "model_version": "xgb_v1",
     "target": {
       "target_class": "low_risk",
-      "min_target_probability": 0.99
+      "min_target_probability": 0.9
     },
     "instance": {
       "features": {
@@ -25,7 +25,7 @@
     },
     "constraints": {
       "immutable_features": ["age", "is_bloodline", "is_macrosomic_baby", "brinkman_index"],
-      "mutable_allowed": ["BMI", "moderate_physical_activity_frequency", "is_hypertension", "is_cholesterol"],
+      "mutable_allowed": ["BMI"],
       "must_not_change": []
     },
     "generation": {
@@ -37,7 +37,7 @@
   },
   "expectation": {
     "expected_status": "INFEASIBLE",
-    "expected_reason_codes": ["MEDICAL_RULE_VIOLATION_ONLY"],
+    "expected_reason_codes": ["TARGET_UNREACHABLE_UNDER_CONSTRAINTS"],
     "no_solution_expected": true
   }
 }
