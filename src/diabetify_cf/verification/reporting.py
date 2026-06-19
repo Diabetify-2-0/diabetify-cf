@@ -22,14 +22,9 @@ def build_report_payload(
         "summary": {
             "immutable_violation_rate": summary.immutable_violation_rate,
             "mutable_violation_rate": summary.mutable_violation_rate,
-            "externally_verified_target_satisfaction_rate": summary.externally_verified_target_satisfaction_rate,
-            "infeasible_handling_accuracy": summary.infeasible_handling_accuracy,
-            "end_to_end_scenario_pass_rate": summary.end_to_end_scenario_pass_rate,
-            "external_lof_verification_accuracy": summary.external_lof_verification_accuracy,
             "repeatability_rate": summary.repeatability_rate,
             "average_latency_ms": summary.average_latency_ms,
             "p95_latency_ms": summary.p95_latency_ms,
-            "constraint_gate_compliance_rate": summary.constraint_gate_compliance_rate,
             "total_scenarios": summary.total_scenarios,
             "total_runs": summary.total_runs,
             "total_candidates": summary.total_candidates,
@@ -71,22 +66,15 @@ def _run_payload(run: ScenarioRunRecord) -> dict[str, Any]:
             "candidate_count": run.verification.candidate_count,
             "immutable_violation_rate": run.verification.immutable_violation_rate,
             "mutable_violation_rate": run.verification.mutable_violation_rate,
-            "externally_verified_target_satisfaction_rate": run.verification.externally_verified_target_satisfaction_rate,
-            "external_lof_verification_accuracy": run.verification.external_lof_verification_accuracy,
-            "constraint_gate_compliance_rate": run.verification.constraint_gate_compliance_rate,
             "candidates": [
                 {
                     "candidate_id": item.candidate_id,
                     "immutable_ok": item.immutable_ok,
                     "mutable_ok": item.mutable_ok,
-                    "target_satisfied": item.target_satisfied,
                     "prediction_matches_returned": item.prediction_matches_returned,
-                    "external_lof_score": item.external_lof_score,
-                    "external_lof_within_threshold": item.external_lof_within_threshold,
                     "medical_ok": item.medical_ok,
                     "directional_ok": item.directional_ok,
                     "transition_ok": item.transition_ok,
-                    "constraint_gate_ok": item.constraint_gate_ok,
                 }
                 for item in run.verification.candidate_results
             ],

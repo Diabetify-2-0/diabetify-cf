@@ -55,18 +55,6 @@ class VerificationReport:
     def mutable_violation_rate(self) -> float | None:
         return _rate(self.candidate_results, lambda item: not item.mutable_ok)
 
-    @property
-    def externally_verified_target_satisfaction_rate(self) -> float | None:
-        return _rate(self.candidate_results, lambda item: item.target_satisfied)
-
-    @property
-    def external_lof_verification_accuracy(self) -> float | None:
-        return _rate(self.candidate_results, lambda item: item.external_lof_within_threshold)
-
-    @property
-    def constraint_gate_compliance_rate(self) -> float | None:
-        return _rate(self.candidate_results, lambda item: item.constraint_gate_ok)
-
 
 class _VerifierRuleChecker(ArtifactBackedCounterfactualEngine):
     def __init__(self, *, artifacts: ModelArtifacts, max_lof_score: float) -> None:

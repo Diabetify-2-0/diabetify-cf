@@ -23,18 +23,12 @@ diabetify-cf/
     reference/
       reference_data.parquet
     models/
-    results/
   configs/
     feature_registry.json
-  experiments/
-    notebooks/
-    scripts/
-    configs/
-    results/
-    tests/
   src/diabetify_cf/
     engine/
     messaging/
+    verification/
     app.py
     config.py
     reason_codes.py
@@ -60,31 +54,14 @@ Copy-Item .env.example .env
 python -m diabetify_cf.app
 ```
 
-Default local runtime memakai `CF_ENGINE_PROVIDER=nn`, jadi dependency runtime
-tetap ringan dan tidak membawa dependency eksperimen seperti `dice-ml`.
-
-Untuk stack eksperimen yang terpisah dari service produksi, install extra `experiments`:
-
-```powershell
-pip install -e ".[dev,experiments]"
-```
-
 ## Quality Commands
 
 ```powershell
 $env:PYTHONDONTWRITEBYTECODE = "1"
 python -m ruff check --no-cache src tests
-python -m black --check src tests experiments --exclude notebooks
+python -m black --check src tests
 python -m mypy src
 python -m pytest -q tests
-```
-
-Test di `tests/` dikhususkan untuk counterfactual service yang dipakai
-Diabetify 2.0. Test eksperimen dipisahkan di `experiments/tests/` dan
-dijalankan terpisah saat memang mengevaluasi pipeline riset:
-
-```powershell
-python -m pytest -q experiments/tests
 ```
 
 ## Docker
@@ -103,31 +80,14 @@ cd diabetify-cf
 docker compose up --build -d
 ```
 
-## Research and Experiment Layout
+## Production Layout
 
 - `src/` berisi kode service yang dipakai modul Diabetify.
-- `src/diabetify_cf/verification/` berisi verifier eksternal untuk memvalidasi
-  kandidat returned dari service produksi secara independen, serta scenario
-  runner untuk mengagregasi metrik evaluasi produksi.
-- `experiments/notebooks/` berisi notebook eksplorasi counterfactual engine.
-- `experiments/scripts/` disiapkan untuk benchmark dan evaluasi metrik.
-- `experiments/results/` disiapkan untuk output eksperimen lokal dan tidak ditujukan untuk Git.
-- Model XGBoost yang dipakai service dan benchmark dibekukan sebagai artefak lokal di `artifacts/models/`.
-
-## Experiment Commands
-
-```powershell
-python experiments/scripts/check_engine_availability.py
-python experiments/scripts/run_benchmark.py --engine-config experiments/configs/engines/dice.json --scenario-config experiments/configs/scenarios/all_mutable.json
-python experiments/scripts/summarize_results.py experiments/results/<run-folder>
-python experiments/scripts/run_scenarios.py --limit 1 --timeout-seconds 60
-python experiments/scripts/evaluate_stability.py --engine-config experiments/configs/engines/dice.json --scenario-config experiments/configs/scenarios/stability.json --limit 1 --repeat-count 2
-python experiments/scripts/collect_results.py
-python experiments/scripts/run_baseline.py --engine-config experiments/configs/engines/dice.json --scenario-limit 1 --stability-limit 1 --repeat-count 2 --scenario-timeout-seconds 60 --stability-timeout-seconds 60
-python experiments/scripts/run_comparison.py --scenario-limit 20 --stability-limit 10 --repeat-count 5 --scenario-timeout-seconds 180 --stability-timeout-seconds 180
-python experiments/scripts/audit_comparison.py
-python experiments/scripts/print_baseline_report.py experiments/results/<baseline-folder>
-```
+- `src/diabetify_cf/verification/` berisi verifier independen dan scenario
+  runner untuk memvalidasi kandidat returned dari service produksi serta
+  mengagregasi metrik evaluasi produksi.
+- Model XGBoost dan referensi data produksi dibekukan sebagai artefak lokal di
+  `artifacts/models/` dan `artifacts/reference/`.
 
 ## Production Verification
 
@@ -218,23 +178,11 @@ Launcher config mendukung dua mode autentikasi:
 Placeholder `${ENV_VAR}` di launcher config akan di-resolve saat runtime,
 sehingga secret pengujian tidak perlu disimpan literal di file JSON.
 
-Baseline runs create a readable `report.md` in the baseline folder and update
-`experiments/results/latest/baseline.txt`.
-Comparison runs create `comparison_report.md` and update
-`experiments/results/latest/comparison.txt`.
-Comparison audits create `audit_report.json` in the comparison folder.
-Stability reports separate all-repeat stability from feasible-only stability, so
-an engine that consistently fails is not treated as a stable counterfactual
-generator.
-
 ## Notes
 
 - Service production hanya menjalankan engine `NN`.
-- Runtime Docker/service default tidak meng-install `dice-ml`; gunakan extra
-  `experiments` hanya saat memang butuh jalur riset.
 - Service membutuhkan `CF_MODEL_PATH` dan `CF_COLUMNS_PATH` valid.
 - Default `CF_REFERENCE_DATA_PATH` mengarah ke `artifacts/reference/reference_data.parquet`.
 - Input `instance.features` wajib berisi seluruh fitur model pada `x_columns.pkl`.
 - `CF_MAX_LOF_SCORE` mengatur batas maksimum skor LOF kandidat (semakin kecil semakin ketat).
 - `CF_NN_*` mengatur candidate pool, jumlah neighbor yang diproyeksikan, dan sparsity projection untuk engine `NN`.
-- CARLA is not enabled because `carla-recourse==0.0.5` pins `numpy==1.19.4`, which conflicts with this project's `numpy==2.2.6` stack.

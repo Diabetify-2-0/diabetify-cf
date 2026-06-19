@@ -173,9 +173,6 @@ def test_external_verifier_confirms_valid_returned_candidate() -> None:
     assert report.outcome_consistent
     assert report.immutable_violation_rate == 0.0
     assert report.mutable_violation_rate == 0.0
-    assert report.externally_verified_target_satisfaction_rate == 1.0
-    assert report.external_lof_verification_accuracy == 1.0
-    assert report.constraint_gate_compliance_rate == 1.0
 
 
 def test_external_verifier_detects_target_failure_independently() -> None:
@@ -192,7 +189,6 @@ def test_external_verifier_detects_target_failure_independently() -> None:
     )
 
     assert not report.outcome_consistent
-    assert report.externally_verified_target_satisfaction_rate == 0.0
     assert report.candidate_results[0].prediction_matches_returned is False
 
 
@@ -208,11 +204,10 @@ def test_external_verifier_detects_mutable_and_transition_violations() -> None:
 
     assert not report.outcome_consistent
     assert report.mutable_violation_rate == 0.0
-    assert report.constraint_gate_compliance_rate == 0.0
     assert report.candidate_results[0].transition_ok is False
 
 
-def test_external_verifier_detects_external_lof_violation() -> None:
+def test_external_verifier_rejects_candidate_outside_plausibility_threshold() -> None:
     verifier = ExternalCounterfactualVerifier(
         artifacts=_artifacts(lof_score=3.4),
         max_lof_score=2.5,
@@ -226,8 +221,7 @@ def test_external_verifier_detects_external_lof_violation() -> None:
     )
 
     assert not report.outcome_consistent
-    assert report.external_lof_verification_accuracy == 0.0
-    assert report.candidate_results[0].external_lof_score == 3.4
+    assert report.candidate_results[0].external_lof_within_threshold is False
 
 
 def test_external_verifier_accepts_infeasible_without_candidates() -> None:
@@ -250,7 +244,6 @@ def test_external_verifier_accepts_infeasible_without_candidates() -> None:
 
     assert report.outcome_consistent
     assert report.candidate_count == 0
-    assert report.externally_verified_target_satisfaction_rate is None
 
 
 def test_external_verifier_accepts_target_already_satisfied_without_candidates() -> None:

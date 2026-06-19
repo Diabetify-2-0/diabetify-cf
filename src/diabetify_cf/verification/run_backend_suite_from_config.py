@@ -100,7 +100,7 @@ def run_backend_suite_launcher(config: LauncherConfig) -> None:
                 "suite_name": suite.name,
                 "scenario_count": summary.total_scenarios,
                 "total_runs": summary.total_runs,
-                "passed": summary.end_to_end_scenario_pass_rate == 1.0,
+                "passed": all(aggregate.passed for aggregate in aggregates),
                 "report_path": str(suite_report_path),
             }
         )

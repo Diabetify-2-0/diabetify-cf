@@ -226,13 +226,8 @@ def test_scenario_runner_summarizes_feasible_and_infeasible_metrics() -> None:
     assert summary.total_scenarios == 2
     assert summary.total_runs == 2
     assert summary.total_candidates == 1
-    assert summary.end_to_end_scenario_pass_rate == 1.0
-    assert summary.infeasible_handling_accuracy == 1.0
     assert summary.immutable_violation_rate == 0.0
     assert summary.mutable_violation_rate == 0.0
-    assert summary.externally_verified_target_satisfaction_rate == 1.0
-    assert summary.external_lof_verification_accuracy == 1.0
-    assert summary.constraint_gate_compliance_rate == 1.0
 
 
 def test_scenario_runner_measures_repeatability_from_repeated_runs() -> None:

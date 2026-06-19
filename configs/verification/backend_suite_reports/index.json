@@ -29,14 +29,9 @@
   "overall_summary": {
     "immutable_violation_rate": 0.0,
     "mutable_violation_rate": 0.0,
-    "externally_verified_target_satisfaction_rate": 1.0,
-    "infeasible_handling_accuracy": 1.0,
-    "end_to_end_scenario_pass_rate": 1.0,
-    "external_lof_verification_accuracy": 1.0,
     "repeatability_rate": 1.0,
     "average_latency_ms": 943.7272727272727,
     "p95_latency_ms": 1059.5,
-    "constraint_gate_compliance_rate": 1.0,
     "total_scenarios": 7,
     "total_runs": 11,
     "total_candidates": 7

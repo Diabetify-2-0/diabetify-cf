@@ -179,7 +179,6 @@ def test_build_report_payload_contains_summary_and_run_details() -> None:
     assert payload["metadata"]["runner_mode"] == "service"
     assert payload["metadata"]["selected_tags"] == ["report"]
     assert "generated_at" in payload["metadata"]
-    assert payload["summary"]["end_to_end_scenario_pass_rate"] == 1.0
     assert payload["scenarios"][0]["name"] == "report_case"
     assert payload["scenarios"][0]["runs"][0]["response_status"] == "FEASIBLE"
     assert payload["scenarios"][0]["runs"][0]["verification"]["candidates"][0]["candidate_id"] == "cf_1"

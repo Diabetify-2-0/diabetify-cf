@@ -28,14 +28,9 @@
   "summary": {
     "immutable_violation_rate": 0.0,
     "mutable_violation_rate": 0.0,
-    "externally_verified_target_satisfaction_rate": 1.0,
-    "infeasible_handling_accuracy": null,
-    "end_to_end_scenario_pass_rate": 1.0,
-    "external_lof_verification_accuracy": 1.0,
     "repeatability_rate": 1.0,
     "average_latency_ms": 1034.3333333333333,
     "p95_latency_ms": 1049.0,
-    "constraint_gate_compliance_rate": 1.0,
     "total_scenarios": 1,
     "total_runs": 3,
     "total_candidates": 3
@@ -68,22 +63,15 @@
             "candidate_count": 1,
             "immutable_violation_rate": 0.0,
             "mutable_violation_rate": 0.0,
-            "externally_verified_target_satisfaction_rate": 1.0,
-            "external_lof_verification_accuracy": 1.0,
-            "constraint_gate_compliance_rate": 1.0,
             "candidates": [
               {
                 "candidate_id": "cf_80",
                 "immutable_ok": true,
                 "mutable_ok": true,
-                "target_satisfied": true,
                 "prediction_matches_returned": true,
-                "external_lof_score": 1.3051702995050594,
-                "external_lof_within_threshold": true,
                 "medical_ok": true,
                 "directional_ok": true,
-                "transition_ok": true,
-                "constraint_gate_ok": true
+                "transition_ok": true
               }
             ]
           }
@@ -101,22 +89,15 @@
             "candidate_count": 1,
             "immutable_violation_rate": 0.0,
             "mutable_violation_rate": 0.0,
-            "externally_verified_target_satisfaction_rate": 1.0,
-            "external_lof_verification_accuracy": 1.0,
-            "constraint_gate_compliance_rate": 1.0,
             "candidates": [
               {
                 "candidate_id": "cf_80",
                 "immutable_ok": true,
                 "mutable_ok": true,
-                "target_satisfied": true,
                 "prediction_matches_returned": true,
-                "external_lof_score": 1.3051702995050594,
-                "external_lof_within_threshold": true,
                 "medical_ok": true,
                 "directional_ok": true,
-                "transition_ok": true,
-                "constraint_gate_ok": true
+                "transition_ok": true
               }
             ]
           }
@@ -134,22 +115,15 @@
             "candidate_count": 1,
             "immutable_violation_rate": 0.0,
             "mutable_violation_rate": 0.0,
-            "externally_verified_target_satisfaction_rate": 1.0,
-            "external_lof_verification_accuracy": 1.0,
-            "constraint_gate_compliance_rate": 1.0,
             "candidates": [
               {
                 "candidate_id": "cf_80",
                 "immutable_ok": true,
                 "mutable_ok": true,
-                "target_satisfied": true,
                 "prediction_matches_returned": true,
-                "external_lof_score": 1.3051702995050594,
-                "external_lof_within_threshold": true,
                 "medical_ok": true,
                 "directional_ok": true,
-                "transition_ok": true,
-                "constraint_gate_ok": true
+                "transition_ok": true
               }
             ]
           }

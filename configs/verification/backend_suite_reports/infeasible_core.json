@@ -28,14 +28,9 @@
   "summary": {
     "immutable_violation_rate": null,
     "mutable_violation_rate": null,
-    "externally_verified_target_satisfaction_rate": null,
-    "infeasible_handling_accuracy": 1.0,
-    "end_to_end_scenario_pass_rate": 1.0,
-    "external_lof_verification_accuracy": null,
     "repeatability_rate": null,
     "average_latency_ms": 699.6666666666666,
     "p95_latency_ms": 1041.2,
-    "constraint_gate_compliance_rate": null,
     "total_scenarios": 3,
     "total_runs": 3,
     "total_candidates": 0
@@ -68,9 +63,6 @@
             "candidate_count": 0,
             "immutable_violation_rate": null,
             "mutable_violation_rate": null,
-            "externally_verified_target_satisfaction_rate": null,
-            "external_lof_verification_accuracy": null,
-            "constraint_gate_compliance_rate": null,
             "candidates": []
           }
         }
@@ -102,9 +94,6 @@
             "candidate_count": 0,
             "immutable_violation_rate": null,
             "mutable_violation_rate": null,
-            "externally_verified_target_satisfaction_rate": null,
-            "external_lof_verification_accuracy": null,
-            "constraint_gate_compliance_rate": null,
             "candidates": []
           }
         }
@@ -137,9 +126,6 @@
             "candidate_count": 0,
             "immutable_violation_rate": null,
             "mutable_violation_rate": null,
-            "externally_verified_target_satisfaction_rate": null,
-            "external_lof_verification_accuracy": null,
-            "constraint_gate_compliance_rate": null,
             "candidates": []
           }
         }

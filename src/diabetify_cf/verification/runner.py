@@ -76,14 +76,9 @@ class ScenarioAggregate:
 class MetricSummary:
     immutable_violation_rate: float | None
     mutable_violation_rate: float | None
-    externally_verified_target_satisfaction_rate: float | None
-    infeasible_handling_accuracy: float | None
-    end_to_end_scenario_pass_rate: float
-    external_lof_verification_accuracy: float | None
     repeatability_rate: float | None
     average_latency_ms: float
     p95_latency_ms: float
-    constraint_gate_compliance_rate: float | None
     total_scenarios: int
     total_runs: int
     total_candidates: int
@@ -140,12 +135,6 @@ class ScenarioRunner:
             for candidate_result in run.verification.candidate_results
         ]
         all_runs = [run for aggregate in aggregates for run in aggregate.runs]
-        infeasible_runs = [
-            run
-            for aggregate in aggregates
-            if aggregate.scenario.expectation.no_solution_expected
-            for run in aggregate.runs
-        ]
         repeatability_scenarios = [
             aggregate for aggregate in aggregates if aggregate.scenario.repeat_count > 1
         ]
@@ -160,32 +149,12 @@ class ScenarioRunner:
                 candidate_results,
                 lambda item: not item.mutable_ok,
             ),
-            externally_verified_target_satisfaction_rate=_ratio(
-                candidate_results,
-                lambda item: item.target_satisfied,
-            ),
-            infeasible_handling_accuracy=_ratio(
-                infeasible_runs,
-                lambda run: run.passed,
-            ),
-            end_to_end_scenario_pass_rate=_safe_fraction(
-                numerator=sum(1 for aggregate in aggregates if aggregate.passed),
-                denominator=len(aggregates),
-            ),
-            external_lof_verification_accuracy=_ratio(
-                candidate_results,
-                lambda item: item.external_lof_within_threshold,
-            ),
             repeatability_rate=_ratio(
                 repeatability_scenarios,
                 lambda aggregate: aggregate.repeatability_consistent,
             ),
             average_latency_ms=mean(latencies) if latencies else 0.0,
             p95_latency_ms=_percentile(latencies, 95.0),
-            constraint_gate_compliance_rate=_ratio(
-                candidate_results,
-                lambda item: item.constraint_gate_ok,
-            ),
             total_scenarios=len(aggregates),
             total_runs=len(all_runs),
             total_candidates=len(candidate_results),
@@ -237,12 +206,6 @@ def _ratio(items: list[TItem], predicate: Callable[[TItem], bool]) -> float | No
     if not items:
         return None
     return sum(1 for item in items if predicate(item)) / len(items)
-
-
-def _safe_fraction(*, numerator: int, denominator: int) -> float:
-    if denominator <= 0:
-        return 0.0
-    return numerator / denominator
 
 
 def _percentile(values: list[int], percentile: float) -> float:
