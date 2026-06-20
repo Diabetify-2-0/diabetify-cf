@@ -26,7 +26,6 @@ def _valid_payload() -> dict:
             "medical_rule_set_version": "med_rule_v1",
         },
         "generation": {
-            "total_cfs": 3,
             "method": "nn_search",
             "random_seed": 42,
             "timeout_ms": 5000,
@@ -74,7 +73,6 @@ def test_response_wire_uses_class_alias_inside_planner_input() -> None:
                 distance_l1=0.1,
                 changed_feature_count=1,
                 lof_score=1.0,
-                constraint_violations=0,
             ),
         ),
     )

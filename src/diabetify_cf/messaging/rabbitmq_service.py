@@ -257,7 +257,7 @@ class RabbitMQCFService:
             response.status.value,
             response.reason_code.value,
             response.runtime_ms,
-            len(response.candidates),
+            1 if response.candidate is not None else 0,
             engine_version,
         )
 

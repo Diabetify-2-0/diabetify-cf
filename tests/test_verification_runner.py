@@ -137,7 +137,6 @@ def _candidate(candidate_id: str = "cf_1") -> CounterfactualCandidate:
             distance_l1=0.1,
             changed_feature_count=1,
             lof_score=1.1,
-            constraint_violations=0,
         ),
     )
 
@@ -153,7 +152,7 @@ def _feasible_response(request_id: str = "req-runner") -> CounterfactualResponse
             mutable_violation=False,
             medical_rules_passed=True,
         ),
-        candidates=[_candidate()],
+        candidate=_candidate(),
     )
 
 

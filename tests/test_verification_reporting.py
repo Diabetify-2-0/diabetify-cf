@@ -128,20 +128,17 @@ def _response() -> CounterfactualResponse:
             mutable_violation=False,
             medical_rules_passed=True,
         ),
-        candidates=[
-            CounterfactualCandidate(
-                candidate_id="cf_1",
-                features={"age": 45, "BMI": 27.0, "smoking_status": 2},
-                delta={"BMI": -4.2},
-                prediction=PredictionInfo(class_name="low_risk", probability_low_risk=0.8),
-                metrics=CandidateMetrics(
-                    distance_l1=0.1,
-                    changed_feature_count=1,
-                    lof_score=1.1,
-                    constraint_violations=0,
-                ),
-            )
-        ],
+        candidate=CounterfactualCandidate(
+            candidate_id="cf_1",
+            features={"age": 45, "BMI": 27.0, "smoking_status": 2},
+            delta={"BMI": -4.2},
+            prediction=PredictionInfo(class_name="low_risk", probability_low_risk=0.8),
+            metrics=CandidateMetrics(
+                distance_l1=0.1,
+                changed_feature_count=1,
+                lof_score=1.1,
+            ),
+        ),
     )
 
 

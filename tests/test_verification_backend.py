@@ -33,7 +33,6 @@ def _request() -> CounterfactualRequest:
                 "mutable_allowed": ["BMI", "smoking_status"],
             },
             "generation": {
-                "total_cfs": 1,
                 "method": "nearest_neighbor_projection",
                 "random_seed": 42,
                 "timeout_ms": 5000,
@@ -47,26 +46,23 @@ def _service_response() -> CounterfactualResponse:
         request_id="job-123",
         status=Status.FEASIBLE,
         reason_code=ReasonCode.OK,
-        message="Generated 1 feasible counterfactual candidate(s).",
+        message="Generated a feasible counterfactual candidate.",
         validation=ValidationSummary(
             immutable_violation=False,
             mutable_violation=False,
             medical_rules_passed=True,
         ),
-        candidates=[
-            CounterfactualCandidate(
-                candidate_id="cf_1",
-                features={"age": 45, "BMI": 27.0, "smoking_status": 2},
-                delta={"BMI": -4.2},
-                prediction=PredictionInfo(class_name="low_risk", probability_low_risk=0.8),
-                metrics=CandidateMetrics(
-                    distance_l1=0.1,
-                    changed_feature_count=1,
-                    lof_score=1.1,
-                    constraint_violations=0,
-                ),
-            )
-        ],
+        candidate=CounterfactualCandidate(
+            candidate_id="cf_1",
+            features={"age": 45, "BMI": 27.0, "smoking_status": 2},
+            delta={"BMI": -4.2},
+            prediction=PredictionInfo(class_name="low_risk", probability_low_risk=0.8),
+            metrics=CandidateMetrics(
+                distance_l1=0.1,
+                changed_feature_count=1,
+                lof_score=1.1,
+            ),
+        ),
         planner_input=PlannerInput(),
     )
 
@@ -143,7 +139,7 @@ def test_backend_counterfactual_engine_adapter_returns_service_payload() -> None
     assert "request_id" not in gateway.submit_payload
     assert response.status == Status.FEASIBLE
     assert response.reason_code == ReasonCode.OK
-    assert len(response.candidates) == 1
+    assert response.candidate is not None
 
 
 def test_backend_counterfactual_engine_adapter_falls_back_for_infeasible_job_without_result() -> None:
@@ -191,7 +187,7 @@ def test_backend_counterfactual_engine_adapter_falls_back_for_infeasible_job_wit
     assert response.status == Status.INFEASIBLE
     assert response.reason_code == ReasonCode.NO_MUTABLE_FEATURE
     assert response.message == "No mutable features were provided."
-    assert response.candidates == []
+    assert response.candidate is None
 
 
 def test_http_backend_gateway_adds_bearer_token_header() -> None:

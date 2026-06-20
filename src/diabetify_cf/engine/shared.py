@@ -450,7 +450,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                     distance_l1=distance_l1,
                     changed_feature_count=len(delta),
                     lof_score=lof_score,
-                    constraint_violations=0,
                 ),
             )
             evaluated.append(
@@ -518,8 +517,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             )
 
         evaluated.sort(key=lambda item: item.objective_score)
-        candidates = [item.candidate for item in evaluated[: request.generation.total_cfs]]
-        top_candidate = candidates[0]
+        top_candidate = evaluated[0].candidate
         planner_input = self._build_planner_input(
             request=request,
             prepared=prepared,
@@ -531,14 +529,14 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             started=started,
             status=Status.FEASIBLE,
             reason_code=ReasonCode.OK,
-            message=f"Generated {len(candidates)} feasible counterfactual candidate(s).",
+            message="Generated a feasible counterfactual candidate.",
             validation=ValidationSummary(
                 immutable_violation=False,
                 mutable_violation=False,
                 medical_rules_passed=True,
             ),
             input_prediction=prepared.base_prediction,
-            candidates=candidates,
+            candidate=top_candidate,
             planner_input=planner_input,
         )
 
@@ -552,7 +550,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
         message: str,
         validation: ValidationSummary,
         input_prediction: PredictionInfo | None = None,
-        candidates: list[CounterfactualCandidate] | None = None,
+        candidate: CounterfactualCandidate | None = None,
         planner_input: PlannerInput | None = None,
     ) -> CounterfactualResponse:
         return CounterfactualResponse(
@@ -562,7 +560,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             message=message,
             runtime_ms=self._elapsed_ms(started),
             input_prediction=input_prediction,
-            candidates=candidates or [],
+            candidate=candidate,
             validation=validation,
             planner_input=planner_input or PlannerInput(),
         )

@@ -38,7 +38,6 @@ def _request_payload(mutable_allowed: list[str]) -> dict:
             "medical_rule_set_version": "med_rule_v1",
         },
         "generation": {
-            "total_cfs": 3,
             "method": "nn_search",
             "random_seed": 42,
             "timeout_ms": 5000,
@@ -55,7 +54,7 @@ def test_engine_returns_infeasible_when_no_mutable_feature() -> None:
 
     assert result.status == Status.INFEASIBLE
     assert result.reason_code == ReasonCode.NO_MUTABLE_FEATURE
-    assert result.candidates == []
+    assert result.candidate is None
 
 
 def test_engine_returns_feasible_when_input_already_satisfies_target() -> None:
@@ -88,7 +87,7 @@ def test_engine_returns_feasible_when_input_already_satisfies_target() -> None:
 
     assert result.status == Status.FEASIBLE
     assert result.reason_code == ReasonCode.TARGET_ALREADY_SATISFIED
-    assert result.candidates == []
+    assert result.candidate is None
     assert result.input_prediction is not None
     assert result.input_prediction.class_name == "low_risk"
     assert result.planner_input.mutable_allowed == ["bmi"]
@@ -126,7 +125,7 @@ def test_engine_returns_feasible_when_high_risk_is_already_below_requested_thres
 
     assert result.status == Status.FEASIBLE
     assert result.reason_code == ReasonCode.TARGET_ALREADY_SATISFIED
-    assert result.candidates == []
+    assert result.candidate is None
     assert result.input_prediction is not None
     assert result.input_prediction.class_name == "high_risk"
 
@@ -396,7 +395,6 @@ def test_objective_score_normalizes_action_cost_by_feature_range() -> None:
         distance_l1=0.0,
         changed_feature_count=1,
         lof_score=1.0,
-        constraint_violations=0,
     )
     prediction = PredictionInfo(class_name="low_risk", probability_low_risk=0.8)
     wide_candidate = CounterfactualCandidate(

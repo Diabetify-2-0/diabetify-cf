@@ -39,7 +39,6 @@ class ConstraintSpec(BaseModel):
 class GenerationSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    total_cfs: int = Field(default=1, ge=1, le=20)
     method: str = "nn_search"
     random_seed: int = 42
     timeout_ms: int = Field(default=5000, ge=100, le=60000)
@@ -90,7 +89,6 @@ class CandidateMetrics(BaseModel):
     distance_l1: float
     changed_feature_count: int
     lof_score: float
-    constraint_violations: int
 
     def to_wire(self) -> dict[str, Any]:
         return self.model_dump()
@@ -161,7 +159,7 @@ class CounterfactualResponse(BaseModel):
     message: str
     runtime_ms: int = 0
     input_prediction: PredictionInfo | None = None
-    candidates: list[CounterfactualCandidate] = Field(default_factory=list)
+    candidate: CounterfactualCandidate | None = None
     validation: ValidationSummary
     planner_input: PlannerInput = Field(default_factory=PlannerInput)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -172,7 +170,7 @@ class CounterfactualResponse(BaseModel):
         payload["reason_code"] = self.reason_code.value
         if self.input_prediction is not None:
             payload["input_prediction"] = self.input_prediction.to_wire()
-        payload["candidates"] = [candidate.to_wire() for candidate in self.candidates]
+        payload["candidate"] = self.candidate.to_wire() if self.candidate is not None else None
         payload["planner_input"] = self.planner_input.to_wire()
         payload["timestamp"] = self.timestamp.isoformat()
         return payload

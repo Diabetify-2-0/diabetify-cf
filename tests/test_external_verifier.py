@@ -136,7 +136,6 @@ def _candidate(
             distance_l1=0.1,
             changed_feature_count=1,
             lof_score=1.1,
-            constraint_violations=0,
         ),
     )
 
@@ -152,7 +151,7 @@ def _response(candidate: CounterfactualCandidate) -> CounterfactualResponse:
             mutable_violation=False,
             medical_rules_passed=True,
         ),
-        candidates=[candidate],
+        candidate=candidate,
     )
 
 

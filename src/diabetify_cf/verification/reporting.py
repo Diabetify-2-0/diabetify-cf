@@ -60,7 +60,7 @@ def _run_payload(run: ScenarioRunRecord) -> dict[str, Any]:
         "expectation_matched": run.expectation_matched,
         "response_status": run.response.status.value,
         "response_reason_code": run.response.reason_code.value,
-        "candidate_count": len(run.response.candidates),
+        "candidate_count": 1 if run.response.candidate is not None else 0,
         "verification": {
             "outcome_consistent": run.verification.outcome_consistent,
             "candidate_count": run.verification.candidate_count,

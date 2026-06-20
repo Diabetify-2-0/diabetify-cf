@@ -25,7 +25,7 @@ class ScenarioExpectation:
         if self.expected_reason_codes and response.reason_code not in self.expected_reason_codes:
             return False
         if self.no_solution_expected:
-            return len(response.candidates) == 0
+            return response.candidate is None
         return True
 
 
@@ -170,8 +170,10 @@ def _is_repeatability_consistent(runs: list[ScenarioRunRecord]) -> bool:
 
 
 def _response_signature(response: CounterfactualResponse) -> tuple[Any, ...]:
-    candidate_signatures = tuple(
-        (
+    candidate_signature = None
+    if response.candidate is not None:
+        candidate = response.candidate
+        candidate_signature = (
             candidate.candidate_id,
             _normalized_feature_items(candidate.features),
             tuple(sorted((name, round(float(delta), 6)) for name, delta in candidate.delta.items())),
@@ -181,11 +183,8 @@ def _response_signature(response: CounterfactualResponse) -> tuple[Any, ...]:
                 round(float(candidate.metrics.distance_l1), 9),
                 int(candidate.metrics.changed_feature_count),
                 round(float(candidate.metrics.lof_score), 9),
-                int(candidate.metrics.constraint_violations),
             ),
         )
-        for candidate in response.candidates
-    )
     return (
         response.status,
         response.reason_code,
@@ -197,7 +196,7 @@ def _response_signature(response: CounterfactualResponse) -> tuple[Any, ...]:
             response.validation.medical_rules_passed,
         ),
         _planner_input_signature(response.planner_input),
-        candidate_signatures,
+        candidate_signature,
     )
 
 
@@ -239,7 +238,6 @@ def _planner_input_signature(planner_input: PlannerInput) -> tuple[Any, ...]:
             round(float(planner_input.candidate_metrics.distance_l1), 9),
             int(planner_input.candidate_metrics.changed_feature_count),
             round(float(planner_input.candidate_metrics.lof_score), 9),
-            int(planner_input.candidate_metrics.constraint_violations),
         )
 
     return (

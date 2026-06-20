@@ -113,14 +113,15 @@ class ExternalCounterfactualVerifier:
             target_class=request.target.target_class,
             min_target_probability=request.target.min_target_probability,
         )
-        candidate_results = [
-            self._verify_candidate(
-                request=request,
-                prepared=prepared,
-                candidate=candidate,
+        candidate_results = []
+        if response.candidate is not None:
+            candidate_results.append(
+                self._verify_candidate(
+                    request=request,
+                    prepared=prepared,
+                    candidate=response.candidate,
+                )
             )
-            for candidate in response.candidates
-        ]
 
         outcome_consistent = self._outcome_consistent(
             response_status=response.status,

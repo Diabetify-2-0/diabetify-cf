@@ -27,7 +27,6 @@
       "mutable_allowed": ["BMI"]
     },
     "generation": {
-      "total_cfs": 1,
       "method": "nearest_neighbor_projection",
       "random_seed": 42,
       "timeout_ms": 5000
