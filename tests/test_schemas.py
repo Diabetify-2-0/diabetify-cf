@@ -18,7 +18,6 @@ def _valid_payload() -> dict:
     return {
         "request_id": "req-1",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "model_version": "xgb_v3",
         "target": {"target_class": "low_risk", "min_target_probability": 0.5},
         "instance": {"features": {"age": 45, "bmi": 31.2, "glucose": 165}},
         "constraints": {
@@ -56,12 +55,10 @@ def test_response_wire_uses_class_alias_inside_planner_input() -> None:
         status=Status.FEASIBLE,
         reason_code=ReasonCode.OK,
         message="ok",
-        model_version="xgb_v1",
-        cf_engine_version="nn_engine_v1",
         input_prediction=PredictionInfo(class_name="high_risk", probability_low_risk=0.25),
         validation=ValidationSummary(
             immutable_violation=False,
-            mutable_compliance=True,
+            mutable_violation=False,
             medical_rules_passed=True,
         ),
         planner_input=PlannerInput(

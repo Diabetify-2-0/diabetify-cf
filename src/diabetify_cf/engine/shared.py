@@ -88,7 +88,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 message="No mutable feature selected by user.",
                 validation=ValidationSummary(
                     immutable_violation=False,
-                    mutable_compliance=True,
+                    mutable_violation=False,
                     medical_rules_passed=True,
                 ),
             )
@@ -108,7 +108,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 message="Counterfactual engine is not ready.",
                 validation=ValidationSummary(
                     immutable_violation=False,
-                    mutable_compliance=True,
+                    mutable_violation=False,
                     medical_rules_passed=True,
                 ),
             )
@@ -135,7 +135,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                     ),
                     validation=ValidationSummary(
                         immutable_violation=False,
-                        mutable_compliance=True,
+                        mutable_violation=False,
                         medical_rules_passed=True,
                     ),
                     input_prediction=prepared.base_prediction,
@@ -152,7 +152,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                     ),
                     validation=ValidationSummary(
                         immutable_violation=False,
-                        mutable_compliance=True,
+                        mutable_violation=False,
                         medical_rules_passed=True,
                     ),
                     input_prediction=prepared.base_prediction,
@@ -184,7 +184,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 message="Invalid counterfactual request payload.",
                 validation=ValidationSummary(
                     immutable_violation=False,
-                    mutable_compliance=False,
+                    mutable_violation=True,
                     medical_rules_passed=False,
                 ),
             )
@@ -205,7 +205,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 message="Counterfactual generation exceeded request timeout.",
                 validation=ValidationSummary(
                     immutable_violation=False,
-                    mutable_compliance=True,
+                    mutable_violation=False,
                     medical_rules_passed=False,
                 ),
                 input_prediction=input_prediction,
@@ -224,7 +224,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 message="Counterfactual engine failed while processing request.",
                 validation=ValidationSummary(
                     immutable_violation=False,
-                    mutable_compliance=False,
+                    mutable_violation=True,
                     medical_rules_passed=False,
                 ),
             )
@@ -351,7 +351,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 message=message,
                 validation=ValidationSummary(
                     immutable_violation=False,
-                    mutable_compliance=True,
+                    mutable_violation=False,
                     medical_rules_passed=True,
                 ),
                 input_prediction=prepared.base_prediction,
@@ -509,7 +509,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 message=message,
                 validation=ValidationSummary(
                     immutable_violation=immutable_violation_seen,
-                    mutable_compliance=not mutable_violation_seen,
+                    mutable_violation=mutable_violation_seen,
                     medical_rules_passed=(not medical_violation_seen)
                     and (not target_violation_seen),
                 ),
@@ -534,7 +534,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             message=f"Generated {len(candidates)} feasible counterfactual candidate(s).",
             validation=ValidationSummary(
                 immutable_violation=False,
-                mutable_compliance=True,
+                mutable_violation=False,
                 medical_rules_passed=True,
             ),
             input_prediction=prepared.base_prediction,
@@ -560,8 +560,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             status=status,
             reason_code=reason_code,
             message=message,
-            model_version=request.model_version,
-            cf_engine_version=self.engine_version,
             runtime_ms=self._elapsed_ms(started),
             input_prediction=input_prediction,
             candidates=candidates or [],

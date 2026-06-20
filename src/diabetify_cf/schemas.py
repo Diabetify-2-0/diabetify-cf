@@ -64,7 +64,6 @@ class CounterfactualRequest(BaseModel):
     request_id: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     patient_id: str | None = None
-    model_version: str = "xgb_v1"
     target: TargetSpec = Field(default_factory=TargetSpec)
     instance: InstanceSpec
     constraints: ConstraintSpec = Field(default_factory=ConstraintSpec)
@@ -116,7 +115,7 @@ class ValidationSummary(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     immutable_violation: bool
-    mutable_compliance: bool
+    mutable_violation: bool
     medical_rules_passed: bool
 
 
@@ -160,8 +159,6 @@ class CounterfactualResponse(BaseModel):
     status: Status
     reason_code: ReasonCode
     message: str
-    model_version: str
-    cf_engine_version: str
     runtime_ms: int = 0
     input_prediction: PredictionInfo | None = None
     candidates: list[CounterfactualCandidate] = Field(default_factory=list)

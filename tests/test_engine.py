@@ -30,7 +30,6 @@ def _request_payload(mutable_allowed: list[str]) -> dict:
     return {
         "request_id": "req-engine",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "model_version": "xgb_v3",
         "target": {"target_class": "low_risk", "min_target_probability": 0.5},
         "instance": {"features": {"age": 45, "bmi": 31.2, "glucose": 165}},
         "constraints": {

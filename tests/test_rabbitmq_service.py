@@ -26,11 +26,9 @@ def _response(request_id: str) -> CounterfactualResponse:
         status=Status.INFEASIBLE,
         reason_code=ReasonCode.NO_MUTABLE_FEATURE,
         message="No mutable feature selected by user.",
-        model_version="xgb_v1",
-        cf_engine_version="test_engine",
         validation=ValidationSummary(
             immutable_violation=False,
-            mutable_compliance=True,
+            mutable_violation=False,
             medical_rules_passed=True,
         ),
     )
@@ -79,7 +77,6 @@ def _request_payload() -> bytes:
     payload = {
         "request_id": "job-1",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "model_version": "xgb_v1",
         "target": {"target_class": "low_risk", "min_target_probability": 0.5},
         "instance": {"features": {"age": 45, "bmi": 31.2}},
         "constraints": {"mutable_allowed": []},

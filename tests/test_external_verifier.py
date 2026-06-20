@@ -100,7 +100,6 @@ def _request() -> CounterfactualRequest:
     return CounterfactualRequest.model_validate(
         {
             "request_id": "req-verify",
-            "model_version": "xgb_v1",
             "target": {
                 "target_class": "low_risk",
                 "min_target_probability": 0.5,
@@ -148,11 +147,9 @@ def _response(candidate: CounterfactualCandidate) -> CounterfactualResponse:
         status=Status.FEASIBLE,
         reason_code=ReasonCode.OK,
         message="ok",
-        model_version="xgb_v1",
-        cf_engine_version="nn_engine_v1",
         validation=ValidationSummary(
             immutable_violation=False,
-            mutable_compliance=True,
+            mutable_violation=False,
             medical_rules_passed=True,
         ),
         candidates=[candidate],
@@ -226,7 +223,6 @@ def test_external_verifier_detects_feature_change_outside_user_selected_mutable_
     request = CounterfactualRequest.model_validate(
         {
             "request_id": "req-verify-bmi-only",
-            "model_version": "xgb_v1",
             "target": {
                 "target_class": "low_risk",
                 "min_target_probability": 0.5,
@@ -281,11 +277,9 @@ def test_external_verifier_accepts_infeasible_without_candidates() -> None:
         status=Status.INFEASIBLE,
         reason_code=ReasonCode.TARGET_UNREACHABLE_UNDER_CONSTRAINTS,
         message="no solution",
-        model_version="xgb_v1",
-        cf_engine_version="nn_engine_v1",
         validation=ValidationSummary(
             immutable_violation=False,
-            mutable_compliance=True,
+            mutable_violation=False,
             medical_rules_passed=False,
         ),
     )
@@ -301,7 +295,6 @@ def test_external_verifier_accepts_target_already_satisfied_without_candidates()
     healthy_request = CounterfactualRequest.model_validate(
         {
             "request_id": "req-target-already-satisfied",
-            "model_version": "xgb_v1",
             "target": {"target_class": "low_risk", "min_target_probability": 0.5},
             "instance": {
                 "features": {
@@ -321,11 +314,9 @@ def test_external_verifier_accepts_target_already_satisfied_without_candidates()
         status=Status.FEASIBLE,
         reason_code=ReasonCode.TARGET_ALREADY_SATISFIED,
         message="Input already satisfies target class/probability; no changes are required.",
-        model_version="xgb_v1",
-        cf_engine_version="nn_engine_v1",
         validation=ValidationSummary(
             immutable_violation=False,
-            mutable_compliance=True,
+            mutable_violation=False,
             medical_rules_passed=True,
         ),
     )

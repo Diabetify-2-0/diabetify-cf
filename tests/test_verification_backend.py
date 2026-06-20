@@ -26,7 +26,6 @@ def _request() -> CounterfactualRequest:
     return CounterfactualRequest.model_validate(
         {
             "request_id": "req-backend",
-            "model_version": "xgb_v1",
             "target": {"target_class": "low_risk", "min_target_probability": 0.5},
             "instance": {"features": {"age": 45, "BMI": 31.2, "smoking_status": 2}},
             "constraints": {
@@ -49,11 +48,9 @@ def _service_response() -> CounterfactualResponse:
         status=Status.FEASIBLE,
         reason_code=ReasonCode.OK,
         message="Generated 1 feasible counterfactual candidate(s).",
-        model_version="xgb_v1",
-        cf_engine_version="nn_engine_v1",
         validation=ValidationSummary(
             immutable_violation=False,
-            mutable_compliance=True,
+            mutable_violation=False,
             medical_rules_passed=True,
         ),
         candidates=[
@@ -129,7 +126,6 @@ def test_build_backend_submit_payload_strips_service_only_fields() -> None:
 
     assert "request_id" not in payload
     assert "timestamp" not in payload
-    assert payload["model_version"] == "xgb_v1"
     assert payload["generation"]["method"] == "nearest_neighbor_projection"
 
 

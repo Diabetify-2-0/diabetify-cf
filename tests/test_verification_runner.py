@@ -28,7 +28,6 @@ def _request(request_id: str = "req-runner") -> CounterfactualRequest:
     return CounterfactualRequest.model_validate(
         {
             "request_id": request_id,
-            "model_version": "xgb_v1",
             "target": {
                 "target_class": "low_risk",
                 "min_target_probability": 0.5,
@@ -149,11 +148,9 @@ def _feasible_response(request_id: str = "req-runner") -> CounterfactualResponse
         status=Status.FEASIBLE,
         reason_code=ReasonCode.OK,
         message="ok",
-        model_version="xgb_v1",
-        cf_engine_version="nn_engine_v1",
         validation=ValidationSummary(
             immutable_violation=False,
-            mutable_compliance=True,
+            mutable_violation=False,
             medical_rules_passed=True,
         ),
         candidates=[_candidate()],
@@ -166,11 +163,9 @@ def _infeasible_response(request_id: str = "req-runner") -> CounterfactualRespon
         status=Status.INFEASIBLE,
         reason_code=ReasonCode.TARGET_UNREACHABLE_UNDER_CONSTRAINTS,
         message="no solution",
-        model_version="xgb_v1",
-        cf_engine_version="nn_engine_v1",
         validation=ValidationSummary(
             immutable_violation=False,
-            mutable_compliance=True,
+            mutable_violation=False,
             medical_rules_passed=False,
         ),
     )

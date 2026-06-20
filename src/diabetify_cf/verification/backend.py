@@ -304,11 +304,9 @@ def _build_fallback_error_response(
         status=status,
         reason_code=reason_code,
         message=message,
-        model_version=request.model_version,
-        cf_engine_version="backend_adapter",
         validation=ValidationSummary(
             immutable_violation=False,
-            mutable_compliance=True,
+            mutable_violation=False,
             medical_rules_passed=False,
         ),
         planner_input=PlannerInput(),

@@ -193,7 +193,7 @@ def _response_signature(response: CounterfactualResponse) -> tuple[Any, ...]:
         _prediction_signature(response.input_prediction),
         (
             response.validation.immutable_violation,
-            response.validation.mutable_compliance,
+            response.validation.mutable_violation,
             response.validation.medical_rules_passed,
         ),
         _planner_input_signature(response.planner_input),

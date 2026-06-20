@@ -26,7 +26,6 @@ def _dummy_request() -> CounterfactualRequest:
     return CounterfactualRequest.model_validate(
         {
             "request_id": "req-suite",
-            "model_version": "xgb_v1",
             "target": {"target_class": "low_risk", "min_target_probability": 0.5},
             "instance": {"features": {"age": 45, "BMI": 31.2, "smoking_status": 2}},
             "constraints": {
@@ -43,11 +42,9 @@ def _dummy_response() -> CounterfactualResponse:
         status=Status.FEASIBLE,
         reason_code=ReasonCode.OK,
         message="ok",
-        model_version="xgb_v1",
-        cf_engine_version="nn_engine_v1",
         validation=ValidationSummary(
             immutable_violation=False,
-            mutable_compliance=True,
+            mutable_violation=False,
             medical_rules_passed=True,
         ),
     )

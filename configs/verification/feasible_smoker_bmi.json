@@ -5,7 +5,6 @@
   "repeat_count": 1,
   "request": {
     "request_id": "verify-feasible-smoker-bmi-hypertension",
-    "model_version": "xgb_v1",
     "target": {
       "target_class": "low_risk",
       "min_target_probability": 0.5
