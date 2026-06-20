@@ -58,7 +58,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
         reference_data_path: str = "",
         feature_registry_path: str = "",
         artifact_manifest_path: str = "",
-        max_lof_score: float = 2.5,
+        max_lof_score: float = 1.5,
     ) -> None:
         self.max_lof_score = max(1.0, float(max_lof_score))
         self.logger = logging.getLogger("diabetify_cf.engine")
@@ -302,11 +302,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             mutable_input=mutable_input,
             model_columns=model_columns,
             immutable_set=immutable_set,
-            registry=registry,
-        )
-        mutable_allowed = self._apply_feature_specific_mutability(
-            mutable_allowed=mutable_allowed,
-            baseline_features=instance_features,
             registry=registry,
         )
         query_df = pd.DataFrame(
@@ -715,28 +710,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             allowed.append(name)
             seen.add(name)
         return allowed
-
-    def _apply_feature_specific_mutability(
-        self,
-        *,
-        mutable_allowed: list[str],
-        baseline_features: dict[str, JSONFeatureValue],
-        registry: FeatureRegistry,
-    ) -> list[str]:
-        smoking_status_feature = registry.get("smoking_status")
-        if smoking_status_feature is None:
-            return mutable_allowed
-
-        try:
-            baseline_smoking_status = int(float(baseline_features.get("smoking_status", 0)))
-        except (TypeError, ValueError):
-            return mutable_allowed
-
-        if baseline_smoking_status == 2:
-            return [name for name in mutable_allowed if name != "brinkman_index"]
-
-        blocked_features = {"smoking_status", "brinkman_index"}
-        return [name for name in mutable_allowed if name not in blocked_features]
 
     def _to_series(
         self,

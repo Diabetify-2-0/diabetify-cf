@@ -74,7 +74,7 @@ class Settings:
     response_dlq: str = os.getenv("CF_RESPONSE_DLQ", "ml.cf.response.dlq")
     idempotency_cache_size: int = int(os.getenv("CF_IDEMPOTENCY_CACHE_SIZE", "1024"))
 
-    max_lof_score: float = float(os.getenv("CF_MAX_LOF_SCORE", "2.5"))
+    max_lof_score: float = float(os.getenv("CF_MAX_LOF_SCORE", "1.5"))
     nn_candidate_pool_size: int = int(os.getenv("CF_NN_CANDIDATE_POOL_SIZE", "256"))
     nn_max_neighbors: int = int(os.getenv("CF_NN_MAX_NEIGHBORS", "64"))
     nn_max_changed_features: int = int(os.getenv("CF_NN_MAX_CHANGED_FEATURES", "3"))

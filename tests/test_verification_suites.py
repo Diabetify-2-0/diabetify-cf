@@ -142,10 +142,15 @@ def test_actionability_suite_collects_all_configured_actionability_scenarios() -
 
     scenarios = load_suite_scenarios(Path("configs") / "verification", suite)
 
-    assert len(scenarios) == 11
+    assert len(scenarios) == 10
     assert "feasible_bmi_only" in [scenario.name for scenario in scenarios]
+    assert "feasible_full_actionable" in [scenario.name for scenario in scenarios]
+    assert "feasible_smoker_bmi_hypertension" in [scenario.name for scenario in scenarios]
+    assert "feasible_smoker_bmi_hypertension_activity" in [scenario.name for scenario in scenarios]
     assert "feasible_smoker_full_actionable" in [scenario.name for scenario in scenarios]
     assert "infeasible_no_mutable" in [scenario.name for scenario in scenarios]
+    assert "feasible_target_already_satisfied" not in [scenario.name for scenario in scenarios]
+    assert "infeasible_medical_rule_only_high_target" not in [scenario.name for scenario in scenarios]
 
 
 def test_build_suite_payload_includes_suite_metadata() -> None:

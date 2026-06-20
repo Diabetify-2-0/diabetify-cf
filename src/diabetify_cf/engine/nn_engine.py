@@ -40,7 +40,7 @@ class NearestNeighborCounterfactualEngine(ArtifactBackedCounterfactualEngine):
         reference_data_path: str = "",
         feature_registry_path: str = "",
         artifact_manifest_path: str = "",
-        max_lof_score: float = 2.5,
+        max_lof_score: float = 1.5,
         options: NearestNeighborOptions | None = None,
     ) -> None:
         super().__init__(

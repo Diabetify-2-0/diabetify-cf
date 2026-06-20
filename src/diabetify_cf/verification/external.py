@@ -94,7 +94,7 @@ class ExternalCounterfactualVerifier:
                 max_lof_score = loaded_settings.max_lof_score
 
         if max_lof_score is None:
-            max_lof_score = 2.5
+            max_lof_score = 1.5
 
         self._checker = _VerifierRuleChecker(
             artifacts=artifacts,
