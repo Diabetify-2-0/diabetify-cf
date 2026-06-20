@@ -23,7 +23,6 @@ class ConstraintSpec(BaseModel):
 
     immutable_features: list[str] = Field(default_factory=list)
     mutable_allowed: list[str] = Field(default_factory=list)
-    must_not_change: list[str] = Field(default_factory=list)
     medical_rule_set_version: str = "med_rule_v1"
 
     @model_validator(mode="after")
@@ -142,7 +141,6 @@ class PlannerInput(BaseModel):
     changed_features: list[PlannerFeatureChange] = Field(default_factory=list)
     mutable_allowed: list[str] = Field(default_factory=list)
     immutable_features: list[str] = Field(default_factory=list)
-    must_not_change: list[str] = Field(default_factory=list)
 
     def to_wire(self) -> dict[str, Any]:
         payload = self.model_dump(exclude_none=True)
@@ -164,7 +162,6 @@ class CounterfactualResponse(BaseModel):
     message: str
     model_version: str
     cf_engine_version: str
-    constraint_version: str = "cf_spec_1.0.0"
     runtime_ms: int = 0
     input_prediction: PredictionInfo | None = None
     candidates: list[CounterfactualCandidate] = Field(default_factory=list)

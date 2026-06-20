@@ -32,7 +32,6 @@ def _request() -> CounterfactualRequest:
             "constraints": {
                 "immutable_features": ["age"],
                 "mutable_allowed": ["BMI", "smoking_status"],
-                "must_not_change": [],
             },
             "generation": {
                 "total_cfs": 1,

@@ -36,7 +36,6 @@ def _request_payload(mutable_allowed: list[str]) -> dict:
         "constraints": {
             "immutable_features": ["age"],
             "mutable_allowed": mutable_allowed,
-            "must_not_change": [],
             "medical_rule_set_version": "med_rule_v1",
         },
         "generation": {

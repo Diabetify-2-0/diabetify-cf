@@ -24,7 +24,6 @@ def _valid_payload() -> dict:
         "constraints": {
             "immutable_features": ["age"],
             "mutable_allowed": ["bmi", "glucose"],
-            "must_not_change": [],
             "medical_rule_set_version": "med_rule_v1",
         },
         "generation": {

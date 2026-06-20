@@ -115,7 +115,6 @@ def _request() -> CounterfactualRequest:
             "constraints": {
                 "immutable_features": ["age"],
                 "mutable_allowed": ["BMI", "smoking_status"],
-                "must_not_change": [],
             },
         }
     )
@@ -242,7 +241,6 @@ def test_external_verifier_detects_feature_change_outside_user_selected_mutable_
             "constraints": {
                 "immutable_features": ["age"],
                 "mutable_allowed": ["BMI"],
-                "must_not_change": [],
             },
         }
     )
@@ -315,7 +313,6 @@ def test_external_verifier_accepts_target_already_satisfied_without_candidates()
             "constraints": {
                 "immutable_features": ["age"],
                 "mutable_allowed": ["BMI", "smoking_status"],
-                "must_not_change": [],
             },
         }
     )

@@ -278,7 +278,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             request.constraints.immutable_features
         )
         mutable_input = registry.canonicalize_feature_names(request.constraints.mutable_allowed)
-        must_not_change = registry.canonicalize_feature_names(request.constraints.must_not_change)
 
         unknown_features = [name for name in instance_features if name not in model_columns]
         if unknown_features:
@@ -295,9 +294,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             registry=registry,
         )
 
-        immutable_set = (
-            set(registry.immutable_defaults()).union(immutable_input).union(must_not_change)
-        )
+        immutable_set = set(registry.immutable_defaults()).union(immutable_input)
         mutable_allowed = self._build_mutable_allowed(
             mutable_input=mutable_input,
             model_columns=model_columns,
@@ -974,7 +971,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             changed_features=changed_features,
             mutable_allowed=list(prepared.mutable_allowed),
             immutable_features=sorted(prepared.immutable_set),
-            must_not_change=list(request.constraints.must_not_change),
         )
 
     def _build_request_context_planner_input(
@@ -987,7 +983,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             input_prediction=prepared.base_prediction,
             mutable_allowed=list(prepared.mutable_allowed),
             immutable_features=sorted(prepared.immutable_set),
-            must_not_change=list(request.constraints.must_not_change),
         )
 
     @staticmethod

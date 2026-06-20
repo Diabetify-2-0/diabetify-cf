@@ -256,9 +256,7 @@ def _verification_immutable_set(
     request: CounterfactualRequest,
     default_immutable_features: list[str],
 ) -> set[str]:
-    return set(default_immutable_features).union(request.constraints.immutable_features).union(
-        request.constraints.must_not_change
-    )
+    return set(default_immutable_features).union(request.constraints.immutable_features)
 
 
 def _verification_mutable_set(*, request: CounterfactualRequest) -> set[str]:
