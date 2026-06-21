@@ -21,10 +21,16 @@ def _valid_payload() -> dict:
         "request_id": "req-1",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "target": {"target_class": "low_risk", "min_target_probability": 0.5},
-        "instance": {"features": {"age": 45, "bmi": 31.2, "glucose": 165}},
+        "instance": {
+            "features": {
+                "age": 45,
+                "BMI": 31.2,
+                "is_cholesterol": 1,
+            }
+        },
         "constraints": {
             "immutable_features": ["age"],
-            "mutable_allowed": ["bmi", "glucose"],
+            "mutable_allowed": ["BMI", "is_cholesterol"],
         },
         "generation": {
             "timeout_ms": 5000,
@@ -36,12 +42,20 @@ def test_request_schema_valid() -> None:
     payload = _valid_payload()
     parsed = CounterfactualRequest.model_validate(payload)
     assert parsed.request_id == "req-1"
-    assert parsed.constraints.mutable_allowed == ["bmi", "glucose"]
+    assert parsed.constraints.mutable_allowed == ["BMI", "is_cholesterol"]
 
 
 def test_overlap_mutable_and_immutable_is_rejected() -> None:
     payload = _valid_payload()
-    payload["constraints"]["immutable_features"] = ["age", "bmi"]
+    payload["constraints"]["immutable_features"] = ["age", "BMI"]
+    with pytest.raises(ValidationError):
+        CounterfactualRequest.model_validate(payload)
+
+
+def test_request_schema_rejects_legacy_patient_id_field() -> None:
+    payload = _valid_payload()
+    payload["patient_id"] = "patient-123"
+
     with pytest.raises(ValidationError):
         CounterfactualRequest.model_validate(payload)
 
@@ -60,8 +74,8 @@ def test_response_wire_uses_clean_input_and_candidate_contract() -> None:
         ),
         candidate=CounterfactualCandidate(
             candidate_id="cand_1",
-            features={"age": 45, "bmi": 27.0},
-            delta={"bmi": -4.2},
+            features={"age": 45, "BMI": 27.0},
+            delta={"BMI": -4.2},
             prediction=PredictionInfo(
                 class_name="low_risk",
                 probability_low_risk=0.72,
@@ -88,14 +102,14 @@ def test_response_wire_uses_clean_input_and_candidate_contract() -> None:
             ),
             changed_features=[
                 PlannerFeatureChange(
-                    feature_name="bmi",
+                    feature_name="BMI",
                     baseline_value=31.2,
                     candidate_value=27.0,
                     delta=-4.2,
                     direction="decrease",
                 )
             ],
-            mutable_allowed=["bmi"],
+            mutable_allowed=["BMI"],
             immutable_features=["age"],
         ),
     )
@@ -104,11 +118,11 @@ def test_response_wire_uses_clean_input_and_candidate_contract() -> None:
 
     assert wire["input"]["class"] == "high_risk"
     assert wire["input"]["probability_low_risk"] == 0.25
-    assert wire["input"]["mutable_allowed"] == ["bmi"]
+    assert wire["input"]["mutable_allowed"] == ["BMI"]
     assert wire["input"]["immutable_features"] == ["age"]
     assert wire["candidate"]["candidate_prediction"]["class"] == "low_risk"
     assert wire["candidate"]["lof_score"] == 1.0
-    assert wire["candidate"]["changed_features"][0]["feature_name"] == "bmi"
+    assert wire["candidate"]["changed_features"][0]["feature_name"] == "BMI"
     assert "planner_input" not in wire
     assert "input_prediction" not in wire
     assert "metrics" not in wire["candidate"]
@@ -125,12 +139,12 @@ def test_wire_response_round_trips_into_internal_model() -> None:
         "input": {
             "class": "high_risk",
             "probability_low_risk": 0.25,
-            "mutable_allowed": ["bmi"],
+            "mutable_allowed": ["BMI"],
             "immutable_features": ["age"],
         },
         "candidate": {
             "candidate_id": "cand_1",
-            "features": {"age": 45, "bmi": 27.0},
+            "features": {"age": 45, "BMI": 27.0},
             "candidate_prediction": {
                 "class": "low_risk",
                 "probability_low_risk": 0.72,
@@ -138,7 +152,7 @@ def test_wire_response_round_trips_into_internal_model() -> None:
             "lof_score": 1.0,
             "changed_features": [
                 {
-                    "feature_name": "bmi",
+                    "feature_name": "BMI",
                     "baseline_value": 31.2,
                     "candidate_value": 27.0,
                     "delta": -4.2,
@@ -161,7 +175,7 @@ def test_wire_response_round_trips_into_internal_model() -> None:
     assert parsed.candidate is not None
     assert parsed.candidate.prediction.class_name == "low_risk"
     assert parsed.candidate.metrics.lof_score == 1.0
-    assert parsed.planner_input.mutable_allowed == ["bmi"]
+    assert parsed.planner_input.mutable_allowed == ["BMI"]
     assert parsed.planner_input.immutable_features == ["age"]
-    assert parsed.planner_input.changed_features[0].feature_name == "bmi"
+    assert parsed.planner_input.changed_features[0].feature_name == "BMI"
     assert parsed.validation.medical_rules_passed

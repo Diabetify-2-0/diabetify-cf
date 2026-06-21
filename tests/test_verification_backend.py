@@ -123,6 +123,27 @@ def test_build_backend_submit_payload_strips_service_only_fields() -> None:
     assert payload["generation"]["timeout_ms"] == 5000
 
 
+def test_build_backend_submit_payload_uses_service_default_generation_when_omitted() -> None:
+    request = CounterfactualRequest.model_validate(
+        {
+            "request_id": "req-backend-no-generation",
+            "target": {"target_class": "low_risk", "min_target_probability": 0.5},
+            "instance": {"features": {"age": 45, "BMI": 31.2, "smoking_status": 2}},
+            "constraints": {
+                "immutable_features": ["age"],
+                "mutable_allowed": ["BMI", "smoking_status"],
+            },
+        }
+    )
+
+    payload = _build_backend_submit_payload(request)
+
+    assert "request_id" not in payload
+    assert "timestamp" not in payload
+    assert "generation" in payload
+    assert payload["generation"]["timeout_ms"] == 5000
+
+
 def test_backend_counterfactual_engine_adapter_returns_service_payload() -> None:
     gateway = FakeGateway()
     adapter = BackendCounterfactualEngineAdapter(
