@@ -23,7 +23,6 @@ class ConstraintSpec(BaseModel):
 
     immutable_features: list[str] = Field(default_factory=list)
     mutable_allowed: list[str] = Field(default_factory=list)
-    medical_rule_set_version: str = "med_rule_v1"
 
     @model_validator(mode="after")
     def validate_no_overlap(self) -> ConstraintSpec:
@@ -39,16 +38,7 @@ class ConstraintSpec(BaseModel):
 class GenerationSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    method: str = "nn_search"
-    random_seed: int = 42
     timeout_ms: int = Field(default=5000, ge=100, le=60000)
-
-
-class PreferenceSpec(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    cost_weights: dict[str, float] = Field(default_factory=dict)
-    objective_weights: dict[str, float] = Field(default_factory=dict)
 
 
 class InstanceSpec(BaseModel):
@@ -62,12 +52,10 @@ class CounterfactualRequest(BaseModel):
 
     request_id: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    patient_id: str | None = None
     target: TargetSpec = Field(default_factory=TargetSpec)
     instance: InstanceSpec
     constraints: ConstraintSpec = Field(default_factory=ConstraintSpec)
     generation: GenerationSpec = Field(default_factory=GenerationSpec)
-    preferences: PreferenceSpec = Field(default_factory=PreferenceSpec)
 
 
 class PredictionInfo(BaseModel):
@@ -91,7 +79,10 @@ class CandidateMetrics(BaseModel):
     lof_score: float
 
     def to_wire(self) -> dict[str, Any]:
-        return self.model_dump()
+        return {
+            "changed_feature_count": self.changed_feature_count,
+            "lof_score": self.lof_score,
+        }
 
 
 class CounterfactualCandidate(BaseModel):
@@ -103,10 +94,47 @@ class CounterfactualCandidate(BaseModel):
     prediction: PredictionInfo
     metrics: CandidateMetrics
 
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_wire_candidate(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        if "prediction" in value or "metrics" in value or "delta" in value:
+            return value
+
+        normalized = dict(value)
+        changed_features = normalized.pop("changed_features", [])
+        candidate_prediction = normalized.pop("candidate_prediction", None)
+        lof_score = normalized.pop("lof_score", None)
+        normalized.pop("validation", None)
+
+        if candidate_prediction is not None:
+            normalized["prediction"] = candidate_prediction
+        if changed_features:
+            delta: dict[str, JSONNumber] = {}
+            for item in changed_features:
+                if isinstance(item, dict) and "feature_name" in item and "delta" in item:
+                    feature_name = item.get("feature_name")
+                    feature_delta = item.get("delta")
+                    if isinstance(feature_name, str) and isinstance(feature_delta, (int, float)):
+                        delta[feature_name] = feature_delta
+            normalized["delta"] = delta
+        else:
+            normalized["delta"] = {}
+        normalized["metrics"] = {
+            "distance_l1": 0.0,
+            "changed_feature_count": len(changed_features) if isinstance(changed_features, list) else 0,
+            "lof_score": float(lof_score) if isinstance(lof_score, (int, float)) else 1.0,
+        }
+        return normalized
+
     def to_wire(self) -> dict[str, Any]:
-        payload = self.model_dump()
-        payload["prediction"] = self.prediction.to_wire()
-        return payload
+        return {
+            "candidate_id": self.candidate_id,
+            "features": self.features,
+            "candidate_prediction": self.prediction.to_wire(),
+            "lof_score": self.metrics.lof_score,
+        }
 
 
 class ValidationSummary(BaseModel):
@@ -164,13 +192,91 @@ class CounterfactualResponse(BaseModel):
     planner_input: PlannerInput = Field(default_factory=PlannerInput)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_wire_response(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        if "input" not in value and "planner_input" in value:
+            return value
+
+        normalized = dict(value)
+        input_payload = normalized.pop("input", None)
+        candidate_payload = normalized.get("candidate")
+
+        if isinstance(candidate_payload, dict) and "validation" not in normalized:
+            candidate_validation = candidate_payload.get("validation")
+            if isinstance(candidate_validation, dict):
+                normalized["validation"] = candidate_validation
+
+        if isinstance(input_payload, dict):
+            input_class = input_payload.get("class")
+            probability = input_payload.get("probability_low_risk")
+            if isinstance(input_class, str) and isinstance(probability, (int, float)):
+                normalized["input_prediction"] = {
+                    "class": input_class,
+                    "probability_low_risk": probability,
+                }
+
+            planner_input: dict[str, Any] = {
+                "mutable_allowed": input_payload.get("mutable_allowed", []),
+                "immutable_features": input_payload.get("immutable_features", []),
+            }
+            if "input_prediction" in normalized:
+                planner_input["input_prediction"] = normalized["input_prediction"]
+
+            if isinstance(candidate_payload, dict):
+                changed_features = candidate_payload.get("changed_features", [])
+                planner_input["recommended_candidate_id"] = candidate_payload.get("candidate_id")
+                planner_input["candidate_prediction"] = candidate_payload.get("candidate_prediction")
+                planner_input["candidate_metrics"] = {
+                    "distance_l1": 0.0,
+                    "changed_feature_count": len(changed_features)
+                    if isinstance(changed_features, list)
+                    else 0,
+                    "lof_score": candidate_payload.get("lof_score", 1.0),
+                }
+                planner_input["changed_features"] = changed_features
+                planner_input["target_deltas"] = {
+                    item["feature_name"]: item["delta"]
+                    for item in changed_features
+                    if isinstance(item, dict)
+                    and isinstance(item.get("feature_name"), str)
+                    and isinstance(item.get("delta"), (int, float))
+                }
+
+            normalized["planner_input"] = planner_input
+
+        return normalized
+
     def to_wire(self) -> dict[str, Any]:
-        payload = self.model_dump(exclude_none=True)
-        payload["status"] = self.status.value
-        payload["reason_code"] = self.reason_code.value
+        payload: dict[str, Any] = {
+            "request_id": self.request_id,
+            "status": self.status.value,
+            "reason_code": self.reason_code.value,
+            "message": self.message,
+            "runtime_ms": self.runtime_ms,
+            "candidate": None,
+            "timestamp": self.timestamp.isoformat(),
+        }
+
+        input_payload: dict[str, Any] = {}
         if self.input_prediction is not None:
-            payload["input_prediction"] = self.input_prediction.to_wire()
-        payload["candidate"] = self.candidate.to_wire() if self.candidate is not None else None
-        payload["planner_input"] = self.planner_input.to_wire()
-        payload["timestamp"] = self.timestamp.isoformat()
+            input_payload.update(self.input_prediction.to_wire())
+        if self.planner_input.mutable_allowed:
+            input_payload["mutable_allowed"] = list(self.planner_input.mutable_allowed)
+        if self.planner_input.immutable_features:
+            input_payload["immutable_features"] = list(self.planner_input.immutable_features)
+        if input_payload:
+            payload["input"] = input_payload
+
+        if self.candidate is not None:
+            candidate_payload = self.candidate.to_wire()
+            candidate_payload["changed_features"] = [
+                item.model_dump() for item in self.planner_input.changed_features
+            ]
+            candidate_payload["validation"] = self.validation.model_dump()
+            payload["candidate"] = candidate_payload
+        else:
+            payload["validation"] = self.validation.model_dump()
         return payload

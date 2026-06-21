@@ -6,8 +6,10 @@ from pydantic import ValidationError
 from diabetify_cf.reason_codes import ReasonCode, Status
 from diabetify_cf.schemas import (
     CandidateMetrics,
+    CounterfactualCandidate,
     CounterfactualRequest,
     CounterfactualResponse,
+    PlannerFeatureChange,
     PlannerInput,
     PredictionInfo,
     ValidationSummary,
@@ -23,14 +25,10 @@ def _valid_payload() -> dict:
         "constraints": {
             "immutable_features": ["age"],
             "mutable_allowed": ["bmi", "glucose"],
-            "medical_rule_set_version": "med_rule_v1",
         },
         "generation": {
-            "method": "nn_search",
-            "random_seed": 42,
             "timeout_ms": 5000,
         },
-        "preferences": {"cost_weights": {"bmi": 1.0}, "objective_weights": {"proximity": 0.3}},
     }
 
 
@@ -48,7 +46,7 @@ def test_overlap_mutable_and_immutable_is_rejected() -> None:
         CounterfactualRequest.model_validate(payload)
 
 
-def test_response_wire_uses_class_alias_inside_planner_input() -> None:
+def test_response_wire_uses_clean_input_and_candidate_contract() -> None:
     response = CounterfactualResponse(
         request_id="req-1",
         status=Status.FEASIBLE,
@@ -59,6 +57,20 @@ def test_response_wire_uses_class_alias_inside_planner_input() -> None:
             immutable_violation=False,
             mutable_violation=False,
             medical_rules_passed=True,
+        ),
+        candidate=CounterfactualCandidate(
+            candidate_id="cand_1",
+            features={"age": 45, "bmi": 27.0},
+            delta={"bmi": -4.2},
+            prediction=PredictionInfo(
+                class_name="low_risk",
+                probability_low_risk=0.72,
+            ),
+            metrics=CandidateMetrics(
+                distance_l1=0.1,
+                changed_feature_count=1,
+                lof_score=1.0,
+            ),
         ),
         planner_input=PlannerInput(
             input_prediction=PredictionInfo(
@@ -74,14 +86,82 @@ def test_response_wire_uses_class_alias_inside_planner_input() -> None:
                 changed_feature_count=1,
                 lof_score=1.0,
             ),
+            changed_features=[
+                PlannerFeatureChange(
+                    feature_name="bmi",
+                    baseline_value=31.2,
+                    candidate_value=27.0,
+                    delta=-4.2,
+                    direction="decrease",
+                )
+            ],
+            mutable_allowed=["bmi"],
+            immutable_features=["age"],
         ),
     )
 
     wire = response.to_wire()
 
-    assert wire["input_prediction"]["class"] == "high_risk"
-    assert "class_name" not in wire["input_prediction"]
-    assert wire["planner_input"]["input_prediction"]["class"] == "high_risk"
-    assert wire["planner_input"]["candidate_prediction"]["class"] == "low_risk"
-    assert "class_name" not in wire["planner_input"]["input_prediction"]
-    assert "class_name" not in wire["planner_input"]["candidate_prediction"]
+    assert wire["input"]["class"] == "high_risk"
+    assert wire["input"]["probability_low_risk"] == 0.25
+    assert wire["input"]["mutable_allowed"] == ["bmi"]
+    assert wire["input"]["immutable_features"] == ["age"]
+    assert wire["candidate"]["candidate_prediction"]["class"] == "low_risk"
+    assert wire["candidate"]["lof_score"] == 1.0
+    assert wire["candidate"]["changed_features"][0]["feature_name"] == "bmi"
+    assert "planner_input" not in wire
+    assert "input_prediction" not in wire
+    assert "metrics" not in wire["candidate"]
+    assert "delta" not in wire["candidate"]
+
+
+def test_wire_response_round_trips_into_internal_model() -> None:
+    wire_payload = {
+        "request_id": "req-1",
+        "status": "FEASIBLE",
+        "reason_code": "OK",
+        "message": "ok",
+        "runtime_ms": 100,
+        "input": {
+            "class": "high_risk",
+            "probability_low_risk": 0.25,
+            "mutable_allowed": ["bmi"],
+            "immutable_features": ["age"],
+        },
+        "candidate": {
+            "candidate_id": "cand_1",
+            "features": {"age": 45, "bmi": 27.0},
+            "candidate_prediction": {
+                "class": "low_risk",
+                "probability_low_risk": 0.72,
+            },
+            "lof_score": 1.0,
+            "changed_features": [
+                {
+                    "feature_name": "bmi",
+                    "baseline_value": 31.2,
+                    "candidate_value": 27.0,
+                    "delta": -4.2,
+                    "direction": "decrease",
+                }
+            ],
+            "validation": {
+                "immutable_violation": False,
+                "mutable_violation": False,
+                "medical_rules_passed": True,
+            },
+        },
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+    parsed = CounterfactualResponse.model_validate(wire_payload)
+
+    assert parsed.input_prediction is not None
+    assert parsed.input_prediction.class_name == "high_risk"
+    assert parsed.candidate is not None
+    assert parsed.candidate.prediction.class_name == "low_risk"
+    assert parsed.candidate.metrics.lof_score == 1.0
+    assert parsed.planner_input.mutable_allowed == ["bmi"]
+    assert parsed.planner_input.immutable_features == ["age"]
+    assert parsed.planner_input.changed_features[0].feature_name == "bmi"
+    assert parsed.validation.medical_rules_passed

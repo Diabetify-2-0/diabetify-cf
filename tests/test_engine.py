@@ -35,14 +35,10 @@ def _request_payload(mutable_allowed: list[str]) -> dict:
         "constraints": {
             "immutable_features": ["age"],
             "mutable_allowed": mutable_allowed,
-            "medical_rule_set_version": "med_rule_v1",
         },
         "generation": {
-            "method": "nn_search",
-            "random_seed": 42,
             "timeout_ms": 5000,
         },
-        "preferences": {"cost_weights": {"bmi": 1.0}, "objective_weights": {"proximity": 0.3}},
     }
 
 

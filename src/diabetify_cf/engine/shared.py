@@ -457,7 +457,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                     candidate=candidate,
                     objective_score=self._objective_score(
                         candidate=candidate,
-                        preferences=request.preferences.objective_weights,
+                        preferences={},
                         registry=prepared.registry,
                     ),
                 )

@@ -33,8 +33,6 @@ def _request() -> CounterfactualRequest:
                 "mutable_allowed": ["BMI", "smoking_status"],
             },
             "generation": {
-                "method": "nearest_neighbor_projection",
-                "random_seed": 42,
                 "timeout_ms": 5000,
             },
         }
@@ -122,7 +120,7 @@ def test_build_backend_submit_payload_strips_service_only_fields() -> None:
 
     assert "request_id" not in payload
     assert "timestamp" not in payload
-    assert payload["generation"]["method"] == "nearest_neighbor_projection"
+    assert payload["generation"]["timeout_ms"] == 5000
 
 
 def test_backend_counterfactual_engine_adapter_returns_service_payload() -> None:
