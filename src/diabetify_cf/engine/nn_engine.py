@@ -16,7 +16,6 @@ from diabetify_cf.schemas import CounterfactualRequest
 class NearestNeighborOptions:
     candidate_pool_size: int = 256
     max_neighbors: int = 64
-    max_changed_features: int = 3
     min_reference_low_risk_probability: float | None = None
 
     @classmethod
@@ -24,7 +23,6 @@ class NearestNeighborOptions:
         return cls(
             candidate_pool_size=settings.nn_candidate_pool_size,
             max_neighbors=settings.nn_max_neighbors,
-            max_changed_features=settings.nn_max_changed_features,
             min_reference_low_risk_probability=settings.nn_min_reference_low_risk_probability,
         )
 
@@ -152,6 +150,7 @@ class NearestNeighborCounterfactualEngine(ArtifactBackedCounterfactualEngine):
     ) -> list[dict[str, Any]]:
         projected: list[dict[str, Any]] = []
         seen: set[tuple[Any, ...]] = set()
+        effective_max_changed_features = len(mutable_allowed)
         for neighbor in ranked_neighbors:
             changed_features = self._rank_changed_features(
                 neighbor=neighbor,
@@ -167,7 +166,7 @@ class NearestNeighborCounterfactualEngine(ArtifactBackedCounterfactualEngine):
                 full_projection[feature_name] = neighbor[feature_name]
             self._append_projection(projection=full_projection, projected=projected, seen=seen)
 
-            sparse_limit = min(self.options.max_changed_features, len(changed_features))
+            sparse_limit = min(effective_max_changed_features, len(changed_features))
             for changed_count in range(1, sparse_limit + 1):
                 sparse_projection = dict(baseline)
                 for feature_name in changed_features[:changed_count]:

@@ -77,7 +77,6 @@ class Settings:
     max_lof_score: float = float(os.getenv("CF_MAX_LOF_SCORE", "1.5"))
     nn_candidate_pool_size: int = int(os.getenv("CF_NN_CANDIDATE_POOL_SIZE", "256"))
     nn_max_neighbors: int = int(os.getenv("CF_NN_MAX_NEIGHBORS", "64"))
-    nn_max_changed_features: int = int(os.getenv("CF_NN_MAX_CHANGED_FEATURES", "3"))
     nn_min_reference_low_risk_probability: float | None = (
         float(os.getenv("CF_NN_MIN_REFERENCE_LOW_RISK_PROBABILITY", ""))
         if os.getenv("CF_NN_MIN_REFERENCE_LOW_RISK_PROBABILITY")

@@ -25,7 +25,6 @@ def test_build_counterfactual_engine_passes_nn_settings() -> None:
             columns_path="missing-columns.pkl",
             nn_candidate_pool_size=32,
             nn_max_neighbors=12,
-            nn_max_changed_features=2,
             nn_min_reference_low_risk_probability=0.7,
         )
     )
@@ -33,7 +32,6 @@ def test_build_counterfactual_engine_passes_nn_settings() -> None:
     assert isinstance(engine, NearestNeighborCounterfactualEngine)
     assert engine.options.candidate_pool_size == 32
     assert engine.options.max_neighbors == 12
-    assert engine.options.max_changed_features == 2
     assert engine.options.min_reference_low_risk_probability == 0.7
 
 
@@ -46,4 +44,3 @@ def test_build_counterfactual_engine_rejects_unknown_provider() -> None:
                 columns_path="missing-columns.pkl",
             )
         )
-
