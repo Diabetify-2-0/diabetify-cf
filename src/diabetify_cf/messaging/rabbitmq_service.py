@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import time
-from collections import Counter, OrderedDict
+from collections import Counter
 from datetime import datetime, timezone
 from typing import Any
 
@@ -30,7 +30,6 @@ class RabbitMQCFService:
         self.connection: pika.BlockingConnection | None = None
         self.channel: pika.channel.Channel | None = None
         self.is_running = False
-        self._response_cache: OrderedDict[str, CounterfactualResponse] = OrderedDict()
         self._status_counts: Counter[str] = Counter()
         self._reason_counts: Counter[str] = Counter()
         self._processed_count = 0
@@ -80,14 +79,8 @@ class RabbitMQCFService:
                 )
                 self.channel = self.connection.channel()
                 self._enable_publish_confirms()
-                self._declare_queue_with_policy(
-                    queue_name=self.settings.request_queue,
-                    dlq_name=self.settings.request_dlq,
-                )
-                self._declare_queue_with_policy(
-                    queue_name=self.settings.response_queue,
-                    dlq_name=self.settings.response_dlq,
-                )
+                self._declare_queue(self.settings.request_queue)
+                self._declare_queue(self.settings.response_queue)
                 self.channel.basic_qos(prefetch_count=self.settings.prefetch_count)
                 return
             except AMQPConnectionError as err:
@@ -109,21 +102,10 @@ class RabbitMQCFService:
         except Exception as err:
             self.logger.warning("RabbitMQ publisher confirms unavailable: %s", err)
 
-    def _declare_queue_with_policy(self, *, queue_name: str, dlq_name: str) -> None:
+    def _declare_queue(self, queue_name: str) -> None:
         if self.channel is None:
             raise RuntimeError("RabbitMQ channel is not initialized.")
-
-        arguments: dict[str, object] | None = None
-        if self.settings.rabbitmq_enable_dlq:
-            self.channel.queue_declare(queue=dlq_name, durable=True)
-            arguments = {
-                "x-dead-letter-exchange": "",
-                "x-dead-letter-routing-key": dlq_name,
-            }
-            if self.settings.rabbitmq_message_ttl_ms is not None:
-                arguments["x-message-ttl"] = self.settings.rabbitmq_message_ttl_ms
-
-        self.channel.queue_declare(queue=queue_name, durable=True, arguments=arguments)
+        self.channel.queue_declare(queue=queue_name, durable=True)
 
     def _on_message(
         self,
@@ -143,13 +125,7 @@ class RabbitMQCFService:
             if not correlation_id:
                 correlation_id = request.request_id
 
-            cached_response = self._response_cache.get(request.request_id)
-            if cached_response is not None:
-                response = cached_response
-                self._response_cache.move_to_end(request.request_id)
-            else:
-                response = self.engine.generate(request)
-                self._cache_response(request.request_id, response)
+            response = self.engine.generate(request)
         except ValidationError as err:
             request_id = self._extract_request_id(body)
             self.logger.warning(
@@ -232,16 +208,6 @@ class RabbitMQCFService:
             "last_runtime_ms": self._last_runtime_ms,
             "engine_version": getattr(self.engine, "engine_version", "unknown"),
         }
-
-    def _cache_response(self, request_id: str, response: CounterfactualResponse) -> None:
-        max_size = max(0, self.settings.idempotency_cache_size)
-        if max_size == 0 or not request_id:
-            return
-
-        self._response_cache[request_id] = response
-        self._response_cache.move_to_end(request_id)
-        while len(self._response_cache) > max_size:
-            self._response_cache.popitem(last=False)
 
     def _publish_response(
         self,

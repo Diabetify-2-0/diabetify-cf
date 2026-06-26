@@ -16,7 +16,6 @@ def _settings() -> Settings:
         Settings(),
         rabbitmq_publish_retries=2,
         rabbitmq_retry_delay_sec=0,
-        idempotency_cache_size=8,
     )
 
 
@@ -99,7 +98,7 @@ def test_publish_response_retries_transient_failure() -> None:
     assert len(channel.published_bodies) == 1
 
 
-def test_on_message_uses_cached_response_for_duplicate_request_id() -> None:
+def test_on_message_processes_duplicate_request_id_independently() -> None:
     engine = CountingEngine()
     service = RabbitMQCFService(settings=_settings(), engine=engine)  # type: ignore[arg-type]
     channel = FakeChannel()
@@ -109,7 +108,7 @@ def test_on_message_uses_cached_response_for_duplicate_request_id() -> None:
     service._on_message(channel, FakeMethod(), FakeProperties(), body)  # type: ignore[arg-type]
     service._on_message(channel, FakeMethod(), FakeProperties(), body)  # type: ignore[arg-type]
 
-    assert engine.calls == 1
+    assert engine.calls == 2
     assert channel.acked == [42, 42]
     assert len(channel.published_bodies) == 2
     snapshot = service.get_health_snapshot()

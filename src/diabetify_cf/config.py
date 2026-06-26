@@ -11,20 +11,6 @@ load_dotenv()
 SERVICE_ROOT = Path(__file__).resolve().parents[2]
 
 
-def _bool_env(name: str, default: bool) -> bool:
-    raw = os.getenv(name)
-    if raw is None:
-        return default
-    return raw.strip().lower() in {"1", "true", "yes", "on"}
-
-
-def _env_or_default(name: str, default: str) -> str:
-    raw = os.getenv(name)
-    if raw is None or not raw.strip():
-        return default
-    return raw
-
-
 def _path_env_or_default(name: str, default: str) -> str:
     raw = os.getenv(name)
     if raw is None or not raw.strip():
@@ -62,16 +48,6 @@ class Settings:
     rabbitmq_retry_delay_sec: int = int(os.getenv("CF_RABBITMQ_RETRY_DELAY_SEC", "5"))
     rabbitmq_publish_retries: int = int(os.getenv("CF_RABBITMQ_PUBLISH_RETRIES", "3"))
     prefetch_count: int = int(os.getenv("CF_PREFETCH_COUNT", "1"))
-    rabbitmq_enable_dlq: bool = _bool_env("CF_RABBITMQ_ENABLE_DLQ", False)
-    rabbitmq_message_ttl_ms: int | None = (
-        int(os.getenv("CF_RABBITMQ_MESSAGE_TTL_MS", ""))
-        if os.getenv("CF_RABBITMQ_MESSAGE_TTL_MS")
-        else None
-    )
-    request_dlq: str = os.getenv("CF_REQUEST_DLQ", "ml.cf.request.dlq")
-    response_dlq: str = os.getenv("CF_RESPONSE_DLQ", "ml.cf.response.dlq")
-    idempotency_cache_size: int = int(os.getenv("CF_IDEMPOTENCY_CACHE_SIZE", "1024"))
-
     max_lof_score: float = float(os.getenv("CF_MAX_LOF_SCORE", "1.5"))
     nn_candidate_pool_size: int = int(os.getenv("CF_NN_CANDIDATE_POOL_SIZE", "256"))
     nn_max_neighbors: int = int(os.getenv("CF_NN_MAX_NEIGHBORS", "64"))

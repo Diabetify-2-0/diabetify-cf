@@ -6,7 +6,6 @@ from diabetify_cf.config import (
     SERVICE_ROOT,
     Settings,
     _default_path_for,
-    _env_or_default,
     _path_env_or_default,
 )
 
@@ -29,12 +28,6 @@ def test_default_model_artifacts_use_local_artifacts_directory() -> None:
 
     assert model_path.parts[-4:] == ("diabetify-cf", "artifacts", "models", "xg_model.pkl")
     assert columns_path.parts[-4:] == ("diabetify-cf", "artifacts", "models", "x_columns.pkl")
-
-
-def test_empty_environment_value_falls_back_to_default(monkeypatch) -> None:
-    monkeypatch.setenv("CF_MODEL_PATH", "")
-
-    assert _env_or_default("CF_MODEL_PATH", "fallback.pkl") == "fallback.pkl"
 
 
 def test_relative_artifact_path_is_resolved_from_repo_root(monkeypatch) -> None:
