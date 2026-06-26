@@ -45,7 +45,6 @@ def _default_path_for(name: str) -> str:
         / "reference"
         / "reference_data.parquet",
         "CF_FEATURE_REGISTRY_PATH": SERVICE_ROOT / "configs" / "feature_registry.json",
-        "CF_ARTIFACT_MANIFEST_PATH": SERVICE_ROOT / "artifacts" / "models" / "manifest.json",
     }
     return str(defaults[name])
 
@@ -91,7 +90,6 @@ class Settings:
     feature_registry_path: str = _path_env_or_default(
         "CF_FEATURE_REGISTRY_PATH", _default_path_for("CF_FEATURE_REGISTRY_PATH")
     )
-    artifact_manifest_path: str = _path_env_or_default("CF_ARTIFACT_MANIFEST_PATH", "")
 
     def __post_init__(self) -> None:
         if self.app_env.strip().lower() not in {"prod", "production"}:

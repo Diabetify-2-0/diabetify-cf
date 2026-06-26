@@ -57,7 +57,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
         columns_path: str = "",
         reference_data_path: str = "",
         feature_registry_path: str = "",
-        artifact_manifest_path: str = "",
         max_lof_score: float = 1.5,
     ) -> None:
         self.max_lof_score = max(1.0, float(max_lof_score))
@@ -71,7 +70,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 columns_path=columns_path,
                 reference_data_path=reference_data_path,
                 feature_registry_path=feature_registry_path,
-                artifact_manifest_path=artifact_manifest_path,
             )
         except Exception as exc:
             self.initialization_error = str(exc)

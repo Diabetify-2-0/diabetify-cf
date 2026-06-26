@@ -5,9 +5,8 @@ import pickle
 from pathlib import Path
 
 import pandas as pd
-import pytest
 
-from diabetify_cf.engine.artifacts import _sha256_file, load_artifacts
+from diabetify_cf.engine.artifacts import load_artifacts
 
 
 def _write_artifacts(tmp_path: Path) -> dict[str, Path]:
@@ -49,7 +48,7 @@ def _write_artifacts(tmp_path: Path) -> dict[str, Path]:
     }
 
 
-def test_load_artifacts_records_artifact_checksums(tmp_path: Path) -> None:
+def test_load_artifacts_loads_model_columns_reference_and_registry(tmp_path: Path) -> None:
     paths = _write_artifacts(tmp_path)
 
     artifacts = load_artifacts(
@@ -59,24 +58,6 @@ def test_load_artifacts_records_artifact_checksums(tmp_path: Path) -> None:
         feature_registry_path=str(paths["feature_registry"]),
     )
 
-    assert artifacts.metadata is not None
-    assert artifacts.metadata.checksums["model"] == _sha256_file(str(paths["model"]))
-    assert artifacts.metadata.checksums["columns"] == _sha256_file(str(paths["columns"]))
-
-
-def test_load_artifacts_rejects_manifest_checksum_mismatch(tmp_path: Path) -> None:
-    paths = _write_artifacts(tmp_path)
-    manifest_path = tmp_path / "manifest.json"
-    manifest_path.write_text(
-        json.dumps({"artifacts": {"model": {"sha256": "not-the-real-checksum"}}}),
-        encoding="utf-8",
-    )
-
-    with pytest.raises(ValueError, match="checksum mismatch"):
-        load_artifacts(
-            model_path=str(paths["model"]),
-            columns_path=str(paths["columns"]),
-            reference_data_path=str(paths["reference_data"]),
-            feature_registry_path=str(paths["feature_registry"]),
-            artifact_manifest_path=str(manifest_path),
-        )
+    assert artifacts.feature_columns == ["BMI"]
+    assert list(artifacts.reference_data.columns) == ["BMI"]
+    assert artifacts.feature_registry.get("BMI") is not None

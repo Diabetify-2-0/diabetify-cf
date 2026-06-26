@@ -88,7 +88,6 @@ class ExternalCounterfactualVerifier:
                 columns_path=loaded_settings.columns_path,
                 reference_data_path=loaded_settings.reference_data_path,
                 feature_registry_path=loaded_settings.feature_registry_path,
-                artifact_manifest_path=loaded_settings.artifact_manifest_path,
             )
             if max_lof_score is None:
                 max_lof_score = loaded_settings.max_lof_score
