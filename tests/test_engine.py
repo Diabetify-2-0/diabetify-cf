@@ -33,7 +33,6 @@ def _request_payload(mutable_allowed: list[str]) -> dict:
         "target": {"target_class": "low_risk", "min_target_probability": 0.5},
         "instance": {"features": {"age": 45, "bmi": 31.2, "glucose": 165}},
         "constraints": {
-            "immutable_features": ["age"],
             "mutable_allowed": mutable_allowed,
         },
         "generation": {
@@ -616,7 +615,6 @@ def test_infeasible_response_preserves_request_context_in_planner_input() -> Non
     assert result.planner_input.input_prediction is not None
     assert result.planner_input.input_prediction.class_name == "high_risk"
     assert result.planner_input.mutable_allowed == ["bmi"]
-    assert result.planner_input.immutable_features == ["age"]
 
 
 def test_process_candidates_surfaces_medical_only_infeasible_reason() -> None:

@@ -21,18 +21,7 @@ class TargetSpec(BaseModel):
 class ConstraintSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    immutable_features: list[str] = Field(default_factory=list)
     mutable_allowed: list[str] = Field(default_factory=list)
-
-    @model_validator(mode="after")
-    def validate_no_overlap(self) -> ConstraintSpec:
-        immutable_set = set(self.immutable_features)
-        mutable_set = set(self.mutable_allowed)
-        overlap = immutable_set.intersection(mutable_set)
-        if overlap:
-            joined = ", ".join(sorted(overlap))
-            raise ValueError(f"immutable and mutable overlap: {joined}")
-        return self
 
 
 class GenerationSpec(BaseModel):
@@ -165,7 +154,6 @@ class PlannerInput(BaseModel):
     candidate_metrics: CandidateMetrics | None = None
     changed_features: list[PlannerFeatureChange] = Field(default_factory=list)
     mutable_allowed: list[str] = Field(default_factory=list)
-    immutable_features: list[str] = Field(default_factory=list)
 
     def to_wire(self) -> dict[str, Any]:
         payload = self.model_dump(exclude_none=True)
@@ -220,7 +208,6 @@ class CounterfactualResponse(BaseModel):
 
             planner_input: dict[str, Any] = {
                 "mutable_allowed": input_payload.get("mutable_allowed", []),
-                "immutable_features": input_payload.get("immutable_features", []),
             }
             if "input_prediction" in normalized:
                 planner_input["input_prediction"] = normalized["input_prediction"]
@@ -265,8 +252,6 @@ class CounterfactualResponse(BaseModel):
             input_payload.update(self.input_prediction.to_wire())
         if self.planner_input.mutable_allowed:
             input_payload["mutable_allowed"] = list(self.planner_input.mutable_allowed)
-        if self.planner_input.immutable_features:
-            input_payload["immutable_features"] = list(self.planner_input.immutable_features)
         if input_payload:
             payload["input"] = input_payload
 

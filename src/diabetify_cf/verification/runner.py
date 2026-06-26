@@ -248,7 +248,6 @@ def _planner_input_signature(planner_input: PlannerInput) -> tuple[Any, ...]:
         candidate_metrics,
         changed_features,
         tuple(planner_input.mutable_allowed),
-        tuple(planner_input.immutable_features),
     )
 
 

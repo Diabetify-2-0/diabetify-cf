@@ -11,7 +11,6 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-dev}
       CF_LOG_LEVEL: ${CF_LOG_LEVEL:-INFO}
-      CF_ENGINE_PROVIDER: ${CF_ENGINE_PROVIDER:-nn}
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-password123}@host.docker.internal:5672/
       CF_REQUEST_QUEUE: ${CF_REQUEST_QUEUE:-ml.cf.request}
       CF_RESPONSE_QUEUE: ${CF_RESPONSE_QUEUE:-ml.cf.response}

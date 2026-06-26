@@ -110,7 +110,6 @@ def _request() -> CounterfactualRequest:
             "target": {"target_class": "low_risk", "min_target_probability": 0.5},
             "instance": {"features": {"age": 45, "BMI": 31.2, "smoking_status": 2}},
             "constraints": {
-                "immutable_features": ["age"],
                 "mutable_allowed": ["BMI", "smoking_status"],
             },
         }

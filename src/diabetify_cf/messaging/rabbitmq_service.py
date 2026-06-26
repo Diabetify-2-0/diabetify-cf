@@ -252,7 +252,7 @@ class RabbitMQCFService:
 
         self.logger.info(
             "cf_request_completed request_id=%s status=%s reason_code=%s "
-            "runtime_ms=%s candidate_count=%s provider=%s",
+            "runtime_ms=%s candidate_count=%s engine_version=%s",
             response.request_id,
             response.status.value,
             response.reason_code.value,
@@ -279,7 +279,6 @@ class RabbitMQCFService:
             "reason_counts": dict(self._reason_counts),
             "last_request_id": self._last_request_id,
             "last_runtime_ms": self._last_runtime_ms,
-            "engine_provider": self.settings.engine_provider,
             "engine_version": getattr(self.engine, "engine_version", "unknown"),
         }
 

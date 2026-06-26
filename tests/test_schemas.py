@@ -29,7 +29,6 @@ def _valid_payload() -> dict:
             }
         },
         "constraints": {
-            "immutable_features": ["age"],
             "mutable_allowed": ["BMI", "is_cholesterol"],
         },
         "generation": {
@@ -45,9 +44,9 @@ def test_request_schema_valid() -> None:
     assert parsed.constraints.mutable_allowed == ["BMI", "is_cholesterol"]
 
 
-def test_overlap_mutable_and_immutable_is_rejected() -> None:
+def test_request_schema_rejects_legacy_immutable_features_field() -> None:
     payload = _valid_payload()
-    payload["constraints"]["immutable_features"] = ["age", "BMI"]
+    payload["constraints"]["immutable_features"] = ["age"]
     with pytest.raises(ValidationError):
         CounterfactualRequest.model_validate(payload)
 
@@ -110,7 +109,6 @@ def test_response_wire_uses_clean_input_and_candidate_contract() -> None:
                 )
             ],
             mutable_allowed=["BMI"],
-            immutable_features=["age"],
         ),
     )
 
@@ -119,7 +117,6 @@ def test_response_wire_uses_clean_input_and_candidate_contract() -> None:
     assert wire["input"]["class"] == "high_risk"
     assert wire["input"]["probability_low_risk"] == 0.25
     assert wire["input"]["mutable_allowed"] == ["BMI"]
-    assert wire["input"]["immutable_features"] == ["age"]
     assert wire["candidate"]["candidate_prediction"]["class"] == "low_risk"
     assert wire["candidate"]["lof_score"] == 1.0
     assert wire["candidate"]["changed_features"][0]["feature_name"] == "BMI"
@@ -140,7 +137,6 @@ def test_wire_response_round_trips_into_internal_model() -> None:
             "class": "high_risk",
             "probability_low_risk": 0.25,
             "mutable_allowed": ["BMI"],
-            "immutable_features": ["age"],
         },
         "candidate": {
             "candidate_id": "cand_1",
@@ -176,6 +172,5 @@ def test_wire_response_round_trips_into_internal_model() -> None:
     assert parsed.candidate.prediction.class_name == "low_risk"
     assert parsed.candidate.metrics.lof_score == 1.0
     assert parsed.planner_input.mutable_allowed == ["BMI"]
-    assert parsed.planner_input.immutable_features == ["age"]
     assert parsed.planner_input.changed_features[0].feature_name == "BMI"
     assert parsed.validation.medical_rules_passed

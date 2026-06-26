@@ -54,7 +54,6 @@ def _default_path_for(name: str) -> str:
 class Settings:
     app_env: str = os.getenv("APP_ENV", "dev")
     log_level: str = os.getenv("CF_LOG_LEVEL", "INFO")
-    engine_provider: str = os.getenv("CF_ENGINE_PROVIDER", "nn")
 
     rabbitmq_url: str = os.getenv("RABBITMQ_URL", "amqp://admin:password123@localhost:5672/")
     request_queue: str = os.getenv("CF_REQUEST_QUEUE", "ml.cf.request")

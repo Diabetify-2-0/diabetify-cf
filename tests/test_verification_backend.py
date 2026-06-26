@@ -29,7 +29,6 @@ def _request() -> CounterfactualRequest:
             "target": {"target_class": "low_risk", "min_target_probability": 0.5},
             "instance": {"features": {"age": 45, "BMI": 31.2, "smoking_status": 2}},
             "constraints": {
-                "immutable_features": ["age"],
                 "mutable_allowed": ["BMI", "smoking_status"],
             },
             "generation": {
@@ -130,7 +129,6 @@ def test_build_backend_submit_payload_uses_service_default_generation_when_omitt
             "target": {"target_class": "low_risk", "min_target_probability": 0.5},
             "instance": {"features": {"age": 45, "BMI": 31.2, "smoking_status": 2}},
             "constraints": {
-                "immutable_features": ["age"],
                 "mutable_allowed": ["BMI", "smoking_status"],
             },
         }

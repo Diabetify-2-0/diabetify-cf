@@ -274,9 +274,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
         model_columns = self.artifacts.feature_columns
 
         instance_features = registry.canonicalize_feature_map(request.instance.features)
-        immutable_input = registry.canonicalize_feature_names(
-            request.constraints.immutable_features
-        )
         mutable_input = registry.canonicalize_feature_names(request.constraints.mutable_allowed)
 
         unknown_features = [name for name in instance_features if name not in model_columns]
@@ -294,7 +291,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             registry=registry,
         )
 
-        immutable_set = set(registry.immutable_defaults()).union(immutable_input)
+        immutable_set = set(registry.immutable_defaults())
         mutable_allowed = self._build_mutable_allowed(
             mutable_input=mutable_input,
             model_columns=model_columns,
@@ -966,7 +963,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             candidate_metrics=candidate.metrics,
             changed_features=changed_features,
             mutable_allowed=list(prepared.mutable_allowed),
-            immutable_features=sorted(prepared.immutable_set),
         )
 
     def _build_request_context_planner_input(
@@ -978,7 +974,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
         return PlannerInput(
             input_prediction=prepared.base_prediction,
             mutable_allowed=list(prepared.mutable_allowed),
-            immutable_features=sorted(prepared.immutable_set),
         )
 
     @staticmethod

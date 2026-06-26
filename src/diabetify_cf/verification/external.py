@@ -153,10 +153,7 @@ class ExternalCounterfactualVerifier:
         candidate_df = self._checker._as_model_input_df(candidate_df)
 
         verified_prediction = self._checker._predict_info(candidate_df)
-        immutable_set = _verification_immutable_set(
-            request=request,
-            default_immutable_features=prepared.registry.immutable_defaults(),
-        )
+        immutable_set = set(prepared.registry.immutable_defaults())
         mutable_set = _verification_mutable_set(request=request)
         immutable_ok = _immutable_ok(
             candidate_features,
@@ -250,14 +247,6 @@ def _rate(
         return None
     matched = sum(1 for item in items if predicate(item))
     return matched / len(items)
-
-
-def _verification_immutable_set(
-    *,
-    request: CounterfactualRequest,
-    default_immutable_features: list[str],
-) -> set[str]:
-    return set(default_immutable_features).union(request.constraints.immutable_features)
 
 
 def _verification_mutable_set(*, request: CounterfactualRequest) -> set[str]:

@@ -40,7 +40,6 @@ def _request(request_id: str = "req-runner") -> CounterfactualRequest:
                 }
             },
             "constraints": {
-                "immutable_features": ["age"],
                 "mutable_allowed": ["BMI", "smoking_status"],
             },
         }

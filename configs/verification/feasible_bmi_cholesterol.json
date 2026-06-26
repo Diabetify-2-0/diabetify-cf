@@ -23,7 +23,6 @@
       }
     },
     "constraints": {
-      "immutable_features": ["age", "is_bloodline", "is_macrosomic_baby", "brinkman_index"],
       "mutable_allowed": ["BMI", "is_cholesterol"]
     }
   },
