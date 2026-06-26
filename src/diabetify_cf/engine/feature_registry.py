@@ -1,16 +1,3 @@
-"""Feature metadata utilities used by the counterfactual engine.
-
-The ML model only knows column names and numeric values. The engine needs a
-layer above that to answer questions such as:
-- which features are immutable,
-- which values are valid,
-- which aliases from incoming payloads map to model columns,
-- which direction of change is clinically preferred.
-
-This module turns `feature_registry.json` into a typed helper object that the
-engine can query during validation and candidate ranking.
-"""
-
 from __future__ import annotations
 
 import json
@@ -24,7 +11,6 @@ FeatureValue = TypeVar("FeatureValue")
 
 @dataclass(frozen=True)
 class FeatureDefinition:
-    """Runtime representation of one feature policy entry."""
 
     name: str
     feature_type: str
@@ -48,8 +34,6 @@ class FeatureDefinition:
 
 
 class FeatureRegistry:
-    """In-memory lookup helper built from `feature_registry.json`."""
-
     def __init__(self, version: str, features: list[FeatureDefinition]) -> None:
         self.version = version
         self.features = features
@@ -64,7 +48,6 @@ class FeatureRegistry:
 
     @classmethod
     def from_file(cls, path: str) -> FeatureRegistry:
-        """Build a registry from a JSON feature registry file."""
         payload = json.loads(Path(path).read_text(encoding="utf-8"))
         version = str(payload.get("version", "med_rule_v1"))
         features_raw = payload.get("features", [])
@@ -90,7 +73,6 @@ class FeatureRegistry:
 
     @classmethod
     def from_columns(cls, columns: list[str]) -> FeatureRegistry:
-        """Create a permissive fallback registry from raw model columns."""
         features: list[FeatureDefinition] = []
         for name in columns:
             features.append(
@@ -111,13 +93,11 @@ class FeatureRegistry:
         return cls(version="auto_v1", features=features)
 
     def resolve_name(self, name: str) -> str:
-        """Resolve an alias to the canonical model feature name."""
         if name in self._by_name:
             return name
         return self._alias_to_name.get(name, name)
 
     def canonicalize_feature_map(self, raw: Mapping[str, FeatureValue]) -> dict[str, FeatureValue]:
-        """Normalize request payload keys into canonical feature names."""
         canonical: dict[str, FeatureValue] = {}
         source_keys: dict[str, str] = {}
         for key, value in raw.items():
@@ -133,7 +113,6 @@ class FeatureRegistry:
         return canonical
 
     def canonicalize_feature_names(self, names: list[str]) -> list[str]:
-        """Normalize a list of feature names or aliases."""
         return [self.resolve_name(name) for name in names]
 
     def get(self, name: str) -> FeatureDefinition | None:
@@ -143,7 +122,6 @@ class FeatureRegistry:
         return name in self._by_name
 
     def default_permitted_range(self, feature_names: list[str]) -> dict[str, list[float]]:
-        """Return default search bounds for features with known min/max."""
         out: dict[str, list[float]] = {}
         for name in feature_names:
             feature = self.get(name)
@@ -155,11 +133,9 @@ class FeatureRegistry:
         return out
 
     def immutable_defaults(self) -> list[str]:
-        """Return features that are globally immutable by policy."""
         return [feature.name for feature in self.features if feature.immutable]
 
     def continuous_features(self, feature_names: list[str]) -> list[str]:
-        """Return the subset treated as continuous or ordinal by the engine."""
         continuous = []
         for name in feature_names:
             feature = self.get(name)
@@ -168,11 +144,6 @@ class FeatureRegistry:
         return continuous
 
     def coerce_value(self, name: str, value: object) -> object:
-        """Cast one value to the type expected for the given feature.
-
-        This keeps request payloads, generated candidates, and model inputs in a
-        consistent numeric form.
-        """
         feature = self.get(name)
         if feature is None:
             return value
@@ -214,7 +185,6 @@ class FeatureRegistry:
 
     @staticmethod
     def _normalize_direction(direction: str) -> str:
-        """Keep only supported direction values, fallback to `any`."""
         if direction in {"increase", "decrease", "any"}:
             return direction
         return "any"

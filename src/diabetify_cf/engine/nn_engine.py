@@ -16,14 +16,12 @@ from diabetify_cf.schemas import CounterfactualRequest
 class NearestNeighborOptions:
     candidate_pool_size: int = 256
     max_neighbors: int = 64
-    min_reference_low_risk_probability: float | None = None
 
     @classmethod
     def from_settings(cls, settings: Settings) -> NearestNeighborOptions:
         return cls(
             candidate_pool_size=settings.nn_candidate_pool_size,
             max_neighbors=settings.nn_max_neighbors,
-            min_reference_low_risk_probability=settings.nn_min_reference_low_risk_probability,
         )
 
 
@@ -65,12 +63,9 @@ class NearestNeighborCounterfactualEngine(ArtifactBackedCounterfactualEngine):
         reference_frame = self.artifacts.reference_data[self.artifacts.feature_columns].copy()
         reference_frame = self._as_model_input_df(reference_frame)
         low_risk_probabilities = self.artifacts.model.predict_proba(reference_frame)[:, 0]
-
-        min_probability = self.options.min_reference_low_risk_probability
-        if min_probability is None:
-            min_probability = float(request.target.min_target_probability)
-
-        eligible_mask = low_risk_probabilities >= min_probability
+        eligible_mask = (
+            low_risk_probabilities >= float(request.target.min_target_probability)
+        )
         eligible = reference_frame.loc[eligible_mask].copy()
         eligible_probabilities = low_risk_probabilities[eligible_mask]
 

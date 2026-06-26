@@ -75,11 +75,6 @@ class Settings:
     max_lof_score: float = float(os.getenv("CF_MAX_LOF_SCORE", "1.5"))
     nn_candidate_pool_size: int = int(os.getenv("CF_NN_CANDIDATE_POOL_SIZE", "256"))
     nn_max_neighbors: int = int(os.getenv("CF_NN_MAX_NEIGHBORS", "64"))
-    nn_min_reference_low_risk_probability: float | None = (
-        float(os.getenv("CF_NN_MIN_REFERENCE_LOW_RISK_PROBABILITY", ""))
-        if os.getenv("CF_NN_MIN_REFERENCE_LOW_RISK_PROBABILITY")
-        else None
-    )
     model_path: str = _path_env_or_default("CF_MODEL_PATH", _default_path_for("CF_MODEL_PATH"))
     columns_path: str = _path_env_or_default(
         "CF_COLUMNS_PATH", _default_path_for("CF_COLUMNS_PATH")

@@ -1,17 +1,3 @@
-"""RabbitMQ worker for the counterfactual service.
-
-This module is the transport layer between the outside system and the
-counterfactual engine. Its responsibilities are:
-- connect to RabbitMQ,
-- consume request messages from the request queue,
-- validate and translate the payload into application models,
-- call the engine,
-- publish a structured response message back to RabbitMQ.
-
-The worker intentionally catches validation and runtime failures so callers
-receive a response payload with status and reason code instead of silence.
-"""
-
 from __future__ import annotations
 
 import json
@@ -36,7 +22,6 @@ from diabetify_cf.schemas import (
 
 
 class RabbitMQCFService:
-    """Blocking RabbitMQ consumer/publisher for counterfactual requests."""
 
     def __init__(self, settings: Settings, engine: CounterfactualEngine) -> None:
         self.settings = settings
@@ -53,13 +38,10 @@ class RabbitMQCFService:
         self._last_runtime_ms: int | None = None
 
     def start(self) -> None:
-        """Open RabbitMQ resources and start the blocking consume loop."""
         self._setup_connection()
         self.is_running = True
 
         assert self.channel is not None
-        # Register one callback that will be invoked for every request message
-        # consumed from the request queue.
         self.channel.basic_consume(
             queue=self.settings.request_queue,
             on_message_callback=self._on_message,
@@ -77,13 +59,10 @@ class RabbitMQCFService:
             self.stop()
 
     def stop(self) -> None:
-        """Gracefully stop consuming and close RabbitMQ resources."""
         if not self.is_running:
             return
         self.is_running = False
 
-        # Stop the consumer before closing the channel so the blocking consume
-        # loop can exit cleanly.
         if self.channel is not None and self.channel.is_open:
             self.channel.stop_consuming()
             self.channel.close()
@@ -94,7 +73,6 @@ class RabbitMQCFService:
         self.logger.info("CF worker stopped.")
 
     def _setup_connection(self) -> None:
-        """Create the RabbitMQ connection, channel, queues, and QoS policy."""
         for attempt in range(1, self.settings.max_rabbitmq_retries + 1):
             try:
                 self.connection = pika.BlockingConnection(
@@ -102,9 +80,6 @@ class RabbitMQCFService:
                 )
                 self.channel = self.connection.channel()
                 self._enable_publish_confirms()
-                # Durable queues survive broker restarts. This matches the
-                # worker role where requests and responses should not vanish
-                # simply because RabbitMQ restarted.
                 self._declare_queue_with_policy(
                     queue_name=self.settings.request_queue,
                     dlq_name=self.settings.request_dlq,
@@ -113,9 +88,6 @@ class RabbitMQCFService:
                     queue_name=self.settings.response_queue,
                     dlq_name=self.settings.response_dlq,
                 )
-                # Prefetch controls how many unacked messages this worker can
-                # hold at once. The default config keeps processing mostly
-                # one-request-at-a-time.
                 self.channel.basic_qos(prefetch_count=self.settings.prefetch_count)
                 return
             except AMQPConnectionError as err:
@@ -160,30 +132,15 @@ class RabbitMQCFService:
         properties: pika.spec.BasicProperties,
         body: bytes,
     ) -> None:
-        """Handle one incoming RabbitMQ message end-to-end.
-
-        RabbitMQ passes four important pieces of information here:
-        - `channel`: the active channel used to ack the message,
-        - `method`: delivery metadata including delivery_tag,
-        - `properties`: user metadata such as correlation_id and reply_to,
-        - `body`: the raw request payload bytes.
-        """
         started = time.perf_counter()
-        # Prefer RPC-style reply_to when provided; otherwise publish to the
-        # service's standard response queue.
         response_queue = properties.reply_to or self.settings.response_queue
         correlation_id = properties.correlation_id
         engine_version = getattr(self.engine, "engine_version", "unknown")
 
         try:
-            # Decode JSON and validate it against the Pydantic schema before it
-            # reaches the engine.
             payload = json.loads(body.decode("utf-8"))
             request = CounterfactualRequest.model_validate(payload)
             if not correlation_id:
-                # If the sender omitted correlation_id, use request_id so the
-                # caller still has a stable identifier to match response to
-                # request.
                 correlation_id = request.request_id
 
             cached_response = self._response_cache.get(request.request_id)
@@ -194,8 +151,6 @@ class RabbitMQCFService:
                 response = self.engine.generate(request)
                 self._cache_response(request.request_id, response)
         except ValidationError as err:
-            # Schema problems are converted into structured ERROR responses.
-            # This keeps the queue protocol predictable for consumers.
             request_id = self._extract_request_id(body)
             self.logger.warning(
                 "Invalid counterfactual request schema for request_id=%s: %s",
@@ -218,8 +173,6 @@ class RabbitMQCFService:
             if not correlation_id:
                 correlation_id = request_id
         except Exception as err:
-            # Any unexpected runtime failure is also converted into a response
-            # payload so the caller is not left waiting forever.
             request_id = self._extract_request_id(body)
             self.logger.exception(
                 "Unhandled counterfactual request failure for request_id=%s: %s",
@@ -242,8 +195,6 @@ class RabbitMQCFService:
             if not correlation_id:
                 correlation_id = request_id
 
-        # Publish before ack so we do not acknowledge successful handling until
-        # a response has been prepared and sent.
         self._publish_response(
             response_queue=response_queue, correlation_id=correlation_id, response=response
         )
@@ -298,7 +249,6 @@ class RabbitMQCFService:
         correlation_id: str | None,
         response: CounterfactualResponse,
     ) -> None:
-        """Serialize and publish one response message to RabbitMQ."""
         if self.channel is None:
             raise RuntimeError("RabbitMQ channel is not initialized.")
 
@@ -339,11 +289,7 @@ class RabbitMQCFService:
             body=body,
             properties=pika.BasicProperties(
                 content_type="application/json",
-                # Echo the correlation id back so clients using RPC-style
-                # messaging can associate the response with the original
-                # request.
                 correlation_id=correlation_id,
-                # delivery_mode=2 marks the message as persistent.
                 delivery_mode=2,
                 timestamp=int(time.time()),
             ),
@@ -351,11 +297,6 @@ class RabbitMQCFService:
 
     @staticmethod
     def _extract_request_id(body: bytes) -> str:
-        """Best-effort extraction of request_id from a raw message body.
-
-        This is only used in failure paths where the main schema validation
-        already failed. The helper keeps error responses traceable when possible.
-        """
         try:
             payload: Any = json.loads(body.decode("utf-8"))
             request_id = payload.get("request_id")

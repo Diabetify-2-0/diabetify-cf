@@ -88,7 +88,7 @@ def test_engine_returns_feasible_when_input_already_satisfies_target() -> None:
     assert result.planner_input.mutable_allowed == ["bmi"]
 
 
-def test_engine_returns_feasible_when_high_risk_is_already_below_requested_threshold() -> None:
+def test_engine_returns_feasible_when_low_risk_probability_already_meets_requested_threshold() -> None:
     payload = _request_payload(["bmi"])
     payload["target"]["min_target_probability"] = 0.30
     req = CounterfactualRequest.model_validate(payload)
@@ -107,7 +107,7 @@ def test_engine_returns_feasible_when_high_risk_is_already_below_requested_thres
                 "mutable_allowed": ["bmi"],
                 "query_df": pd.DataFrame([{"age": 45, "bmi": 24.0, "glucose": 100.0}]),
                 "base_prediction": PredictionInfo(
-                    class_name="high_risk",
+                    class_name="low_risk",
                     probability_low_risk=0.35,
                 ),
                 "permitted_range": {"bmi": [20.0, 29.0]},
@@ -122,7 +122,7 @@ def test_engine_returns_feasible_when_high_risk_is_already_below_requested_thres
     assert result.reason_code == ReasonCode.TARGET_ALREADY_SATISFIED
     assert result.candidate is None
     assert result.input_prediction is not None
-    assert result.input_prediction.class_name == "high_risk"
+    assert result.input_prediction.class_name == "low_risk"
 
 
 def test_engine_returns_not_ready_when_artifacts_are_missing() -> None:
@@ -345,15 +345,12 @@ def test_permitted_range_applies_directional_constraints() -> None:
 def test_target_satisfied_enforces_min_probability() -> None:
     engine = TestCounterfactualEngine()
     low_prediction = PredictionInfo(class_name="low_risk", probability_low_risk=0.72)
-    high_prediction = PredictionInfo(class_name="high_risk", probability_low_risk=0.22)
-    moderate_high_prediction = PredictionInfo(class_name="high_risk", probability_low_risk=0.35)
+    moderate_low_prediction = PredictionInfo(class_name="low_risk", probability_low_risk=0.35)
 
     assert engine._target_satisfied(low_prediction, "low_risk", 0.70)
     assert not engine._target_satisfied(low_prediction, "low_risk", 0.80)
-    assert engine._target_satisfied(high_prediction, "high_risk", 0.75)
-    assert not engine._target_satisfied(high_prediction, "high_risk", 0.90)
-    assert engine._target_satisfied(moderate_high_prediction, "low_risk", 0.30)
-    assert not engine._target_satisfied(moderate_high_prediction, "low_risk", 0.40)
+    assert engine._target_satisfied(moderate_low_prediction, "low_risk", 0.30)
+    assert not engine._target_satisfied(moderate_low_prediction, "low_risk", 0.40)
 
 
 def test_objective_score_normalizes_action_cost_by_feature_range() -> None:
