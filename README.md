@@ -103,7 +103,8 @@ Layer verifikasi produksi dibagi menjadi dua:
 - `ExternalCounterfactualVerifier` untuk memvalidasi ulang kandidat returned
   secara independen terhadap model, LOF, dan gate constraint produksi.
 - `ScenarioRunner` untuk menjalankan kumpulan skenario dan mengagregasi
-  metrik seperti immutable violation rate, target satisfaction, infeasible
+  metrik seperti immutable violation rate, mutable violation rate,
+  LOF violation rate, average LOF score, target satisfaction, infeasible
   handling accuracy, repeatability, dan latency.
 - `BackendCounterfactualEngineAdapter` untuk menjalankan fixture yang sama
   melalui alur asynchronous `diabetify-be`, sehingga metrik dihitung dari
@@ -161,8 +162,9 @@ report JSON per suite plus manifest `index.json`:
 
 ```powershell
 python -m diabetify_cf.verification.run_backend_suite --scenarios evaluation/fixtures --backend-base-url http://localhost:8080 --backend-bearer-token <token>
-python -m diabetify_cf.verification.run_backend_suite --scenarios evaluation/fixtures --backend-base-url http://localhost:8080 --backend-bearer-token <token> --suite infeasible_core --suite repeatability_core
 python -m diabetify_cf.verification.run_backend_suite --scenarios evaluation/fixtures --backend-base-url http://localhost:8080 --backend-bearer-token <token> --suite actionability_core
+python -m diabetify_cf.verification.run_backend_suite --scenarios evaluation/fixtures --backend-base-url http://localhost:8080 --backend-bearer-token <token> --suite plausibility_core
+python -m diabetify_cf.verification.run_backend_suite --scenarios evaluation/fixtures --backend-base-url http://localhost:8080 --backend-bearer-token <token> --suite repeatability_core
 ```
 
 Untuk eksekusi yang repeatable tanpa perlu mengisi argumen panjang atau
@@ -186,6 +188,14 @@ Launcher config mendukung dua mode autentikasi:
 Launcher contoh backend suite secara default juga memasukkan `actionability_core`
 agar metrik `immutable_violation_rate` dan `mutable_violation_rate` dapat
 dilaporkan sebagai suite khusus untuk evaluasi constraint actionable.
+
+Launcher contoh backend suite juga memasukkan `plausibility_core` agar metrik
+`lof_violation_rate` dan `average_lof_score` dapat dilaporkan sebagai suite
+khusus untuk evaluasi plausibility berbasis LOF.
+
+Launcher contoh backend suite juga memasukkan `repeatability_core` agar metrik
+`repeatability_rate` dapat dilaporkan sebagai suite khusus untuk evaluasi
+konsistensi hasil untuk input yang identik.
 
 Placeholder `${ENV_VAR}` di launcher config akan di-resolve saat runtime,
 sehingga secret pengujian tidak perlu disimpan literal di file JSON.

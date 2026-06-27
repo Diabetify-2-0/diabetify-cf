@@ -19,7 +19,16 @@ from diabetify_cf.verification import (
     VerificationReport,
     VerificationScenario,
 )
-from diabetify_cf.schemas import CounterfactualRequest, CounterfactualResponse, ValidationSummary
+from diabetify_cf.schemas import (
+    CandidateMetrics,
+    CounterfactualCandidate,
+    CounterfactualRequest,
+    CounterfactualResponse,
+    PlannerFeatureChange,
+    PlannerInput,
+    PredictionInfo,
+    ValidationSummary,
+)
 
 
 def _dummy_request() -> CounterfactualRequest:
@@ -76,10 +85,113 @@ def _dummy_aggregate() -> ScenarioAggregate:
     )
 
 
+def _dummy_candidate_response() -> CounterfactualResponse:
+    return CounterfactualResponse(
+        request_id="req-suite",
+        status=Status.FEASIBLE,
+        reason_code=ReasonCode.OK,
+        message="ok",
+        candidate=CounterfactualCandidate(
+            candidate_id="cand-1",
+            features={
+                "BMI": 23.1,
+                "age": 45,
+                "smoking_status": 0,
+            },
+            delta={
+                "BMI": -8.1,
+                "smoking_status": -2,
+            },
+            prediction=PredictionInfo(class_name="low_risk", probability_low_risk=0.77),
+            metrics=CandidateMetrics(
+                distance_l1=10.1,
+                changed_feature_count=2,
+                lof_score=1.12,
+            ),
+        ),
+        validation=ValidationSummary(
+            immutable_violation=False,
+            mutable_violation=False,
+            medical_rules_passed=True,
+        ),
+        planner_input=PlannerInput(
+            recommended_candidate_id="cand-1",
+            candidate_prediction=PredictionInfo(class_name="low_risk", probability_low_risk=0.77),
+            candidate_metrics=CandidateMetrics(
+                distance_l1=10.1,
+                changed_feature_count=2,
+                lof_score=1.12,
+            ),
+            changed_features=[
+                PlannerFeatureChange(
+                    feature_name="BMI",
+                    baseline_value=31.2,
+                    candidate_value=23.1,
+                    delta=-8.1,
+                    direction="decrease",
+                ),
+                PlannerFeatureChange(
+                    feature_name="smoking_status",
+                    baseline_value=2,
+                    candidate_value=0,
+                    delta=-2,
+                    direction="decrease",
+                ),
+            ],
+            mutable_allowed=["BMI", "smoking_status"],
+        ),
+    )
+
+
+def _dummy_repeatability_aggregate() -> ScenarioAggregate:
+    scenario = VerificationScenario(
+        name="repeatability_case",
+        request=_dummy_request(),
+        expectation=ScenarioExpectation(expected_status=Status.FEASIBLE),
+        repeat_count=2,
+        tags=("repeatability",),
+    )
+    runs = [
+        ScenarioRunRecord(
+            scenario_name="repeatability_case",
+            iteration=1,
+            response=_dummy_candidate_response(),
+            verification=VerificationReport(
+                request_id="req-suite",
+                response_status=Status.FEASIBLE,
+                candidate_results=[],
+                outcome_consistent=True,
+            ),
+            duration_ms=12,
+            expectation_matched=True,
+        ),
+        ScenarioRunRecord(
+            scenario_name="repeatability_case",
+            iteration=2,
+            response=_dummy_candidate_response(),
+            verification=VerificationReport(
+                request_id="req-suite",
+                response_status=Status.FEASIBLE,
+                candidate_results=[],
+                outcome_consistent=True,
+            ),
+            duration_ms=14,
+            expectation_matched=True,
+        ),
+    ]
+    return ScenarioAggregate(
+        scenario=scenario,
+        runs=runs,
+        repeatability_consistent=True,
+    )
+
+
 def _dummy_summary() -> MetricSummary:
     return MetricSummary(
         immutable_violation_rate=None,
         mutable_violation_rate=None,
+        lof_violation_rate=None,
+        average_lof_score=None,
         repeatability_rate=None,
         average_latency_ms=10.0,
         p95_latency_ms=10.0,
@@ -96,9 +208,9 @@ def test_select_verification_suites_returns_defaults_when_unspecified() -> None:
 
 
 def test_select_verification_suites_returns_requested_subset() -> None:
-    suites = select_verification_suites(("repeatability_core",))
+    suites = select_verification_suites(("plausibility_core",))
 
-    assert [suite.name for suite in suites] == ["repeatability_core"]
+    assert [suite.name for suite in suites] == ["plausibility_core"]
 
 
 def test_select_verification_suites_rejects_unknown_suite() -> None:
@@ -148,11 +260,28 @@ def test_actionability_suite_collects_all_configured_actionability_scenarios() -
     assert "infeasible_medical_rule_only_high_target" not in [scenario.name for scenario in scenarios]
 
 
+def test_plausibility_suite_collects_feasible_non_repeatability_scenarios() -> None:
+    suite = VerificationSuite(
+        name="plausibility_only",
+        description="plausibility filter",
+        include_tags=("feasible",),
+        exclude_tags=("repeatability",),
+    )
+
+    scenarios = load_suite_scenarios(Path("evaluation") / "fixtures", suite)
+    names = [scenario.name for scenario in scenarios]
+
+    assert "feasible_bmi_only" in names
+    assert "feasible_full_actionable" in names
+    assert "feasible_smoker_full_actionable" in names
+    assert "feasible_bmi_activity_repeatability" not in names
+
+
 def test_build_suite_payload_includes_suite_metadata() -> None:
     suite = VerificationSuite(
-        name="feasible_core",
-        description="feasible filter",
-        include_tags=("feasible",),
+        name="custom_suite",
+        description="custom filter",
+        include_tags=("custom",),
     )
 
     payload = build_suite_payload(
@@ -162,9 +291,128 @@ def test_build_suite_payload_includes_suite_metadata() -> None:
         metadata={"runner_mode": "backend_suite_member"},
     )
 
-    assert payload["metadata"]["suite_name"] == "feasible_core"
-    assert payload["metadata"]["suite_include_tags"] == ["feasible"]
+    assert payload["metadata"]["suite_name"] == "custom_suite"
+    assert payload["metadata"]["suite_include_tags"] == ["custom"]
     assert payload["metadata"]["runner_mode"] == "backend_suite_member"
+
+
+def test_build_actionability_suite_payload_uses_compact_profile_shape() -> None:
+    suite = VerificationSuite(
+        name="actionability_core",
+        description="actionability filter",
+        include_tags=("actionability",),
+    )
+
+    payload = build_suite_payload(
+        suite=suite,
+        aggregates=[_dummy_aggregate()],
+        summary=_dummy_summary(),
+        metadata={"runner_mode": "backend_suite_member"},
+    )
+
+    assert "metadata" not in payload
+    assert set(payload["summary"]) == {
+        "immutable_violation_rate",
+        "mutable_violation_rate",
+        "total_scenarios",
+        "total_candidates",
+        "average_latency_ms",
+        "p95_latency_ms",
+    }
+    scenario_payload = payload["scenarios"][0]
+    assert scenario_payload["description"] == "Mutable: BMI, Smoking Status"
+    assert scenario_payload["immutable_violation"] is False
+    assert scenario_payload["mutable_violation"] is False
+    assert scenario_payload["instance_profile"]["BMI"] == 31.2
+    assert scenario_payload["counterfactual_candidate"] is None
+    assert scenario_payload["changed_features"] is None
+
+
+def test_build_plausibility_suite_payload_uses_compact_lof_shape() -> None:
+    suite = VerificationSuite(
+        name="plausibility_core",
+        description="plausibility filter",
+        include_tags=("feasible",),
+        exclude_tags=("repeatability",),
+    )
+
+    payload = build_suite_payload(
+        suite=suite,
+        aggregates=[_dummy_aggregate()],
+        summary=_dummy_summary(),
+        metadata={"runner_mode": "backend_suite_member"},
+    )
+
+    assert "metadata" not in payload
+    assert set(payload["summary"]) == {
+        "lof_within_threshold",
+        "average_lof_score",
+        "total_scenarios",
+        "total_candidates",
+        "average_latency_ms",
+        "p95_latency_ms",
+    }
+    assert payload["summary"]["lof_within_threshold"] is True
+    scenario_payload = payload["scenarios"][0]
+    assert scenario_payload == {
+        "name": "suite_case",
+        "description": "Mutable: BMI, Smoking Status",
+        "lof_score": None,
+    }
+
+
+def test_build_repeatability_suite_payload_uses_compact_repeatability_shape() -> None:
+    suite = VerificationSuite(
+        name="repeatability_core",
+        description="repeatability filter",
+        include_tags=("repeatability",),
+    )
+
+    payload = build_suite_payload(
+        suite=suite,
+        aggregates=[_dummy_repeatability_aggregate()],
+        summary=MetricSummary(
+            immutable_violation_rate=None,
+            mutable_violation_rate=None,
+            lof_violation_rate=None,
+            average_lof_score=None,
+            repeatability_rate=1.0,
+            average_latency_ms=13.0,
+            p95_latency_ms=13.9,
+            total_scenarios=1,
+            total_runs=2,
+            total_candidates=0,
+        ),
+        metadata={"runner_mode": "backend_suite_member"},
+    )
+
+    assert "metadata" not in payload
+    assert set(payload["summary"]) == {
+        "repeatability_rate",
+        "fully_repeatable",
+        "total_scenarios",
+        "total_runs",
+        "average_latency_ms",
+        "p95_latency_ms",
+    }
+    assert payload["summary"]["fully_repeatable"] is True
+    scenario_payload = payload["scenarios"][0]
+    assert scenario_payload["name"] == "repeatability_case"
+    assert scenario_payload["description"] == "Mutable: BMI, Smoking Status"
+    assert scenario_payload["repeat_count"] == 2
+    assert scenario_payload["repeatable"] is True
+    assert scenario_payload["all_statuses_identical"] is True
+    assert scenario_payload["all_candidates_identical"] is True
+    assert scenario_payload["counterfactual_profile_run_1"] == {
+        "age": 45,
+        "BMI": 23.1,
+        "smoking_status": 0,
+    }
+    assert scenario_payload["counterfactual_profile_run_2"] == {
+        "age": 45,
+        "BMI": 23.1,
+        "smoking_status": 0,
+    }
 
 
 def test_build_backend_suite_index_contains_suite_rows() -> None:
@@ -172,11 +420,11 @@ def test_build_backend_suite_index_contains_suite_rows() -> None:
         backend_base_url="http://localhost:8080",
         suite_reports=[
             {
-                "suite_name": "feasible_core",
+                "suite_name": "actionability_core",
                 "scenario_count": 2,
                 "total_runs": 2,
                 "passed": True,
-                "report_path": "reports/feasible_core.json",
+                "report_path": "reports/actionability_core.json",
             }
         ],
         output_dir=Path("reports"),
@@ -186,5 +434,8 @@ def test_build_backend_suite_index_contains_suite_rows() -> None:
     assert payload["runner_mode"] == "backend_suite"
     assert payload["backend_base_url"] == "http://localhost:8080"
     assert payload["suite_count"] == 1
-    assert payload["suites"][0]["suite_name"] == "feasible_core"
+    assert payload["suites"][0]["suite_name"] == "actionability_core"
     assert payload["overall_summary"]["total_scenarios"] == 1
+    assert payload["overall_summary"]["lof_violation_rate"] is None
+    assert payload["overall_summary"]["average_lof_score"] is None
+

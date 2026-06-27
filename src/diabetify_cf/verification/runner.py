@@ -76,6 +76,8 @@ class ScenarioAggregate:
 class MetricSummary:
     immutable_violation_rate: float | None
     mutable_violation_rate: float | None
+    lof_violation_rate: float | None
+    average_lof_score: float | None
     repeatability_rate: float | None
     average_latency_ms: float
     p95_latency_ms: float
@@ -148,6 +150,15 @@ class ScenarioRunner:
             mutable_violation_rate=_ratio(
                 candidate_results,
                 lambda item: not item.mutable_ok,
+            ),
+            lof_violation_rate=_ratio(
+                candidate_results,
+                lambda item: not item.external_lof_within_threshold,
+            ),
+            average_lof_score=(
+                mean(item.external_lof_score for item in candidate_results)
+                if candidate_results
+                else None
             ),
             repeatability_rate=_ratio(
                 repeatability_scenarios,

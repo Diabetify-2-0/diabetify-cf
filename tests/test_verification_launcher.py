@@ -30,8 +30,7 @@ def test_load_launcher_config_reads_login_mode_example() -> None:
         assert config.output_dir == "evaluation/reports/backend_suites"
         assert config.suites == (
             "actionability_core",
-            "feasible_core",
-            "infeasible_core",
+            "plausibility_core",
             "repeatability_core",
         )
         assert config.auth_mode == "login"

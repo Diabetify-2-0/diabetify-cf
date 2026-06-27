@@ -5,7 +5,12 @@ from pathlib import Path
 from typing import Any
 
 from diabetify_cf.verification.fixtures import load_verification_scenarios
-from diabetify_cf.verification.reporting import build_report_payload
+from diabetify_cf.verification.reporting import (
+    build_actionability_report_payload,
+    build_plausibility_report_payload,
+    build_repeatability_report_payload,
+    build_report_payload,
+)
 from diabetify_cf.verification.runner import MetricSummary, ScenarioAggregate
 
 
@@ -24,14 +29,10 @@ DEFAULT_BACKEND_SUITES: tuple[VerificationSuite, ...] = (
         include_tags=("actionability",),
     ),
     VerificationSuite(
-        name="feasible_core",
-        description="Feasible production scenarios, including target-already-satisfied cases.",
+        name="plausibility_core",
+        description="Feasible non-repeatability scenarios used to evaluate LOF-based plausibility.",
         include_tags=("feasible",),
-    ),
-    VerificationSuite(
-        name="infeasible_core",
-        description="Infeasible production scenarios covering no-mutable, target-unreachable, and medical-only outcomes.",
-        include_tags=("infeasible",),
+        exclude_tags=("repeatability",),
     ),
     VerificationSuite(
         name="repeatability_core",
@@ -74,6 +75,22 @@ def build_suite_payload(
     summary: MetricSummary,
     metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    if suite.name == "actionability_core":
+        return build_actionability_report_payload(
+            aggregates=aggregates,
+            summary=summary,
+        )
+    if suite.name == "plausibility_core":
+        return build_plausibility_report_payload(
+            aggregates=aggregates,
+            summary=summary,
+        )
+    if suite.name == "repeatability_core":
+        return build_repeatability_report_payload(
+            aggregates=aggregates,
+            summary=summary,
+        )
+
     return build_report_payload(
         aggregates=aggregates,
         summary=summary,
@@ -106,6 +123,8 @@ def build_backend_suite_index(
         payload["overall_summary"] = {
             "immutable_violation_rate": overall_summary.immutable_violation_rate,
             "mutable_violation_rate": overall_summary.mutable_violation_rate,
+            "lof_violation_rate": overall_summary.lof_violation_rate,
+            "average_lof_score": overall_summary.average_lof_score,
             "repeatability_rate": overall_summary.repeatability_rate,
             "average_latency_ms": overall_summary.average_latency_ms,
             "p95_latency_ms": overall_summary.p95_latency_ms,

@@ -171,6 +171,11 @@ def test_build_report_payload_contains_summary_and_run_details() -> None:
     assert payload["metadata"]["runner_mode"] == "service"
     assert payload["metadata"]["selected_tags"] == ["report"]
     assert "generated_at" in payload["metadata"]
+    assert payload["summary"]["lof_violation_rate"] == 0.0
+    assert payload["summary"]["average_lof_score"] == 1.1
     assert payload["scenarios"][0]["name"] == "report_case"
     assert payload["scenarios"][0]["runs"][0]["response_status"] == "FEASIBLE"
-    assert payload["scenarios"][0]["runs"][0]["verification"]["candidates"][0]["candidate_id"] == "cf_1"
+    candidate = payload["scenarios"][0]["runs"][0]["verification"]["candidates"][0]
+    assert candidate["candidate_id"] == "cf_1"
+    assert candidate["external_lof_score"] == 1.1
+    assert candidate["external_lof_within_threshold"] is True

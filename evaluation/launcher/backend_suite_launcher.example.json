@@ -2,7 +2,7 @@
   "backend_base_url": "${DIABETIFY_BACKEND_BASE_URL}",
   "scenarios_path": "evaluation/fixtures",
   "output_dir": "evaluation/reports/backend_suites",
-  "suites": ["actionability_core", "feasible_core", "infeasible_core", "repeatability_core"],
+  "suites": ["actionability_core", "plausibility_core", "repeatability_core"],
   "auth_mode": "login",
   "register_if_missing": true,
   "login": {
