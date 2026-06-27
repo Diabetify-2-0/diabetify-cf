@@ -1,6 +1,6 @@
 {
   "backend_base_url": "http://localhost:8080",
-  "scenarios_path": "configs/verification",
+  "scenarios_path": "evaluation/fixtures",
   "output_dir": "reports",
   "auth_mode": "bearer_token"
 }

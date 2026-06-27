@@ -25,6 +25,10 @@ diabetify-cf/
     models/
   configs/
     feature_registry.json
+  evaluation/
+    fixtures/
+    launcher/
+    reports/
   src/diabetify_cf/
     engine/
     messaging/
@@ -86,6 +90,9 @@ docker compose up --build -d
 - `src/diabetify_cf/verification/` berisi verifier independen dan scenario
   runner untuk memvalidasi kandidat returned dari service produksi serta
   mengagregasi metrik evaluasi produksi.
+- `evaluation/fixtures/` berisi skenario evaluasi yang dapat dijalankan ulang.
+- `evaluation/launcher/` berisi launcher config untuk suite backend.
+- `evaluation/reports/` berisi output JSON hasil evaluasi.
 - Model XGBoost dan referensi data produksi dibekukan sebagai artefak lokal di
   `artifacts/models/` dan `artifacts/reference/`.
 
@@ -102,22 +109,22 @@ Layer verifikasi produksi dibagi menjadi dua:
   melalui alur asynchronous `diabetify-be`, sehingga metrik dihitung dari
   flow backend produksi, bukan hanya pemanggilan engine langsung.
 
-Fixture skenario produksi dapat disimpan di `configs/verification/` lalu
+Fixture skenario produksi disimpan di `evaluation/fixtures/` lalu
 dijalankan melalui entry point berikut:
 
 ```powershell
-python -m diabetify_cf.verification.run_service_scenarios --scenarios configs/verification
+python -m diabetify_cf.verification.run_service_scenarios --scenarios evaluation/fixtures
 ```
 
 Secara default report JSON akan ditulis ke
-`artifacts/verification/service_verification_report.json`.
+`evaluation/reports/service/service_verification_report.json`.
 
 Runner juga dapat difilter berdasarkan tag fixture agar suite feasible,
 infeasible, atau repeatability dapat dijalankan terpisah:
 
 ```powershell
-python -m diabetify_cf.verification.run_service_scenarios --scenarios configs/verification --include-tag repeatability
-python -m diabetify_cf.verification.run_service_scenarios --scenarios configs/verification --exclude-tag repeatability
+python -m diabetify_cf.verification.run_service_scenarios --scenarios evaluation/fixtures --include-tag repeatability
+python -m diabetify_cf.verification.run_service_scenarios --scenarios evaluation/fixtures --exclude-tag repeatability
 ```
 
 Fixture produksi yang saat ini sudah dikalibrasi terhadap engine mencakup:
@@ -133,11 +140,11 @@ Untuk menjalankan fixture yang sama melalui backend Diabetify yang sudah
 terautentikasi:
 
 ```powershell
-python -m diabetify_cf.verification.run_backend_scenarios --scenarios configs/verification --backend-base-url http://localhost:8080 --backend-bearer-token <token>
+python -m diabetify_cf.verification.run_backend_scenarios --scenarios evaluation/fixtures --backend-base-url http://localhost:8080 --backend-bearer-token <token>
 ```
 
 Secara default report JSON backend akan ditulis ke
-`artifacts/verification/backend_verification_report.json`.
+`evaluation/reports/backend/backend_verification_report.json`.
 
 Runner backend secara default akan melakukan preflight ke
 `/counterfactual/health` dan menunggu sampai backend melaporkan
@@ -146,15 +153,16 @@ secara eksplisit bila environment integrasi memang tidak mengekspos route
 health:
 
 ```powershell
-python -m diabetify_cf.verification.run_backend_scenarios --scenarios configs/verification --backend-base-url http://localhost:8080 --backend-bearer-token <token> --skip-health-check
+python -m diabetify_cf.verification.run_backend_scenarios --scenarios evaluation/fixtures --backend-base-url http://localhost:8080 --backend-bearer-token <token> --skip-health-check
 ```
 
 Untuk menjalankan beberapa suite backend sekaligus dan menghasilkan satu
 report JSON per suite plus manifest `index.json`:
 
 ```powershell
-python -m diabetify_cf.verification.run_backend_suite --scenarios configs/verification --backend-base-url http://localhost:8080 --backend-bearer-token <token>
-python -m diabetify_cf.verification.run_backend_suite --scenarios configs/verification --backend-base-url http://localhost:8080 --backend-bearer-token <token> --suite infeasible_core --suite repeatability_core
+python -m diabetify_cf.verification.run_backend_suite --scenarios evaluation/fixtures --backend-base-url http://localhost:8080 --backend-bearer-token <token>
+python -m diabetify_cf.verification.run_backend_suite --scenarios evaluation/fixtures --backend-base-url http://localhost:8080 --backend-bearer-token <token> --suite infeasible_core --suite repeatability_core
+python -m diabetify_cf.verification.run_backend_suite --scenarios evaluation/fixtures --backend-base-url http://localhost:8080 --backend-bearer-token <token> --suite actionability_core
 ```
 
 Untuk eksekusi yang repeatable tanpa perlu mengisi argumen panjang atau
@@ -164,7 +172,7 @@ menyalin bearer token manual setiap kali, tersedia launcher berbasis config:
 set DIABETIFY_BACKEND_BASE_URL=http://localhost:8080
 set DIABETIFY_TEST_USER_EMAIL=tester@example.com
 set DIABETIFY_TEST_USER_PASSWORD=replace-with-test-password
-python -m diabetify_cf.verification.run_backend_suite_from_config --config configs/verification/backend_suite_launcher.example.json
+python -m diabetify_cf.verification.run_backend_suite_from_config --config evaluation/launcher/backend_suite_launcher.example.json
 ```
 
 Launcher config mendukung dua mode autentikasi:
@@ -174,6 +182,10 @@ Launcher config mendukung dua mode autentikasi:
   `POST /users/login` menggunakan kredensial user uji
 - `register_if_missing = true` untuk membuat user uji terlebih dahulu lewat
   `POST /users` saat login gagal karena akun belum ada di environment target
+
+Launcher contoh backend suite secara default juga memasukkan `actionability_core`
+agar metrik `immutable_violation_rate` dan `mutable_violation_rate` dapat
+dilaporkan sebagai suite khusus untuk evaluasi constraint actionable.
 
 Placeholder `${ENV_VAR}` di launcher config akan di-resolve saat runtime,
 sehingga secret pengujian tidak perlu disimpan literal di file JSON.

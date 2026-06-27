@@ -52,7 +52,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--output",
-        default=str(Path("artifacts") / "verification" / "backend_verification_report.json"),
+        default=str(Path("evaluation") / "reports" / "backend" / "backend_verification_report.json"),
         help="Path to write the backend verification report JSON.",
     )
     parser.add_argument(

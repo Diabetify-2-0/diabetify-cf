@@ -117,7 +117,7 @@ def test_load_suite_scenarios_filters_using_suite_tags() -> None:
         include_tags=("repeatability",),
     )
 
-    scenarios = load_suite_scenarios(Path("configs") / "verification", suite)
+    scenarios = load_suite_scenarios(Path("evaluation") / "fixtures", suite)
 
     assert [scenario.name for scenario in scenarios] == [
         "feasible_bmi_activity_repeatability",
@@ -135,7 +135,7 @@ def test_actionability_suite_collects_all_configured_actionability_scenarios() -
         include_tags=("actionability",),
     )
 
-    scenarios = load_suite_scenarios(Path("configs") / "verification", suite)
+    scenarios = load_suite_scenarios(Path("evaluation") / "fixtures", suite)
 
     assert len(scenarios) == 10
     assert "feasible_bmi_only" in [scenario.name for scenario in scenarios]

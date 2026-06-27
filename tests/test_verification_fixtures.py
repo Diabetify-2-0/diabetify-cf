@@ -7,7 +7,7 @@ from diabetify_cf.verification import load_verification_scenarios
 
 
 def test_load_verification_scenarios_from_directory() -> None:
-    scenarios = load_verification_scenarios(Path("configs") / "verification")
+    scenarios = load_verification_scenarios(Path("evaluation") / "fixtures")
 
     assert len(scenarios) >= 6
     feasible = next(item for item in scenarios if item.name == "feasible_bmi_activity")
@@ -59,7 +59,7 @@ def test_load_verification_scenarios_from_directory() -> None:
 
 def test_load_verification_scenarios_can_filter_by_tags() -> None:
     scenarios = load_verification_scenarios(
-        Path("configs") / "verification",
+        Path("evaluation") / "fixtures",
         include_tags=("repeatability",),
     )
 
@@ -68,7 +68,7 @@ def test_load_verification_scenarios_can_filter_by_tags() -> None:
 
 def test_load_verification_scenarios_can_exclude_by_tags() -> None:
     scenarios = load_verification_scenarios(
-        Path("configs") / "verification",
+        Path("evaluation") / "fixtures",
         exclude_tags=("repeatability",),
     )
 

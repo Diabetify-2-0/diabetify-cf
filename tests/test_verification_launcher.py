@@ -21,14 +21,19 @@ def test_load_launcher_config_reads_login_mode_example() -> None:
     os.environ["DIABETIFY_TEST_USER_PASSWORD"] = "test-password"
 
     config = load_launcher_config(
-        "configs/verification/backend_suite_launcher.example.json"
+        "evaluation/launcher/backend_suite_launcher.example.json"
     )
 
     try:
         assert config.backend_base_url == "http://localhost:8080"
-        assert config.scenarios_path == "configs/verification"
-        assert config.output_dir == "configs/verification/backend_suite_reports"
-        assert config.suites == ("feasible_core", "infeasible_core", "repeatability_core")
+        assert config.scenarios_path == "evaluation/fixtures"
+        assert config.output_dir == "evaluation/reports/backend_suites"
+        assert config.suites == (
+            "actionability_core",
+            "feasible_core",
+            "infeasible_core",
+            "repeatability_core",
+        )
         assert config.auth_mode == "login"
         assert config.login is not None
         assert config.login.email == "tester@example.com"
@@ -47,7 +52,7 @@ def test_load_launcher_config_reads_login_mode_example() -> None:
 def test_resolve_backend_bearer_token_returns_static_token_for_bearer_mode() -> None:
     config = LauncherConfig(
         backend_base_url="http://localhost:8080",
-        scenarios_path="configs/verification",
+        scenarios_path="evaluation/fixtures",
         output_dir="reports",
         auth_mode="bearer_token",
         bearer_token="static-token",
@@ -60,7 +65,7 @@ def test_resolve_backend_bearer_token_returns_static_token_for_bearer_mode() -> 
 
 def test_load_launcher_config_rejects_missing_bearer_token() -> None:
     try:
-        load_launcher_config("configs/verification/backend_suite_launcher.invalid_bearer.json")
+        load_launcher_config("evaluation/launcher/backend_suite_launcher.invalid_bearer.json")
     except ValueError as err:
         assert "requires bearer_token" in str(err)
     else:
@@ -76,7 +81,7 @@ def test_load_launcher_config_rejects_missing_env_placeholder() -> None:
     os.environ.pop("DIABETIFY_TEST_USER_PASSWORD", None)
 
     try:
-        load_launcher_config("configs/verification/backend_suite_launcher.example.json")
+        load_launcher_config("evaluation/launcher/backend_suite_launcher.example.json")
     except ValueError as err:
         assert "environment variable 'DIABETIFY_BACKEND_BASE_URL' is not set" in str(err)
     else:
@@ -92,7 +97,7 @@ def test_login_mode_requires_credentials() -> None:
         resolve_backend_bearer_token(
             LauncherConfig(
                 backend_base_url="http://localhost:8080",
-                scenarios_path="configs/verification",
+                scenarios_path="evaluation/fixtures",
                 output_dir="reports",
                 auth_mode="login",
                 login=None,
@@ -107,7 +112,7 @@ def test_login_mode_requires_credentials() -> None:
 def test_login_mode_bootstraps_user_when_missing() -> None:
     config = LauncherConfig(
         backend_base_url="http://localhost:8080",
-        scenarios_path="configs/verification",
+        scenarios_path="evaluation/fixtures",
         output_dir="reports",
         auth_mode="login",
         login=LoginCredentials(email="tester@example.com", password="secret123"),
@@ -172,7 +177,7 @@ def test_login_mode_bootstraps_user_when_missing() -> None:
 
 def test_register_if_missing_requires_bootstrap_user() -> None:
     try:
-        load_launcher_config("configs/verification/backend_suite_launcher.invalid_register_if_missing.json")
+        load_launcher_config("evaluation/launcher/backend_suite_launcher.invalid_register_if_missing.json")
     except ValueError as err:
         assert "requires bootstrap_user.name" in str(err)
     else:

@@ -65,7 +65,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--output-dir",
-        default=str(Path("artifacts") / "verification" / "backend_suites"),
+        default=str(Path("evaluation") / "reports" / "backend_suites"),
         help="Directory where per-suite JSON reports and the suite index JSON will be written.",
     )
     parser.add_argument(

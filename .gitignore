@@ -24,6 +24,12 @@ dist/
 # Experiment outputs 
 experiments/results/*
 !experiments/results/.gitkeep
+evaluation/reports/**
+!evaluation/reports/
+!evaluation/reports/service/
+!evaluation/reports/backend/
+!evaluation/reports/backend_suites/
+!evaluation/reports/**/.gitkeep
 
 # Notebook local state
 .ipynb_checkpoints/

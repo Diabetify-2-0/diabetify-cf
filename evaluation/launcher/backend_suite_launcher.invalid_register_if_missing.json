@@ -1,7 +1,7 @@
 {
   "backend_base_url": "http://localhost:8080",
-  "scenarios_path": "configs/verification",
-  "output_dir": "configs/verification/backend_suite_reports",
+  "scenarios_path": "evaluation/fixtures",
+  "output_dir": "evaluation/reports/backend_suites",
   "suites": ["feasible_core"],
   "auth_mode": "login",
   "register_if_missing": true,

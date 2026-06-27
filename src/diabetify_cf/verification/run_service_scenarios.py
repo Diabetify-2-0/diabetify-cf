@@ -28,7 +28,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--output",
-        default=str(Path("artifacts") / "verification" / "service_verification_report.json"),
+        default=str(Path("evaluation") / "reports" / "service" / "service_verification_report.json"),
         help="Path to write the verification report JSON.",
     )
     parser.add_argument(
