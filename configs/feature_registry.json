@@ -92,7 +92,7 @@
       "default_mutable": false,
       "global_min": 0,
       "global_max": 3,
-      "cost_weight": 1.5,
+      "cost_weight": 10.0,
       "preferred_direction": "any",
       "aliases": []
     },

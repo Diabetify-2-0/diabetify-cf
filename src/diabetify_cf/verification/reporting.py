@@ -95,6 +95,31 @@ def build_repeatability_report_payload(
         "scenarios": [_repeatability_scenario_payload(aggregate) for aggregate in aggregates],
     }
 
+def build_latency_report_payload(
+    *,
+    aggregates: list[ScenarioAggregate],
+    summary: MetricSummary,
+    target_average_latency_ms: float = 5000.0,
+) -> dict[str, Any]:
+    all_runs = [run for aggregate in aggregates for run in aggregate.runs]
+    durations = [run.duration_ms for run in all_runs]
+    successful_runs = sum(1 for run in all_runs if run.passed)
+    return {
+        "summary": {
+            "target_average_latency_ms": target_average_latency_ms,
+            "passed": summary.average_latency_ms < target_average_latency_ms
+            and successful_runs == len(all_runs),
+            "average_latency_ms": summary.average_latency_ms,
+            "min_latency_ms": min(durations) if durations else 0,
+            "max_latency_ms": max(durations) if durations else 0,
+            "p95_latency_ms": summary.p95_latency_ms,
+            "total_scenarios": summary.total_scenarios,
+            "total_runs": summary.total_runs,
+            "successful_runs": successful_runs,
+            "failed_runs": len(all_runs) - successful_runs,
+        },
+        "scenarios": [_latency_scenario_payload(aggregate) for aggregate in aggregates],
+    }
 
 def _scenario_payload(aggregate: ScenarioAggregate) -> dict[str, Any]:
     return {
@@ -199,6 +224,38 @@ def _repeatability_scenario_payload(aggregate: ScenarioAggregate) -> dict[str, A
         payload[f"counterfactual_profile_run_{run.iteration}"] = candidate_profile
     return payload
 
+def _latency_scenario_payload(aggregate: ScenarioAggregate) -> dict[str, Any]:
+    durations = [run.duration_ms for run in aggregate.runs]
+    statuses: dict[str, int] = {}
+    for run in aggregate.runs:
+        status = run.response.status.value
+        statuses[status] = statuses.get(status, 0) + 1
+
+    return {
+        "name": aggregate.scenario.name,
+        "description": aggregate.scenario.description,
+        "target_probability": aggregate.scenario.request.target.min_target_probability,
+        "description_mutable": _mutable_description(
+            aggregate.scenario.request.constraints.mutable_allowed
+        ),
+        "repeat_count": aggregate.scenario.repeat_count,
+        "passed": aggregate.passed,
+        "average_latency_ms": aggregate.average_duration_ms,
+        "min_latency_ms": min(durations) if durations else 0,
+        "max_latency_ms": max(durations) if durations else 0,
+        "p95_latency_ms": _percentile(durations, 95.0),
+        "terminal_statuses": statuses,
+        "runs": [
+            {
+                "iteration": run.iteration,
+                "duration_ms": run.duration_ms,
+                "passed": run.passed,
+                "response_status": run.response.status.value,
+                "response_reason_code": run.response.reason_code.value,
+            }
+            for run in aggregate.runs
+        ],
+    }
 
 def _mutable_description(mutable_allowed: list[str]) -> str:
     if not mutable_allowed:
@@ -295,3 +352,16 @@ def _normalized_value(value: object) -> object:
     if isinstance(value, (int, float)):
         return round(float(value), 9)
     return value
+def _percentile(values: list[int], percentile: float) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    if len(ordered) == 1:
+        return float(ordered[0])
+    rank = max(0.0, min(100.0, percentile)) / 100.0 * (len(ordered) - 1)
+    lower = int(rank)
+    upper = min(lower + 1, len(ordered) - 1)
+    fraction = rank - lower
+    return ordered[lower] + (ordered[upper] - ordered[lower]) * fraction
+
+

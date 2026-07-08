@@ -7,6 +7,7 @@ from typing import Any
 from diabetify_cf.verification.fixtures import load_verification_scenarios
 from diabetify_cf.verification.reporting import (
     build_actionability_report_payload,
+    build_latency_report_payload,
     build_plausibility_report_payload,
     build_repeatability_report_payload,
     build_report_payload,
@@ -38,6 +39,11 @@ DEFAULT_BACKEND_SUITES: tuple[VerificationSuite, ...] = (
         name="repeatability_core",
         description="Repeated production scenarios used to compute repeatability stability.",
         include_tags=("repeatability",),
+    ),
+    VerificationSuite(
+        name="latency_core",
+        description="Repeated backend-service scenarios used to evaluate counterfactual response time.",
+        include_tags=("latency",),
     ),
 )
 
@@ -90,6 +96,11 @@ def build_suite_payload(
             aggregates=aggregates,
             summary=summary,
         )
+    if suite.name == "latency_core":
+        return build_latency_report_payload(
+            aggregates=aggregates,
+            summary=summary,
+        )
 
     return build_report_payload(
         aggregates=aggregates,
@@ -133,3 +144,6 @@ def build_backend_suite_index(
             "total_candidates": overall_summary.total_candidates,
         }
     return payload
+
+
+

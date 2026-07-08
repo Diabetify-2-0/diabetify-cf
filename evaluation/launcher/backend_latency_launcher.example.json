@@ -1,0 +1,17 @@
+{
+  "backend_base_url": "${DIABETIFY_BACKEND_BASE_URL}",
+  "scenarios_path": "evaluation/fixtures",
+  "output_dir": "evaluation/reports/backend_suites",
+  "suites": ["latency_core"],
+  "auth_mode": "login",
+  "register_if_missing": false,
+  "login": {
+    "email": "${DIABETIFY_TEST_USER_EMAIL}",
+    "password": "${DIABETIFY_TEST_USER_PASSWORD}"
+  },
+  "skip_health_check": false,
+  "health_timeout_seconds": 60.0,
+  "health_poll_interval_seconds": 2.0,
+  "poll_interval_seconds": 1.0,
+  "poll_timeout_seconds": 300.0
+}

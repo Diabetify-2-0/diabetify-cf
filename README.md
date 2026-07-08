@@ -165,6 +165,7 @@ python -m diabetify_cf.verification.run_backend_suite --scenarios evaluation/fix
 python -m diabetify_cf.verification.run_backend_suite --scenarios evaluation/fixtures --backend-base-url http://localhost:8080 --backend-bearer-token <token> --suite actionability_core
 python -m diabetify_cf.verification.run_backend_suite --scenarios evaluation/fixtures --backend-base-url http://localhost:8080 --backend-bearer-token <token> --suite plausibility_core
 python -m diabetify_cf.verification.run_backend_suite --scenarios evaluation/fixtures --backend-base-url http://localhost:8080 --backend-bearer-token <token> --suite repeatability_core
+python -m diabetify_cf.verification.run_backend_suite --scenarios evaluation/fixtures --backend-base-url http://localhost:8080 --backend-bearer-token <token> --suite latency_core
 ```
 
 Untuk eksekusi yang repeatable tanpa perlu mengisi argumen panjang atau
@@ -196,6 +197,10 @@ khusus untuk evaluasi plausibility berbasis LOF.
 Launcher contoh backend suite juga memasukkan `repeatability_core` agar metrik
 `repeatability_rate` dapat dilaporkan sebagai suite khusus untuk evaluasi
 konsistensi hasil untuk input yang identik.
+Suite `latency_core` dapat dijalankan secara eksplisit untuk pengujian waktu
+respons RM-4. Suite ini memakai empat skenario backend-service, masing-masing
+diulang 10 kali, dan menghasilkan metrik `average_latency_ms`, `min_latency_ms`,
+`max_latency_ms`, serta `p95_latency_ms`.
 
 Placeholder `${ENV_VAR}` di launcher config akan di-resolve saat runtime,
 sehingga secret pengujian tidak perlu disimpan literal di file JSON.
@@ -208,3 +213,6 @@ sehingga secret pengujian tidak perlu disimpan literal di file JSON.
 - Input `instance.features` wajib berisi seluruh fitur model pada `x_columns.pkl`.
 - `CF_MAX_LOF_SCORE` mengatur batas maksimum skor LOF kandidat (semakin kecil semakin ketat).
 - `CF_NN_*` mengatur candidate pool, jumlah neighbor yang diproyeksikan, dan sparsity projection untuk engine `NN`.
+
+
+

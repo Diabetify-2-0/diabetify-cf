@@ -276,6 +276,23 @@ def test_plausibility_suite_collects_feasible_non_repeatability_scenarios() -> N
     assert "feasible_smoker_full_actionable" in names
     assert "feasible_bmi_activity_repeatability" not in names
 
+def test_latency_suite_collects_configured_latency_scenarios() -> None:
+    suite = VerificationSuite(
+        name="latency_core",
+        description="latency filter",
+        include_tags=("latency",),
+    )
+
+    scenarios = load_suite_scenarios(Path("evaluation") / "fixtures", suite)
+
+    assert [scenario.name for scenario in scenarios] == [
+        "latency_bmi_activity",
+        "latency_bmi_only",
+        "latency_full_actionable",
+        "latency_infeasible_target_unreachable_bmi_only",
+    ]
+    assert all(scenario.repeat_count == 10 for scenario in scenarios)
+
 
 def test_build_suite_payload_includes_suite_metadata() -> None:
     suite = VerificationSuite(
@@ -414,6 +431,54 @@ def test_build_repeatability_suite_payload_uses_compact_repeatability_shape() ->
         "smoking_status": 0,
     }
 
+def test_build_latency_suite_payload_uses_latency_shape() -> None:
+    suite = VerificationSuite(
+        name="latency_core",
+        description="latency filter",
+        include_tags=("latency",),
+    )
+
+    payload = build_suite_payload(
+        suite=suite,
+        aggregates=[_dummy_repeatability_aggregate()],
+        summary=MetricSummary(
+            immutable_violation_rate=None,
+            mutable_violation_rate=None,
+            lof_violation_rate=None,
+            average_lof_score=None,
+            repeatability_rate=None,
+            average_latency_ms=13.0,
+            p95_latency_ms=13.9,
+            total_scenarios=1,
+            total_runs=2,
+            total_candidates=0,
+        ),
+        metadata={"runner_mode": "backend_suite_member"},
+    )
+
+    assert "metadata" not in payload
+    assert payload["summary"] == {
+        "target_average_latency_ms": 5000.0,
+        "passed": True,
+        "average_latency_ms": 13.0,
+        "min_latency_ms": 12,
+        "max_latency_ms": 14,
+        "p95_latency_ms": 13.9,
+        "total_scenarios": 1,
+        "total_runs": 2,
+        "successful_runs": 2,
+        "failed_runs": 0,
+    }
+    scenario_payload = payload["scenarios"][0]
+    assert scenario_payload["name"] == "repeatability_case"
+    assert scenario_payload["repeat_count"] == 2
+    assert scenario_payload["average_latency_ms"] == 13
+    assert scenario_payload["min_latency_ms"] == 12
+    assert scenario_payload["max_latency_ms"] == 14
+    assert scenario_payload["p95_latency_ms"] == 13.9
+    assert scenario_payload["terminal_statuses"] == {"FEASIBLE": 2}
+    assert [run["duration_ms"] for run in scenario_payload["runs"]] == [12, 14]
+
 
 def test_build_backend_suite_index_contains_suite_rows() -> None:
     payload = build_backend_suite_index(
@@ -438,4 +503,5 @@ def test_build_backend_suite_index_contains_suite_rows() -> None:
     assert payload["overall_summary"]["total_scenarios"] == 1
     assert payload["overall_summary"]["lof_violation_rate"] is None
     assert payload["overall_summary"]["average_lof_score"] is None
+
 
