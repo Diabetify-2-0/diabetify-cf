@@ -104,8 +104,8 @@ Layer verifikasi produksi dibagi menjadi dua:
   secara independen terhadap model, LOF, dan gate constraint produksi.
 - `ScenarioRunner` untuk menjalankan kumpulan skenario dan mengagregasi
   metrik seperti immutable violation rate, mutable violation rate,
-  LOF violation rate, average LOF score, target satisfaction, infeasible
-  handling accuracy, repeatability, dan latency.
+  LOF violation rate, average/min/max LOF score, target satisfaction,
+  infeasible handling accuracy, repeatability, dan latency.
 - `BackendCounterfactualEngineAdapter` untuk menjalankan fixture yang sama
   melalui alur asynchronous `diabetify-be`, sehingga metrik dihitung dari
   flow backend produksi, bukan hanya pemanggilan engine langsung.
@@ -128,14 +128,11 @@ python -m diabetify_cf.verification.run_service_scenarios --scenarios evaluation
 python -m diabetify_cf.verification.run_service_scenarios --scenarios evaluation/fixtures --exclude-tag repeatability
 ```
 
-Fixture produksi yang saat ini sudah dikalibrasi terhadap engine mencakup:
-
-- `feasible_bmi_activity`
-- `feasible_bmi_activity_repeatability`
-- `feasible_target_already_satisfied`
-- `infeasible_no_mutable`
-- `infeasible_target_unreachable_bmi_only`
-- `infeasible_medical_rule_only_high_target`
+Fixture produksi yang saat ini sudah dikalibrasi terhadap engine mencakup
+suite khusus `actionability_core`, `plausibility_core`, `repeatability_core`,
+dan `latency_core`. Suite actionability utama memakai
+`evaluation/fixtures/actionability_profiles.json` berisi 10 profil feasible
+dengan konfigurasi mutable berbeda dan 2 profil infeasible.
 
 Untuk menjalankan fixture yang sama melalui backend Diabetify yang sudah
 terautentikasi:
@@ -188,18 +185,30 @@ Launcher config mendukung dua mode autentikasi:
 
 Launcher contoh backend suite secara default juga memasukkan `actionability_core`
 agar metrik `immutable_violation_rate` dan `mutable_violation_rate` dapat
-dilaporkan sebagai suite khusus untuk evaluasi constraint actionable.
+dilaporkan sebagai suite khusus untuk evaluasi constraint actionable. Suite ini
+memakai 12 profil dari `artifacts/reference/reference_data.parquet`: 5 profil
+non-smoker/former-smoker feasible, 5 profil active smoker feasible, dan 2 profil
+infeasible.
 
 Launcher contoh backend suite juga memasukkan `plausibility_core` agar metrik
-`lof_violation_rate` dan `average_lof_score` dapat dilaporkan sebagai suite
-khusus untuk evaluasi plausibility berbasis LOF.
+`lof_violation_rate`, `average_lof_score`, `min_lof_score`, dan
+`max_lof_score` dapat dilaporkan sebagai suite khusus untuk evaluasi
+plausibility berbasis LOF. Suite ini memakai 25 profil high-risk dari
+`artifacts/reference/reference_data.parquet` dengan konfigurasi full-actionable
+non-smoker dan smoker.
 
 Launcher contoh backend suite juga memasukkan `repeatability_core` agar metrik
 `repeatability_rate` dapat dilaporkan sebagai suite khusus untuk evaluasi
-konsistensi hasil untuk input yang identik.
+konsistensi hasil untuk input yang identik. Suite ini memakai 12 profil
+high-risk dari `artifacts/reference/reference_data.parquet`, terdiri dari 10
+skenario feasible dan 2 skenario infeasible, masing-masing diulang 10 kali.
+Seluruh run tetap dipakai untuk pengecekan konsistensi, sementara laporan per
+profil hanya menampilkan `counterfactual_profile_run_1` sampai
+`counterfactual_profile_run_3`.
 Suite `latency_core` dapat dijalankan secara eksplisit untuk pengujian waktu
-respons RM-4. Suite ini memakai empat skenario backend-service, masing-masing
-diulang 10 kali, dan menghasilkan metrik `average_latency_ms`, `min_latency_ms`,
+respons RM-4. Suite ini memakai 25 profil high-risk dari
+`artifacts/reference/reference_data.parquet`, masing-masing diulang 5 kali,
+dan menghasilkan metrik `average_latency_ms`, `min_latency_ms`,
 `max_latency_ms`, serta `p95_latency_ms`.
 
 Placeholder `${ENV_VAR}` di launcher config akan di-resolve saat runtime,

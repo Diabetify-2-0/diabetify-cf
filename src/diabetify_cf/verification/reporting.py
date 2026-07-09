@@ -25,6 +25,8 @@ def build_report_payload(
             "mutable_violation_rate": summary.mutable_violation_rate,
             "lof_violation_rate": summary.lof_violation_rate,
             "average_lof_score": summary.average_lof_score,
+            "min_lof_score": summary.min_lof_score,
+            "max_lof_score": summary.max_lof_score,
             "repeatability_rate": summary.repeatability_rate,
             "average_latency_ms": summary.average_latency_ms,
             "p95_latency_ms": summary.p95_latency_ms,
@@ -69,6 +71,8 @@ def build_plausibility_report_payload(
         "summary": {
             "lof_within_threshold": summary.lof_violation_rate in (None, 0.0),
             "average_lof_score": summary.average_lof_score,
+            "min_lof_score": summary.min_lof_score,
+            "max_lof_score": summary.max_lof_score,
             "total_scenarios": summary.total_scenarios,
             "total_candidates": summary.total_candidates,
             "average_latency_ms": summary.average_latency_ms,
@@ -95,6 +99,7 @@ def build_repeatability_report_payload(
         "scenarios": [_repeatability_scenario_payload(aggregate) for aggregate in aggregates],
     }
 
+
 def build_latency_report_payload(
     *,
     aggregates: list[ScenarioAggregate],
@@ -120,6 +125,7 @@ def build_latency_report_payload(
         },
         "scenarios": [_latency_scenario_payload(aggregate) for aggregate in aggregates],
     }
+
 
 def _scenario_payload(aggregate: ScenarioAggregate) -> dict[str, Any]:
     return {
@@ -206,6 +212,13 @@ def _plausibility_scenario_payload(aggregate: ScenarioAggregate) -> dict[str, An
 
 def _repeatability_scenario_payload(aggregate: ScenarioAggregate) -> dict[str, Any]:
     instance_profile = dict(aggregate.scenario.request.instance.features)
+    first_candidate_profile: dict[str, JSONFeatureValue] | None = None
+    if aggregate.runs and aggregate.runs[0].response.candidate is not None:
+        first_candidate_profile = _ordered_profile(
+            source=aggregate.runs[0].response.candidate.features,
+            preferred_order=list(instance_profile.keys()),
+        )
+
     payload: dict[str, Any] = {
         "name": aggregate.scenario.name,
         "description": _mutable_description(aggregate.scenario.request.constraints.mutable_allowed),
@@ -213,8 +226,16 @@ def _repeatability_scenario_payload(aggregate: ScenarioAggregate) -> dict[str, A
         "repeatable": aggregate.repeatability_consistent,
         "all_statuses_identical": _all_statuses_identical(aggregate.runs),
         "all_candidates_identical": _all_candidates_identical(aggregate.runs),
+        "changed_features": (
+            _changed_features(
+                baseline=instance_profile,
+                candidate=first_candidate_profile,
+            )
+            if first_candidate_profile is not None
+            else {}
+        ),
     }
-    for run in aggregate.runs:
+    for run in aggregate.runs[:3]:
         candidate_profile = None
         if run.response.candidate is not None:
             candidate_profile = _ordered_profile(
@@ -223,6 +244,7 @@ def _repeatability_scenario_payload(aggregate: ScenarioAggregate) -> dict[str, A
             )
         payload[f"counterfactual_profile_run_{run.iteration}"] = candidate_profile
     return payload
+
 
 def _latency_scenario_payload(aggregate: ScenarioAggregate) -> dict[str, Any]:
     durations = [run.duration_ms for run in aggregate.runs]
@@ -256,6 +278,7 @@ def _latency_scenario_payload(aggregate: ScenarioAggregate) -> dict[str, Any]:
             for run in aggregate.runs
         ],
     }
+
 
 def _mutable_description(mutable_allowed: list[str]) -> str:
     if not mutable_allowed:
@@ -352,6 +375,8 @@ def _normalized_value(value: object) -> object:
     if isinstance(value, (int, float)):
         return round(float(value), 9)
     return value
+
+
 def _percentile(values: list[int], percentile: float) -> float:
     if not values:
         return 0.0
@@ -363,5 +388,3 @@ def _percentile(values: list[int], percentile: float) -> float:
     upper = min(lower + 1, len(ordered) - 1)
     fraction = rank - lower
     return ordered[lower] + (ordered[upper] - ordered[lower]) * fraction
-
-

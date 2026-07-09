@@ -3,22 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from diabetify_cf.reason_codes import ReasonCode, Status
-from diabetify_cf.verification.suites import (
-    DEFAULT_BACKEND_SUITES,
-    VerificationSuite,
-    build_backend_suite_index,
-    build_suite_payload,
-    load_suite_scenarios,
-    select_verification_suites,
-)
-from diabetify_cf.verification import (
-    MetricSummary,
-    ScenarioAggregate,
-    ScenarioExpectation,
-    ScenarioRunRecord,
-    VerificationReport,
-    VerificationScenario,
-)
 from diabetify_cf.schemas import (
     CandidateMetrics,
     CounterfactualCandidate,
@@ -28,6 +12,22 @@ from diabetify_cf.schemas import (
     PlannerInput,
     PredictionInfo,
     ValidationSummary,
+)
+from diabetify_cf.verification import (
+    MetricSummary,
+    ScenarioAggregate,
+    ScenarioExpectation,
+    ScenarioRunRecord,
+    VerificationReport,
+    VerificationScenario,
+)
+from diabetify_cf.verification.suites import (
+    DEFAULT_BACKEND_SUITES,
+    VerificationSuite,
+    build_backend_suite_index,
+    build_suite_payload,
+    load_suite_scenarios,
+    select_verification_suites,
 )
 
 
@@ -148,7 +148,7 @@ def _dummy_repeatability_aggregate() -> ScenarioAggregate:
         name="repeatability_case",
         request=_dummy_request(),
         expectation=ScenarioExpectation(expected_status=Status.FEASIBLE),
-        repeat_count=2,
+        repeat_count=4,
         tags=("repeatability",),
     )
     runs = [
@@ -178,6 +178,32 @@ def _dummy_repeatability_aggregate() -> ScenarioAggregate:
             duration_ms=14,
             expectation_matched=True,
         ),
+        ScenarioRunRecord(
+            scenario_name="repeatability_case",
+            iteration=3,
+            response=_dummy_candidate_response(),
+            verification=VerificationReport(
+                request_id="req-suite",
+                response_status=Status.FEASIBLE,
+                candidate_results=[],
+                outcome_consistent=True,
+            ),
+            duration_ms=16,
+            expectation_matched=True,
+        ),
+        ScenarioRunRecord(
+            scenario_name="repeatability_case",
+            iteration=4,
+            response=_dummy_candidate_response(),
+            verification=VerificationReport(
+                request_id="req-suite",
+                response_status=Status.FEASIBLE,
+                candidate_results=[],
+                outcome_consistent=True,
+            ),
+            duration_ms=18,
+            expectation_matched=True,
+        ),
     ]
     return ScenarioAggregate(
         scenario=scenario,
@@ -192,6 +218,8 @@ def _dummy_summary() -> MetricSummary:
         mutable_violation_rate=None,
         lof_violation_rate=None,
         average_lof_score=None,
+        min_lof_score=None,
+        max_lof_score=None,
         repeatability_rate=None,
         average_latency_ms=10.0,
         p95_latency_ms=10.0,
@@ -226,72 +254,73 @@ def test_load_suite_scenarios_filters_using_suite_tags() -> None:
     suite = VerificationSuite(
         name="repeatability_only",
         description="repeatability filter",
-        include_tags=("repeatability",),
+        include_tags=("consistency_profile",),
     )
 
     scenarios = load_suite_scenarios(Path("evaluation") / "fixtures", suite)
 
-    assert [scenario.name for scenario in scenarios] == [
-        "feasible_bmi_activity_repeatability",
-        "repeatability_feasible_full_actionable",
-        "repeatability_infeasible_no_mutable",
-        "repeatability_infeasible_target_unreachable_bmi_only",
-        "repeatability_target_already_satisfied",
-    ]
+    assert len(scenarios) == 12
+    assert scenarios[0].name == "consistency_profile_01"
+    assert scenarios[-1].name == "consistency_profile_12"
+    assert all(scenario.repeat_count == 10 for scenario in scenarios)
 
 
 def test_actionability_suite_collects_all_configured_actionability_scenarios() -> None:
     suite = VerificationSuite(
         name="actionability_only",
         description="actionability filter",
-        include_tags=("actionability",),
+        include_tags=("actionability_profile",),
     )
 
     scenarios = load_suite_scenarios(Path("evaluation") / "fixtures", suite)
 
-    assert len(scenarios) == 10
-    assert "feasible_bmi_only" in [scenario.name for scenario in scenarios]
-    assert "feasible_full_actionable" in [scenario.name for scenario in scenarios]
-    assert "feasible_smoker_bmi_hypertension" in [scenario.name for scenario in scenarios]
-    assert "feasible_smoker_bmi_hypertension_activity" in [scenario.name for scenario in scenarios]
-    assert "feasible_smoker_full_actionable" in [scenario.name for scenario in scenarios]
-    assert "infeasible_no_mutable" in [scenario.name for scenario in scenarios]
-    assert "feasible_target_already_satisfied" not in [scenario.name for scenario in scenarios]
-    assert "infeasible_medical_rule_only_high_target" not in [scenario.name for scenario in scenarios]
+    assert [scenario.name for scenario in scenarios] == [
+        "actionability_non_bmi_only",
+        "actionability_non_bmi_hypertension",
+        "actionability_non_bmi_cholesterol",
+        "actionability_non_bmi_activity_hypertension",
+        "actionability_non_full_subset",
+        "actionability_smoker_bmi_only",
+        "actionability_smoker_bmi_smoking_allowed",
+        "actionability_smoker_bmi_hypertension_smoking_allowed",
+        "actionability_smoker_bmi_activity_hypertension_smoking_allowed",
+        "actionability_smoker_full_subset",
+        "actionability_infeasible_no_mutable",
+        "actionability_infeasible_hypertension_only",
+    ]
+    assert all(scenario.repeat_count == 1 for scenario in scenarios)
 
 
 def test_plausibility_suite_collects_feasible_non_repeatability_scenarios() -> None:
     suite = VerificationSuite(
         name="plausibility_only",
         description="plausibility filter",
-        include_tags=("feasible",),
-        exclude_tags=("repeatability",),
+        include_tags=("plausibility",),
     )
 
     scenarios = load_suite_scenarios(Path("evaluation") / "fixtures", suite)
     names = [scenario.name for scenario in scenarios]
 
-    assert "feasible_bmi_only" in names
-    assert "feasible_full_actionable" in names
-    assert "feasible_smoker_full_actionable" in names
-    assert "feasible_bmi_activity_repeatability" not in names
+    assert len(names) == 25
+    assert names[0] == "plausibility_full_actionable_profile_01"
+    assert names[-1] == "plausibility_smoker_full_actionable_profile_25"
+    assert all("plausibility" in scenario.tags for scenario in scenarios)
+
 
 def test_latency_suite_collects_configured_latency_scenarios() -> None:
     suite = VerificationSuite(
         name="latency_core",
         description="latency filter",
-        include_tags=("latency",),
+        include_tags=("latency_profile",),
     )
 
     scenarios = load_suite_scenarios(Path("evaluation") / "fixtures", suite)
 
-    assert [scenario.name for scenario in scenarios] == [
-        "latency_bmi_activity",
-        "latency_bmi_only",
-        "latency_full_actionable",
-        "latency_infeasible_target_unreachable_bmi_only",
-    ]
-    assert all(scenario.repeat_count == 10 for scenario in scenarios)
+    assert len(scenarios) == 25
+    assert scenarios[0].name == "latency_profile_01"
+    assert scenarios[-1].name == "latency_profile_25"
+    assert all(scenario.repeat_count == 5 for scenario in scenarios)
+    assert all("latency_profile" in scenario.tags for scenario in scenarios)
 
 
 def test_build_suite_payload_includes_suite_metadata() -> None:
@@ -364,6 +393,8 @@ def test_build_plausibility_suite_payload_uses_compact_lof_shape() -> None:
     assert set(payload["summary"]) == {
         "lof_within_threshold",
         "average_lof_score",
+        "min_lof_score",
+        "max_lof_score",
         "total_scenarios",
         "total_candidates",
         "average_latency_ms",
@@ -393,11 +424,13 @@ def test_build_repeatability_suite_payload_uses_compact_repeatability_shape() ->
             mutable_violation_rate=None,
             lof_violation_rate=None,
             average_lof_score=None,
+            min_lof_score=None,
+            max_lof_score=None,
             repeatability_rate=1.0,
-            average_latency_ms=13.0,
-            p95_latency_ms=13.9,
+            average_latency_ms=15.0,
+            p95_latency_ms=17.7,
             total_scenarios=1,
-            total_runs=2,
+            total_runs=4,
             total_candidates=0,
         ),
         metadata={"runner_mode": "backend_suite_member"},
@@ -416,10 +449,17 @@ def test_build_repeatability_suite_payload_uses_compact_repeatability_shape() ->
     scenario_payload = payload["scenarios"][0]
     assert scenario_payload["name"] == "repeatability_case"
     assert scenario_payload["description"] == "Mutable: BMI, Smoking Status"
-    assert scenario_payload["repeat_count"] == 2
+    assert scenario_payload["repeat_count"] == 4
     assert scenario_payload["repeatable"] is True
     assert scenario_payload["all_statuses_identical"] is True
     assert scenario_payload["all_candidates_identical"] is True
+    assert list(scenario_payload).index("changed_features") < list(scenario_payload).index(
+        "counterfactual_profile_run_1"
+    )
+    assert scenario_payload["changed_features"] == {
+        "BMI": {"before": 31.2, "after": 23.1},
+        "smoking_status": {"before": 2, "after": 0},
+    }
     assert scenario_payload["counterfactual_profile_run_1"] == {
         "age": 45,
         "BMI": 23.1,
@@ -430,6 +470,13 @@ def test_build_repeatability_suite_payload_uses_compact_repeatability_shape() ->
         "BMI": 23.1,
         "smoking_status": 0,
     }
+    assert scenario_payload["counterfactual_profile_run_3"] == {
+        "age": 45,
+        "BMI": 23.1,
+        "smoking_status": 0,
+    }
+    assert "counterfactual_profile_run_4" not in scenario_payload
+
 
 def test_build_latency_suite_payload_uses_latency_shape() -> None:
     suite = VerificationSuite(
@@ -446,11 +493,13 @@ def test_build_latency_suite_payload_uses_latency_shape() -> None:
             mutable_violation_rate=None,
             lof_violation_rate=None,
             average_lof_score=None,
+            min_lof_score=None,
+            max_lof_score=None,
             repeatability_rate=None,
-            average_latency_ms=13.0,
-            p95_latency_ms=13.9,
+            average_latency_ms=15.0,
+            p95_latency_ms=17.7,
             total_scenarios=1,
-            total_runs=2,
+            total_runs=4,
             total_candidates=0,
         ),
         metadata={"runner_mode": "backend_suite_member"},
@@ -460,24 +509,24 @@ def test_build_latency_suite_payload_uses_latency_shape() -> None:
     assert payload["summary"] == {
         "target_average_latency_ms": 5000.0,
         "passed": True,
-        "average_latency_ms": 13.0,
+        "average_latency_ms": 15.0,
         "min_latency_ms": 12,
-        "max_latency_ms": 14,
-        "p95_latency_ms": 13.9,
+        "max_latency_ms": 18,
+        "p95_latency_ms": 17.7,
         "total_scenarios": 1,
-        "total_runs": 2,
-        "successful_runs": 2,
+        "total_runs": 4,
+        "successful_runs": 4,
         "failed_runs": 0,
     }
     scenario_payload = payload["scenarios"][0]
     assert scenario_payload["name"] == "repeatability_case"
-    assert scenario_payload["repeat_count"] == 2
-    assert scenario_payload["average_latency_ms"] == 13
+    assert scenario_payload["repeat_count"] == 4
+    assert scenario_payload["average_latency_ms"] == 15
     assert scenario_payload["min_latency_ms"] == 12
-    assert scenario_payload["max_latency_ms"] == 14
-    assert scenario_payload["p95_latency_ms"] == 13.9
-    assert scenario_payload["terminal_statuses"] == {"FEASIBLE": 2}
-    assert [run["duration_ms"] for run in scenario_payload["runs"]] == [12, 14]
+    assert scenario_payload["max_latency_ms"] == 18
+    assert scenario_payload["p95_latency_ms"] == 17.7
+    assert scenario_payload["terminal_statuses"] == {"FEASIBLE": 4}
+    assert [run["duration_ms"] for run in scenario_payload["runs"]] == [12, 14, 16, 18]
 
 
 def test_build_backend_suite_index_contains_suite_rows() -> None:
@@ -503,5 +552,5 @@ def test_build_backend_suite_index_contains_suite_rows() -> None:
     assert payload["overall_summary"]["total_scenarios"] == 1
     assert payload["overall_summary"]["lof_violation_rate"] is None
     assert payload["overall_summary"]["average_lof_score"] is None
-
-
+    assert payload["overall_summary"]["min_lof_score"] is None
+    assert payload["overall_summary"]["max_lof_score"] is None

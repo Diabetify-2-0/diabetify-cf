@@ -4,8 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from statistics import mean
 from time import perf_counter
-from typing import Any
-from typing import TypeVar
+from typing import Any, TypeVar
 
 from diabetify_cf.engine.base import CounterfactualEngine
 from diabetify_cf.reason_codes import ReasonCode, Status
@@ -78,6 +77,8 @@ class MetricSummary:
     mutable_violation_rate: float | None
     lof_violation_rate: float | None
     average_lof_score: float | None
+    min_lof_score: float | None
+    max_lof_score: float | None
     repeatability_rate: float | None
     average_latency_ms: float
     p95_latency_ms: float
@@ -141,6 +142,7 @@ class ScenarioRunner:
             aggregate for aggregate in aggregates if aggregate.scenario.repeat_count > 1
         ]
         latencies = [run.duration_ms for run in all_runs]
+        lof_scores = [item.external_lof_score for item in candidate_results]
 
         return MetricSummary(
             immutable_violation_rate=_ratio(
@@ -155,11 +157,9 @@ class ScenarioRunner:
                 candidate_results,
                 lambda item: not item.external_lof_within_threshold,
             ),
-            average_lof_score=(
-                mean(item.external_lof_score for item in candidate_results)
-                if candidate_results
-                else None
-            ),
+            average_lof_score=(mean(lof_scores) if lof_scores else None),
+            min_lof_score=min(lof_scores) if lof_scores else None,
+            max_lof_score=max(lof_scores) if lof_scores else None,
             repeatability_rate=_ratio(
                 repeatability_scenarios,
                 lambda aggregate: aggregate.repeatability_consistent,
@@ -187,7 +187,9 @@ def _response_signature(response: CounterfactualResponse) -> tuple[Any, ...]:
         candidate_signature = (
             candidate.candidate_id,
             _normalized_feature_items(candidate.features),
-            tuple(sorted((name, round(float(delta), 6)) for name, delta in candidate.delta.items())),
+            tuple(
+                sorted((name, round(float(delta), 6)) for name, delta in candidate.delta.items())
+            ),
             candidate.prediction.class_name,
             round(candidate.prediction.probability_low_risk, 9),
             (
@@ -253,7 +255,12 @@ def _planner_input_signature(planner_input: PlannerInput) -> tuple[Any, ...]:
 
     return (
         planner_input.recommended_candidate_id,
-        tuple(sorted((name, round(float(delta), 6)) for name, delta in planner_input.target_deltas.items())),
+        tuple(
+            sorted(
+                (name, round(float(delta), 6))
+                for name, delta in planner_input.target_deltas.items()
+            )
+        ),
         _prediction_signature(planner_input.input_prediction),
         _prediction_signature(planner_input.candidate_prediction),
         candidate_metrics,

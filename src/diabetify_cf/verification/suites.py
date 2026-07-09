@@ -26,24 +26,27 @@ class VerificationSuite:
 DEFAULT_BACKEND_SUITES: tuple[VerificationSuite, ...] = (
     VerificationSuite(
         name="actionability_core",
-        description="Actionability scenarios covering diverse immutable and mutable user selections.",
-        include_tags=("actionability",),
+        description=(
+            "Actionability scenarios covering diverse immutable and mutable user selections."
+        ),
+        include_tags=("actionability_profile",),
     ),
     VerificationSuite(
         name="plausibility_core",
-        description="Feasible non-repeatability scenarios used to evaluate LOF-based plausibility.",
-        include_tags=("feasible",),
-        exclude_tags=("repeatability",),
+        description=(
+            "Diverse full-actionable user profiles used to evaluate LOF-based plausibility."
+        ),
+        include_tags=("plausibility",),
     ),
     VerificationSuite(
         name="repeatability_core",
-        description="Repeated production scenarios used to compute repeatability stability.",
-        include_tags=("repeatability",),
+        description="Repeated profile scenarios used to compute consistency stability.",
+        include_tags=("consistency_profile",),
     ),
     VerificationSuite(
         name="latency_core",
-        description="Repeated backend-service scenarios used to evaluate counterfactual response time.",
-        include_tags=("latency",),
+        description=("Repeated full-actionable profile scenarios used to evaluate response time."),
+        include_tags=("latency_profile",),
     ),
 )
 
@@ -136,6 +139,8 @@ def build_backend_suite_index(
             "mutable_violation_rate": overall_summary.mutable_violation_rate,
             "lof_violation_rate": overall_summary.lof_violation_rate,
             "average_lof_score": overall_summary.average_lof_score,
+            "min_lof_score": overall_summary.min_lof_score,
+            "max_lof_score": overall_summary.max_lof_score,
             "repeatability_rate": overall_summary.repeatability_rate,
             "average_latency_ms": overall_summary.average_latency_ms,
             "p95_latency_ms": overall_summary.p95_latency_ms,
@@ -144,6 +149,3 @@ def build_backend_suite_index(
             "total_candidates": overall_summary.total_candidates,
         }
     return payload
-
-
-

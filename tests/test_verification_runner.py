@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 import numpy as np
 import pandas as pd
 
@@ -223,6 +224,8 @@ def test_scenario_runner_summarizes_feasible_and_infeasible_metrics() -> None:
     assert summary.mutable_violation_rate == 0.0
     assert summary.lof_violation_rate == 0.0
     assert summary.average_lof_score == 1.1
+    assert summary.min_lof_score == 1.1
+    assert summary.max_lof_score == 1.1
 
 
 def test_scenario_runner_measures_repeatability_from_repeated_runs() -> None:
@@ -249,4 +252,6 @@ def test_scenario_runner_measures_repeatability_from_repeated_runs() -> None:
     assert aggregates[0].repeatability_consistent
     assert summary.lof_violation_rate == 0.0
     assert summary.average_lof_score == 1.1
+    assert summary.min_lof_score == 1.1
+    assert summary.max_lof_score == 1.1
     assert summary.repeatability_rate == 1.0

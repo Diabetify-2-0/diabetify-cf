@@ -1,0 +1,1185 @@
+{
+  "scenarios": [
+    {
+      "name": "latency_profile_01",
+      "description": "Latency profile from reference_data row_id=2336 using the full-actionable without smoking-status changes configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-01",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 36,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 0,
+            "moderate_physical_activity_frequency": 0,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 40.617653226785585,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_02",
+      "description": "Latency profile from reference_data row_id=1570 using the full-actionable without smoking-status changes configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-02",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 29,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 7,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 38.085454536780695,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_03",
+      "description": "Latency profile from reference_data row_id=1265 using the full-actionable without smoking-status changes configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-03",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 45,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 0,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 36.957680055323145,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_04",
+      "description": "Latency profile from reference_data row_id=1204 using the full-actionable without smoking-status changes configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-04",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 52,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 0,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 36.69945987654321,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_05",
+      "description": "Latency profile from reference_data row_id=453 using the full-actionable without smoking-status changes configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-05",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 34,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 0,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 36.635487528344676,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_06",
+      "description": "Latency profile from reference_data row_id=1136 using the full-actionable without smoking-status changes configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-06",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 35,
+            "smoking_status": 1,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 0,
+            "moderate_physical_activity_frequency": 0,
+            "is_bloodline": 1,
+            "brinkman_index": 1,
+            "BMI": 32.916365242295754,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_07",
+      "description": "Latency profile from reference_data row_id=441 using the smoker full-actionable configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-07",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 38,
+            "smoking_status": 2,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 2,
+            "is_bloodline": 0,
+            "brinkman_index": 2,
+            "BMI": 33.47400822573927,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "smoking_status",
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_08",
+      "description": "Latency profile from reference_data row_id=59 using the smoker full-actionable configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-08",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 28,
+            "smoking_status": 2,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 1,
+            "is_bloodline": 0,
+            "brinkman_index": 2,
+            "BMI": 33.35688483316582,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "smoking_status",
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_09",
+      "description": "Latency profile from reference_data row_id=412 using the smoker full-actionable configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-09",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 35,
+            "smoking_status": 2,
+            "is_cholesterol": 1,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 1,
+            "is_bloodline": 0,
+            "brinkman_index": 1,
+            "BMI": 33.121977868931936,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "smoking_status",
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_10",
+      "description": "Latency profile from reference_data row_id=2076 using the smoker full-actionable configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-10",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 48,
+            "smoking_status": 2,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 7,
+            "is_bloodline": 0,
+            "brinkman_index": 2,
+            "BMI": 32.96911112264007,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "smoking_status",
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_11",
+      "description": "Latency profile from reference_data row_id=2695 using the full-actionable without smoking-status changes configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-11",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 43,
+            "smoking_status": 0,
+            "is_cholesterol": 1,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 1,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 34.68312238187469,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_12",
+      "description": "Latency profile from reference_data row_id=1706 using the full-actionable without smoking-status changes configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-12",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 51,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 2,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 35.70481012944051,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_13",
+      "description": "Latency profile from reference_data row_id=2050 using the full-actionable without smoking-status changes configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-13",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 40,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 0,
+            "moderate_physical_activity_frequency": 2,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 35.363933219259806,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_14",
+      "description": "Latency profile from reference_data row_id=1404 using the full-actionable without smoking-status changes configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-14",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 41,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 0,
+            "moderate_physical_activity_frequency": 3,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 36.194739671230444,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_15",
+      "description": "Latency profile from reference_data row_id=2019 using the full-actionable without smoking-status changes configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-15",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 43,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 0,
+            "moderate_physical_activity_frequency": 3,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 36.15378975921911,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_16",
+      "description": "Latency profile from reference_data row_id=1744 using the full-actionable without smoking-status changes configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-16",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 56,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 4,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 31.286099345398544,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_17",
+      "description": "Latency profile from reference_data row_id=1625 using the full-actionable without smoking-status changes configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-17",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 53,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 4,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 30.760809613357075,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_18",
+      "description": "Latency profile from reference_data row_id=1747 using the full-actionable without smoking-status changes configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-18",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 64,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 5,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 30.406621009559863,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_19",
+      "description": "Latency profile from reference_data row_id=1862 using the full-actionable without smoking-status changes configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-19",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 48,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 6,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 28.95455084846327,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_20",
+      "description": "Latency profile from reference_data row_id=1065 using the smoker full-actionable configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-20",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 42,
+            "smoking_status": 2,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 6,
+            "is_bloodline": 0,
+            "brinkman_index": 2,
+            "BMI": 28.797524840840126,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "smoking_status",
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_21",
+      "description": "Latency profile from reference_data row_id=1078 using the full-actionable without smoking-status changes configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-21",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 51,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 7,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 36.0702420503085,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_22",
+      "description": "Latency profile from reference_data row_id=2838 using the full-actionable without smoking-status changes configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-22",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 51,
+            "smoking_status": 0,
+            "is_cholesterol": 1,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 2,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 33.714888598410354,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_23",
+      "description": "Latency profile from reference_data row_id=1150 using the full-actionable without smoking-status changes configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-23",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 57,
+            "smoking_status": 0,
+            "is_cholesterol": 1,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 7,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 32.96311003979738,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_24",
+      "description": "Latency profile from reference_data row_id=2621 using the smoker full-actionable configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-24",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 48,
+            "smoking_status": 2,
+            "is_cholesterol": 1,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 1,
+            "is_bloodline": 0,
+            "brinkman_index": 1,
+            "BMI": 32.75676775730441,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "smoking_status",
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_25",
+      "description": "Latency profile from reference_data row_id=2672 using the full-actionable without smoking-status changes configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 5,
+      "request": {
+        "request_id": "latency-profile-25",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 40,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 0,
+            "is_bloodline": 1,
+            "brinkman_index": 0,
+            "BMI": 33.10607973515136,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    }
+  ]
+}

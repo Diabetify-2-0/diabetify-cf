@@ -29,13 +29,39 @@ def load_verification_scenarios(
         payload = json.loads(file.read_text(encoding="utf-8"))
         if directory_mode and not _looks_like_scenario_payload(payload):
             continue
-        scenario = _parse_scenario_payload(payload, source=file)
-        if _should_include_scenario(
-            scenario,
-            include_tags=include_tags,
-            exclude_tags=exclude_tags,
-        ):
-            scenarios.append(scenario)
+        parsed_scenarios = _parse_scenarios_payload(payload, source=file)
+        for scenario in parsed_scenarios:
+            if _should_include_scenario(
+                scenario,
+                include_tags=include_tags,
+                exclude_tags=exclude_tags,
+            ):
+                scenarios.append(scenario)
+    return scenarios
+
+
+def _parse_scenarios_payload(
+    payload: dict[str, object],
+    *,
+    source: Path,
+) -> list[VerificationScenario]:
+    scenarios_payload = payload.get("scenarios")
+    if scenarios_payload is None:
+        return [_parse_scenario_payload(payload, source=source)]
+
+    if not isinstance(scenarios_payload, list):
+        raise ValueError(
+            f"Invalid verification scenario file '{source}': scenarios must be an array"
+        )
+
+    scenarios: list[VerificationScenario] = []
+    for index, item in enumerate(scenarios_payload):
+        if not isinstance(item, dict):
+            raise ValueError(
+                f"Invalid verification scenario file '{source}': "
+                f"scenarios[{index}] must be an object"
+            )
+        scenarios.append(_parse_scenario_payload(item, source=source))
     return scenarios
 
 
@@ -48,7 +74,9 @@ def _parse_scenario_payload(payload: dict[str, object], *, source: Path) -> Veri
         raise ValueError(f"Invalid verification scenario file '{source}': missing {err}") from err
 
     if not isinstance(request_payload, dict):
-        raise ValueError(f"Invalid verification scenario file '{source}': request must be an object")
+        raise ValueError(
+            f"Invalid verification scenario file '{source}': request must be an object"
+        )
     if not isinstance(expectation_payload, dict):
         raise ValueError(
             f"Invalid verification scenario file '{source}': expectation must be an object"
@@ -96,10 +124,8 @@ def _looks_like_scenario_payload(payload: object) -> bool:
     if not isinstance(payload, dict):
         return False
     return (
-        "name" in payload
-        and "request" in payload
-        and "expectation" in payload
-    )
+        "name" in payload and "request" in payload and "expectation" in payload
+    ) or "scenarios" in payload
 
 
 def _should_include_scenario(
