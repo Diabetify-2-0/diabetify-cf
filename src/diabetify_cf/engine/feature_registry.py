@@ -121,17 +121,6 @@ class FeatureRegistry:
     def has(self, name: str) -> bool:
         return name in self._by_name
 
-    def default_permitted_range(self, feature_names: list[str]) -> dict[str, list[float]]:
-        out: dict[str, list[float]] = {}
-        for name in feature_names:
-            feature = self.get(name)
-            if feature is None:
-                continue
-            if feature.global_min is None or feature.global_max is None:
-                continue
-            out[name] = [feature.global_min, feature.global_max]
-        return out
-
     def immutable_defaults(self) -> list[str]:
         return [feature.name for feature in self.features if feature.immutable]
 

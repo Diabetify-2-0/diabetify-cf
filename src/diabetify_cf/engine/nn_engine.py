@@ -63,9 +63,7 @@ class NearestNeighborCounterfactualEngine(ArtifactBackedCounterfactualEngine):
         reference_frame = self.artifacts.reference_data[self.artifacts.feature_columns].copy()
         reference_frame = self._as_model_input_df(reference_frame)
         low_risk_probabilities = self.artifacts.model.predict_proba(reference_frame)[:, 0]
-        eligible_mask = (
-            low_risk_probabilities >= float(request.target.min_target_probability)
-        )
+        eligible_mask = low_risk_probabilities >= float(request.target.min_target_probability)
         eligible = reference_frame.loc[eligible_mask].copy()
         eligible_probabilities = low_risk_probabilities[eligible_mask]
 
@@ -206,7 +204,7 @@ class NearestNeighborCounterfactualEngine(ArtifactBackedCounterfactualEngine):
     ) -> float:
         feature = prepared.registry.get(feature_name)
         cost_weight = 1.0 if feature is None else float(feature.cost_weight)
-        span = self._feature_span(feature_name=feature_name, feature=feature, prepared=prepared)
+        span = self._feature_span(feature_name=feature_name, feature=feature)
         return (delta / span) * cost_weight
 
     def _feature_span(
@@ -214,11 +212,7 @@ class NearestNeighborCounterfactualEngine(ArtifactBackedCounterfactualEngine):
         *,
         feature_name: str,
         feature: FeatureDefinition | None,
-        prepared: PreparedRequest,
     ) -> float:
-        if feature_name in prepared.permitted_range:
-            lower, upper = prepared.permitted_range[feature_name]
-            return max(float(upper) - float(lower), 1e-6)
         if (
             feature is not None
             and feature.global_min is not None

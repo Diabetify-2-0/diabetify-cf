@@ -72,7 +72,6 @@ def test_engine_returns_feasible_when_input_already_satisfies_target() -> None:
                     class_name="low_risk",
                     probability_low_risk=0.82,
                 ),
-                "permitted_range": {"bmi": [20.0, 29.0]},
             },
         )()
 
@@ -110,7 +109,6 @@ def test_engine_returns_feasible_when_low_risk_probability_already_meets_request
                     class_name="low_risk",
                     probability_low_risk=0.35,
                 ),
-                "permitted_range": {"bmi": [20.0, 29.0]},
             },
         )()
 
@@ -157,7 +155,6 @@ def test_engine_timeout_returns_terminal_response_without_waiting_for_generator(
                     class_name="high_risk",
                     probability_low_risk=0.2,
                 ),
-                "permitted_range": {"bmi": [20.0, 29.0]},
             },
         )()
 
@@ -256,90 +253,6 @@ def test_prepare_request_rejects_instance_feature_outside_registry_range() -> No
     assert result.status == Status.ERROR
     assert result.reason_code == ReasonCode.INVALID_INPUT_SCHEMA
     assert result.message == "Invalid counterfactual request payload."
-
-
-def test_permitted_range_includes_binary_mutable_feature() -> None:
-    registry = FeatureRegistry(
-        version="test_v1",
-        features=[
-            FeatureDefinition(
-                name="is_hypertension",
-                feature_type="binary",
-                immutable=False,
-                actionable=True,
-                default_mutable=True,
-                global_min=0,
-                global_max=1,
-                cost_weight=1.0,
-                preferred_direction="decrease",
-                aliases=[],
-            ),
-            FeatureDefinition(
-                name="BMI",
-                feature_type="continuous",
-                immutable=False,
-                actionable=True,
-                default_mutable=True,
-                global_min=10,
-                global_max=60,
-                cost_weight=1.0,
-                preferred_direction="decrease",
-                aliases=["bmi"],
-            ),
-        ],
-    )
-    engine = TestCounterfactualEngine()
-
-    permitted = engine._build_permitted_range(
-        mutable_allowed=["is_hypertension", "BMI"],
-        registry=registry,
-        baseline_features={"is_hypertension": 1, "BMI": 31.2},
-    )
-
-    assert permitted["is_hypertension"] == [0.0, 1.0]
-    assert permitted["BMI"] == [10.0, 31.2]
-
-
-def test_permitted_range_applies_directional_constraints() -> None:
-    registry = FeatureRegistry(
-        version="test_v1",
-        features=[
-            FeatureDefinition(
-                name="moderate_physical_activity_frequency",
-                feature_type="ordinal",
-                immutable=False,
-                actionable=True,
-                default_mutable=True,
-                global_min=0,
-                global_max=14,
-                cost_weight=1.0,
-                preferred_direction="increase",
-                aliases=[],
-            ),
-            FeatureDefinition(
-                name="BMI",
-                feature_type="continuous",
-                immutable=False,
-                actionable=True,
-                default_mutable=True,
-                global_min=10,
-                global_max=60,
-                cost_weight=1.0,
-                preferred_direction="decrease",
-                aliases=[],
-            ),
-        ],
-    )
-    engine = TestCounterfactualEngine()
-
-    permitted = engine._build_permitted_range(
-        mutable_allowed=["moderate_physical_activity_frequency", "BMI"],
-        registry=registry,
-        baseline_features={"moderate_physical_activity_frequency": 2, "BMI": 31.2},
-    )
-
-    assert permitted["moderate_physical_activity_frequency"][0] == 2.0
-    assert permitted["BMI"][1] == 31.2
 
 
 def test_target_satisfied_enforces_min_probability() -> None:
@@ -595,7 +508,6 @@ def test_infeasible_response_preserves_request_context_in_planner_input() -> Non
             "mutable_allowed": ["bmi"],
             "query_df": pd.DataFrame([{"age": 45, "bmi": 31.2, "glucose": 165.0}]),
             "base_prediction": PredictionInfo(class_name="high_risk", probability_low_risk=0.2),
-            "permitted_range": {"bmi": [20.0, 29.0]},
         },
     )()
 
@@ -628,7 +540,6 @@ def test_process_candidates_surfaces_medical_only_infeasible_reason() -> None:
             "mutable_allowed": ["bmi"],
             "query_df": pd.DataFrame([{"age": 45, "bmi": 31.2, "glucose": 165.0}]),
             "base_prediction": PredictionInfo(class_name="high_risk", probability_low_risk=0.2),
-            "permitted_range": {"bmi": [20.0, 29.0]},
         },
     )()
 

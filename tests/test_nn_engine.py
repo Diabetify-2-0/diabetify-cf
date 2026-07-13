@@ -46,7 +46,6 @@ def test_nn_rank_changed_features_uses_weighted_normalized_distance() -> None:
                 ),
             }.get(name)
         ),
-        permitted_range={"BMI": [18.5, 35.0], "smoking_status": [0.0, 2.0]},
     )
     neighbor = pd.Series({"BMI": 29.0, "smoking_status": 1.0})
     baseline = {"BMI": 31.0, "smoking_status": 0.0}
@@ -77,7 +76,6 @@ def test_nn_project_neighbors_keeps_immutable_features_from_baseline() -> None:
                 ),
             }.get(name)
         ),
-        permitted_range={"BMI": [18.5, 35.0], "smoking_status": [0.0, 2.0]},
     )
     baseline = {"age": 45, "BMI": 31.0, "smoking_status": 0}
     neighbor = pd.Series({"age": 60, "BMI": 27.0, "smoking_status": 1})

@@ -36,7 +36,6 @@ class PreparedRequest:
     mutable_allowed: list[str]
     query_df: pd.DataFrame
     base_prediction: PredictionInfo
-    permitted_range: dict[str, list[float]]
 
 
 @dataclass(frozen=True)
@@ -302,12 +301,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
         )
         query_df = self._as_model_input_df(query_df)
         base_prediction = self._predict_info(query_df)
-        permitted_range = self._build_permitted_range(
-            mutable_allowed=mutable_allowed,
-            registry=registry,
-            baseline_features=instance_features,
-        )
-
         return PreparedRequest(
             registry=registry,
             model_columns=model_columns,
@@ -316,7 +309,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             mutable_allowed=mutable_allowed,
             query_df=query_df,
             base_prediction=base_prediction,
-            permitted_range=permitted_range,
         )
 
     def _process_candidates(
@@ -606,43 +598,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 raise ValueError(f"Feature '{feature_name}' is above maximum {feature.global_max}.")
             if feature.is_binary and numeric_value not in {0.0, 1.0}:
                 raise ValueError(f"Feature '{feature_name}' must be binary 0/1.")
-
-    def _build_permitted_range(
-        self,
-        *,
-        mutable_allowed: list[str],
-        registry: FeatureRegistry,
-        baseline_features: dict[str, JSONFeatureValue],
-    ) -> dict[str, list[float]]:
-        merged = dict(registry.default_permitted_range(mutable_allowed))
-
-        for feature_name in mutable_allowed:
-            if feature_name not in merged or feature_name not in baseline_features:
-                continue
-
-            feature = registry.get(feature_name)
-            if feature is None:
-                continue
-
-            direction = feature.preferred_direction
-            if direction == "any":
-                continue
-
-            try:
-                baseline = float(baseline_features[feature_name])
-            except (TypeError, ValueError):
-                continue
-
-            lower, upper = merged[feature_name]
-            if direction == "increase":
-                lower = max(lower, baseline)
-            elif direction == "decrease":
-                upper = min(upper, baseline)
-
-            if lower <= upper:
-                merged[feature_name] = [float(lower), float(upper)]
-
-        return merged
 
     def _predict_info(self, frame: pd.DataFrame) -> PredictionInfo:
         assert self.artifacts is not None
