@@ -23,10 +23,9 @@ def build_report_payload(
         "summary": {
             "immutable_violation_rate": summary.immutable_violation_rate,
             "mutable_violation_rate": summary.mutable_violation_rate,
-            "lof_violation_rate": summary.lof_violation_rate,
             "average_lof_score": summary.average_lof_score,
             "min_lof_score": summary.min_lof_score,
-            "max_lof_score": summary.max_lof_score,
+            "maximum_lof_score": summary.maximum_lof_score,
             "repeatability_rate": summary.repeatability_rate,
             "average_latency_ms": summary.average_latency_ms,
             "p95_latency_ms": summary.p95_latency_ms,
@@ -69,10 +68,9 @@ def build_plausibility_report_payload(
 ) -> dict[str, Any]:
     return {
         "summary": {
-            "lof_within_threshold": summary.lof_violation_rate in (None, 0.0),
             "average_lof_score": summary.average_lof_score,
             "min_lof_score": summary.min_lof_score,
-            "max_lof_score": summary.max_lof_score,
+            "maximum_lof_score": summary.maximum_lof_score,
             "total_scenarios": summary.total_scenarios,
             "total_candidates": summary.total_candidates,
             "average_latency_ms": summary.average_latency_ms,
@@ -161,7 +159,6 @@ def _run_payload(run: ScenarioRunRecord) -> dict[str, Any]:
                     "mutable_ok": item.mutable_ok,
                     "prediction_matches_returned": item.prediction_matches_returned,
                     "external_lof_score": item.external_lof_score,
-                    "external_lof_within_threshold": item.external_lof_within_threshold,
                     "medical_ok": item.medical_ok,
                     "directional_ok": item.directional_ok,
                     "transition_ok": item.transition_ok,

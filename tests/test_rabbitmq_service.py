@@ -84,9 +84,9 @@ def _request_payload() -> bytes:
 
 
 def test_publish_response_retries_transient_failure() -> None:
-    service = RabbitMQCFService(settings=_settings(), engine=CountingEngine())  # type: ignore[arg-type]
+    service = RabbitMQCFService(settings=_settings(), engine=CountingEngine())  
     channel = FakeChannel(fail_publish_count=1)
-    service.channel = channel  # type: ignore[assignment]
+    service.channel = channel  
 
     service._publish_response(
         response_queue="ml.cf.response",
@@ -100,13 +100,13 @@ def test_publish_response_retries_transient_failure() -> None:
 
 def test_on_message_processes_duplicate_request_id_independently() -> None:
     engine = CountingEngine()
-    service = RabbitMQCFService(settings=_settings(), engine=engine)  # type: ignore[arg-type]
+    service = RabbitMQCFService(settings=_settings(), engine=engine)  
     channel = FakeChannel()
-    service.channel = channel  # type: ignore[assignment]
+    service.channel = channel  
     body = _request_payload()
 
-    service._on_message(channel, FakeMethod(), FakeProperties(), body)  # type: ignore[arg-type]
-    service._on_message(channel, FakeMethod(), FakeProperties(), body)  # type: ignore[arg-type]
+    service._on_message(channel, FakeMethod(), FakeProperties(), body)  
+    service._on_message(channel, FakeMethod(), FakeProperties(), body)  
 
     assert engine.calls == 2
     assert channel.acked == [42, 42]
@@ -118,12 +118,12 @@ def test_on_message_processes_duplicate_request_id_independently() -> None:
 
 
 def test_validation_error_response_is_sanitized() -> None:
-    service = RabbitMQCFService(settings=_settings(), engine=CountingEngine())  # type: ignore[arg-type]
+    service = RabbitMQCFService(settings=_settings(), engine=CountingEngine())  
     channel = FakeChannel()
-    service.channel = channel  # type: ignore[assignment]
+    service.channel = channel  
     body = json.dumps({"request_id": "job-1"}).encode("utf-8")
 
-    service._on_message(channel, FakeMethod(), FakeProperties(), body)  # type: ignore[arg-type]
+    service._on_message(channel, FakeMethod(), FakeProperties(), body)  
 
     published = json.loads(channel.published_bodies[0].decode("utf-8"))
     assert published["status"] == "ERROR"

@@ -75,10 +75,9 @@ class ScenarioAggregate:
 class MetricSummary:
     immutable_violation_rate: float | None
     mutable_violation_rate: float | None
-    lof_violation_rate: float | None
     average_lof_score: float | None
     min_lof_score: float | None
-    max_lof_score: float | None
+    maximum_lof_score: float | None
     repeatability_rate: float | None
     average_latency_ms: float
     p95_latency_ms: float
@@ -153,13 +152,9 @@ class ScenarioRunner:
                 candidate_results,
                 lambda item: not item.mutable_ok,
             ),
-            lof_violation_rate=_ratio(
-                candidate_results,
-                lambda item: not item.external_lof_within_threshold,
-            ),
             average_lof_score=(mean(lof_scores) if lof_scores else None),
             min_lof_score=min(lof_scores) if lof_scores else None,
-            max_lof_score=max(lof_scores) if lof_scores else None,
+            maximum_lof_score=max(lof_scores) if lof_scores else None,
             repeatability_rate=_ratio(
                 repeatability_scenarios,
                 lambda aggregate: aggregate.repeatability_consistent,

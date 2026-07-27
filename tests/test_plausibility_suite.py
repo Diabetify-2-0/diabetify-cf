@@ -15,7 +15,7 @@ from diabetify_cf.verification.suites import (
 )
 
 
-def test_plausibility_core_runs_production_feasible_scenarios_within_lof_threshold() -> None:
+def test_plausibility_core_reports_lof_without_gating_generation() -> None:
     settings = Settings()
     suite = VerificationSuite(
         name="plausibility_core",
@@ -30,7 +30,6 @@ def test_plausibility_core_runs_production_feasible_scenarios_within_lof_thresho
         columns_path=settings.columns_path,
         reference_data_path=settings.reference_data_path,
         feature_registry_path=settings.feature_registry_path,
-        max_lof_score=settings.max_lof_score,
         options=NearestNeighborOptions.from_settings(settings),
     )
     verifier = ExternalCounterfactualVerifier(settings=settings)
@@ -67,18 +66,12 @@ def test_plausibility_core_runs_production_feasible_scenarios_within_lof_thresho
         "plausibility_smoker_full_actionable_profile_24",
         "plausibility_smoker_full_actionable_profile_25",
     ]
-    assert all(aggregate.passed for aggregate in aggregates)
     assert summary.total_scenarios == 25
     assert summary.total_candidates == 25
-    assert summary.lof_violation_rate == 0.0
     assert summary.average_lof_score is not None
     assert summary.min_lof_score is not None
-    assert summary.max_lof_score is not None
-    assert summary.average_lof_score <= settings.max_lof_score
-    assert summary.min_lof_score <= summary.average_lof_score <= summary.max_lof_score
-    assert summary.max_lof_score <= settings.max_lof_score
-    assert payload["summary"]["lof_within_threshold"] is True
+    assert summary.maximum_lof_score is not None
+    assert summary.min_lof_score <= summary.average_lof_score <= summary.maximum_lof_score
     assert payload["summary"]["min_lof_score"] == summary.min_lof_score
-    assert payload["summary"]["max_lof_score"] == summary.max_lof_score
+    assert payload["summary"]["maximum_lof_score"] == summary.maximum_lof_score
     assert all(item["lof_score"] is not None for item in payload["scenarios"])
-    assert all(item["lof_score"] <= settings.max_lof_score for item in payload["scenarios"])

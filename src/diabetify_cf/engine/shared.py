@@ -56,12 +56,11 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
         columns_path: str = "",
         reference_data_path: str = "",
         feature_registry_path: str = "",
-        max_lof_score: float = 1.5,
     ) -> None:
-        self.max_lof_score = max(1.0, float(max_lof_score))
         self.logger = logging.getLogger("diabetify_cf.engine")
         self.artifacts: ModelArtifacts | None = None
         self.initialization_error: str | None = None
+        self._reference_lof_scores_cache: np.ndarray | None = None
 
         try:
             self.artifacts = load_artifacts(
@@ -346,8 +345,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             )
 
         evaluated: list[CandidateEvaluation] = []
-        immutable_violation_seen = False
-        mutable_violation_seen = False
         medical_violation_seen = False
         directional_violation_seen = False
         transition_violation_seen = False
@@ -360,16 +357,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 registry=prepared.registry,
             )
 
-            immutable_ok = self._immutable_ok(
-                candidate_features,
-                prepared.instance_features,
-                prepared.immutable_set,
-            )
-            mutable_ok = self._mutable_ok(
-                candidate_features,
-                prepared.instance_features,
-                set(prepared.mutable_allowed),
-            )
             directional_ok = self._directional_ok(
                 candidate=candidate_features,
                 baseline=prepared.instance_features,
@@ -384,10 +371,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             )
             medical_ok = self._medical_ok(candidate_features, prepared.registry)
 
-            if not immutable_ok:
-                immutable_violation_seen = True
-            if not mutable_ok:
-                mutable_violation_seen = True
             if not directional_ok:
                 directional_violation_seen = True
                 medical_violation_seen = True
@@ -397,9 +380,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             if not medical_ok:
                 medical_violation_seen = True
 
-            if not (
-                immutable_ok and mutable_ok and directional_ok and transition_ok and medical_ok
-            ):
+            if not (directional_ok and transition_ok and medical_ok):
                 continue
 
             candidate_df = pd.DataFrame([candidate_features], columns=prepared.model_columns)
@@ -424,9 +405,6 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 prepared.registry,
             )
             lof_score = self._lof_score(candidate_df)
-            if lof_score > self.max_lof_score:
-                medical_violation_seen = True
-                continue
 
             candidate = CounterfactualCandidate(
                 candidate_id=f"cf_{len(evaluated) + 1}",
@@ -445,6 +423,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                     objective_score=self._objective_score(
                         candidate=candidate,
                         preferences={},
+                        mutable_allowed=prepared.mutable_allowed,
                         registry=prepared.registry,
                     ),
                 )
@@ -458,33 +437,16 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 message = (
                     "Counterfactual generation exceeded timeout before finding valid candidates."
                 )
-            if (
-                medical_violation_seen
-                and not immutable_violation_seen
-                and not mutable_violation_seen
-            ):
+            if medical_violation_seen:
                 reason_code = ReasonCode.MEDICAL_RULE_VIOLATION_ONLY
                 message = "Candidates exist but fail medical plausibility constraints."
-            if (
-                transition_violation_seen
-                and not immutable_violation_seen
-                and not mutable_violation_seen
-            ):
+            if transition_violation_seen:
                 reason_code = ReasonCode.MEDICAL_RULE_VIOLATION_ONLY
                 message = "Candidates exist but violate allowed feature transition constraints."
-            if (
-                directional_violation_seen
-                and not immutable_violation_seen
-                and not mutable_violation_seen
-            ):
+            if directional_violation_seen:
                 reason_code = ReasonCode.MEDICAL_RULE_VIOLATION_ONLY
                 message = "Candidates exist but violate directional medical constraints."
-            if (
-                target_violation_seen
-                and not immutable_violation_seen
-                and not mutable_violation_seen
-                and not medical_violation_seen
-            ):
+            if target_violation_seen and not medical_violation_seen:
                 message = "Candidates generated but none satisfied target class/probability."
 
             return self._response(
@@ -494,8 +456,8 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
                 reason_code=reason_code,
                 message=message,
                 validation=ValidationSummary(
-                    immutable_violation=immutable_violation_seen,
-                    mutable_violation=mutable_violation_seen,
+                    immutable_violation=False,
+                    mutable_violation=False,
                     medical_rules_passed=(not medical_violation_seen)
                     and (not target_violation_seen),
                 ),
@@ -815,8 +777,7 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
         baseline: dict[str, JSONFeatureValue],
         registry: FeatureRegistry,
     ) -> float:
-        total = 0.0
-        count = 0
+        squared_total = 0.0
         for feature_name, candidate_value in candidate.items():
             if feature_name not in baseline:
                 continue
@@ -824,17 +785,23 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
             if feature is None:
                 continue
 
-            delta = abs(float(candidate_value) - float(baseline[feature_name]))
-            if feature.global_min is not None and feature.global_max is not None:
-                denom = max(feature.global_max - feature.global_min, 1e-6)
+            if feature.is_binary:
+                component = 0.0 if self._equal(candidate_value, baseline[feature_name]) else 1.0
             else:
-                denom = max(abs(float(baseline[feature_name])), 1.0)
-            total += delta / denom
-            count += 1
+                delta = abs(float(candidate_value) - float(baseline[feature_name]))
+                if feature.global_min is not None and feature.global_max is not None:
+                    denom = max(feature.global_max - feature.global_min, 1e-6)
+                else:
+                    denom = max(
+                        abs(float(candidate_value)),
+                        abs(float(baseline[feature_name])),
+                        1.0,
+                    )
+                component = delta / denom
 
-        if count == 0:
-            return 0.0
-        return float(total / count)
+            squared_total += component**2
+
+        return float(np.sqrt(squared_total))
 
     def _lof_score(self, candidate_df: pd.DataFrame) -> float:
         assert self.artifacts is not None
@@ -849,35 +816,63 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
         *,
         candidate: CounterfactualCandidate,
         preferences: dict[str, float],
+        mutable_allowed: list[str],
         registry: FeatureRegistry,
     ) -> float:
-        w_proximity = float(preferences.get("proximity", 0.25))
-        w_sparsity = float(preferences.get("sparsity", 0.25))
-        w_plausibility = float(preferences.get("plausibility", 0.25))
-        w_action_cost = float(preferences.get("action_cost", 0.25))
+        w_proximity = float(preferences.get("proximity", 0.50))
+        w_plausibility = float(preferences.get("plausibility", 0.50))
 
-        proximity_score = candidate.metrics.distance_l1
-        sparse_score = float(max(candidate.metrics.changed_feature_count, 1))
-        plausibility_score = abs(candidate.metrics.lof_score - 1.0)
-        action_cost_score = 0.0
-        for feature_name, diff in candidate.delta.items():
-            feature = registry.get(feature_name)
-            weight = 1.0 if feature is None else feature.cost_weight
-            span = 1.0
-            if (
-                feature is not None
-                and feature.global_min is not None
-                and feature.global_max is not None
-            ):
-                span = max(float(feature.global_max) - float(feature.global_min), 1e-6)
-            action_cost_score += (abs(float(diff)) / span) * weight
-
-        return (
-            w_proximity * proximity_score
-            + w_sparsity * sparse_score
-            + w_plausibility * plausibility_score
-            + w_action_cost * action_cost_score
+        mutable_count = max(len(mutable_allowed), 1)
+        proximity_denominator = max(float(np.sqrt(mutable_count)), 1e-6)
+        proximity_score = min(
+            max(float(candidate.metrics.distance_l1) / proximity_denominator, 0.0),
+            1.0,
         )
+        plausibility_score = self._normalized_lof_score(candidate.metrics.lof_score)
+
+        return w_proximity * proximity_score + w_plausibility * plausibility_score
+
+    def _normalized_lof_score(self, lof_score: float) -> float:
+        reference_scores = self._reference_lof_scores()
+        if reference_scores.size == 0:
+            return min(max(float(lof_score) / max(float(lof_score), 1.0), 0.0), 1.0)
+        rank = np.searchsorted(reference_scores, float(lof_score), side="right")
+        return float(rank / reference_scores.size)
+
+    def _reference_lof_scores(self) -> np.ndarray:
+        if self._reference_lof_scores_cache is not None:
+            return self._reference_lof_scores_cache
+        lof_model = getattr(self.artifacts, "lof_model", None)
+        if self.artifacts is None or lof_model is None:
+            self._reference_lof_scores_cache = np.asarray([], dtype=float)
+            return self._reference_lof_scores_cache
+
+        training_scores = self._training_lof_scores(lof_model)
+        if training_scores.size > 0:
+            self._reference_lof_scores_cache = training_scores
+            return self._reference_lof_scores_cache
+
+        reference_df = self.artifacts.reference_data[self.artifacts.feature_columns].copy()
+        if reference_df.empty:
+            self._reference_lof_scores_cache = np.asarray([], dtype=float)
+            return self._reference_lof_scores_cache
+
+        reference_df = self._as_model_input_df(reference_df)
+        raw_scores = lof_model.score_samples(reference_df.to_numpy())
+        lof_scores = np.maximum(1e-6, -np.asarray(raw_scores, dtype=float))
+        self._reference_lof_scores_cache = np.sort(lof_scores)
+        return self._reference_lof_scores_cache
+
+    def _training_lof_scores(self, lof_model: object) -> np.ndarray:
+        named_steps = getattr(lof_model, "named_steps", {})
+        steps = list(named_steps.values()) if hasattr(named_steps, "values") else [lof_model]
+        for step in reversed(steps):
+            negative_factors = getattr(step, "negative_outlier_factor_", None)
+            if negative_factors is None:
+                continue
+            lof_scores = np.maximum(1e-6, -np.asarray(negative_factors, dtype=float))
+            return np.sort(lof_scores)
+        return np.asarray([], dtype=float)
 
     def _build_planner_input(
         self,

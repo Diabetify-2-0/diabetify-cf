@@ -102,7 +102,7 @@
       "immutable": false,
       "actionable": true,
       "default_mutable": true,
-      "global_min": 10,
+      "global_min": 18,
       "global_max": 60,
       "cost_weight": 1.0,
       "preferred_direction": "decrease",

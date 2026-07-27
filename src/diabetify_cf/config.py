@@ -48,7 +48,6 @@ class Settings:
     rabbitmq_retry_delay_sec: int = int(os.getenv("CF_RABBITMQ_RETRY_DELAY_SEC", "5"))
     rabbitmq_publish_retries: int = int(os.getenv("CF_RABBITMQ_PUBLISH_RETRIES", "3"))
     prefetch_count: int = int(os.getenv("CF_PREFETCH_COUNT", "1"))
-    max_lof_score: float = float(os.getenv("CF_MAX_LOF_SCORE", "1.5"))
     nn_candidate_pool_size: int = int(os.getenv("CF_NN_CANDIDATE_POOL_SIZE", "256"))
     nn_max_neighbors: int = int(os.getenv("CF_NN_MAX_NEIGHBORS", "64"))
     model_path: str = _path_env_or_default("CF_MODEL_PATH", _default_path_for("CF_MODEL_PATH"))

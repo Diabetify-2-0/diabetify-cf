@@ -184,7 +184,7 @@ class StubEngine(CounterfactualEngine):
 
 
 def test_scenario_runner_summarizes_feasible_and_infeasible_metrics() -> None:
-    verifier = ExternalCounterfactualVerifier(artifacts=_artifacts(), max_lof_score=2.5)
+    verifier = ExternalCounterfactualVerifier(artifacts=_artifacts())
     runner = ScenarioRunner(
         engine=StubEngine(
             responses=[
@@ -222,14 +222,13 @@ def test_scenario_runner_summarizes_feasible_and_infeasible_metrics() -> None:
     assert summary.total_candidates == 1
     assert summary.immutable_violation_rate == 0.0
     assert summary.mutable_violation_rate == 0.0
-    assert summary.lof_violation_rate == 0.0
     assert summary.average_lof_score == 1.1
     assert summary.min_lof_score == 1.1
-    assert summary.max_lof_score == 1.1
+    assert summary.maximum_lof_score == 1.1
 
 
 def test_scenario_runner_measures_repeatability_from_repeated_runs() -> None:
-    verifier = ExternalCounterfactualVerifier(artifacts=_artifacts(), max_lof_score=2.5)
+    verifier = ExternalCounterfactualVerifier(artifacts=_artifacts())
     runner = ScenarioRunner(
         engine=StubEngine(
             responses=[
@@ -250,8 +249,7 @@ def test_scenario_runner_measures_repeatability_from_repeated_runs() -> None:
     summary = runner.summarize(aggregates)
 
     assert aggregates[0].repeatability_consistent
-    assert summary.lof_violation_rate == 0.0
     assert summary.average_lof_score == 1.1
     assert summary.min_lof_score == 1.1
-    assert summary.max_lof_score == 1.1
+    assert summary.maximum_lof_score == 1.1
     assert summary.repeatability_rate == 1.0

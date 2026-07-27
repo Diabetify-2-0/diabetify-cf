@@ -155,7 +155,7 @@ def _response(candidate: CounterfactualCandidate) -> CounterfactualResponse:
 
 
 def test_external_verifier_confirms_valid_returned_candidate() -> None:
-    verifier = ExternalCounterfactualVerifier(artifacts=_artifacts(), max_lof_score=2.5)
+    verifier = ExternalCounterfactualVerifier(artifacts=_artifacts())
 
     report = verifier.verify_response(
         request=_request(),
@@ -170,7 +170,7 @@ def test_external_verifier_confirms_valid_returned_candidate() -> None:
 
 
 def test_external_verifier_detects_target_failure_independently() -> None:
-    verifier = ExternalCounterfactualVerifier(artifacts=_artifacts(), max_lof_score=2.5)
+    verifier = ExternalCounterfactualVerifier(artifacts=_artifacts())
 
     report = verifier.verify_response(
         request=_request(),
@@ -187,7 +187,7 @@ def test_external_verifier_detects_target_failure_independently() -> None:
 
 
 def test_external_verifier_detects_immutable_violation_independently() -> None:
-    verifier = ExternalCounterfactualVerifier(artifacts=_artifacts(), max_lof_score=2.5)
+    verifier = ExternalCounterfactualVerifier(artifacts=_artifacts())
 
     report = verifier.verify_response(
         request=_request(),
@@ -202,7 +202,7 @@ def test_external_verifier_detects_immutable_violation_independently() -> None:
 
 
 def test_external_verifier_detects_mutable_and_transition_violations() -> None:
-    verifier = ExternalCounterfactualVerifier(artifacts=_artifacts(), max_lof_score=2.5)
+    verifier = ExternalCounterfactualVerifier(artifacts=_artifacts())
 
     report = verifier.verify_response(
         request=_request(),
@@ -217,7 +217,7 @@ def test_external_verifier_detects_mutable_and_transition_violations() -> None:
 
 
 def test_external_verifier_detects_feature_change_outside_user_selected_mutable_set() -> None:
-    verifier = ExternalCounterfactualVerifier(artifacts=_artifacts(), max_lof_score=2.5)
+    verifier = ExternalCounterfactualVerifier(artifacts=_artifacts())
     request = CounterfactualRequest.model_validate(
         {
             "request_id": "req-verify-bmi-only",
@@ -250,25 +250,8 @@ def test_external_verifier_detects_feature_change_outside_user_selected_mutable_
     assert report.candidate_results[0].mutable_ok is False
 
 
-def test_external_verifier_rejects_candidate_outside_plausibility_threshold() -> None:
-    verifier = ExternalCounterfactualVerifier(
-        artifacts=_artifacts(lof_score=3.4),
-        max_lof_score=2.5,
-    )
-
-    report = verifier.verify_response(
-        request=_request(),
-        response=_response(
-            _candidate(features={"age": 45, "BMI": 27.0, "smoking_status": 2})
-        ),
-    )
-
-    assert not report.outcome_consistent
-    assert report.candidate_results[0].external_lof_within_threshold is False
-
-
 def test_external_verifier_accepts_infeasible_without_candidates() -> None:
-    verifier = ExternalCounterfactualVerifier(artifacts=_artifacts(), max_lof_score=2.5)
+    verifier = ExternalCounterfactualVerifier(artifacts=_artifacts())
     response = CounterfactualResponse(
         request_id="req-verify",
         status=Status.INFEASIBLE,
@@ -288,7 +271,7 @@ def test_external_verifier_accepts_infeasible_without_candidates() -> None:
 
 
 def test_external_verifier_accepts_target_already_satisfied_without_candidates() -> None:
-    verifier = ExternalCounterfactualVerifier(artifacts=_artifacts(), max_lof_score=2.5)
+    verifier = ExternalCounterfactualVerifier(artifacts=_artifacts())
     healthy_request = CounterfactualRequest.model_validate(
         {
             "request_id": "req-target-already-satisfied",

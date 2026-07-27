@@ -137,10 +137,9 @@ def build_backend_suite_index(
         payload["overall_summary"] = {
             "immutable_violation_rate": overall_summary.immutable_violation_rate,
             "mutable_violation_rate": overall_summary.mutable_violation_rate,
-            "lof_violation_rate": overall_summary.lof_violation_rate,
             "average_lof_score": overall_summary.average_lof_score,
             "min_lof_score": overall_summary.min_lof_score,
-            "max_lof_score": overall_summary.max_lof_score,
+            "maximum_lof_score": overall_summary.maximum_lof_score,
             "repeatability_rate": overall_summary.repeatability_rate,
             "average_latency_ms": overall_summary.average_latency_ms,
             "p95_latency_ms": overall_summary.p95_latency_ms,

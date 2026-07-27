@@ -1,0 +1,1425 @@
+{
+  "scenarios": [
+    {
+      "name": "plausibility_full_actionable_profile_02",
+      "description": "Plausibility profile from reference_data row_id=1765 using the full-actionable configuration without smoking-status changes.",
+      "tags": [
+        "plausibility",
+        "feasible",
+        "full_actionable_no_smoking_change",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "plausibility-full-actionable-profile-02",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 50,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 7,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 44.99539913772604,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "plausibility_full_actionable_profile_03",
+      "description": "Plausibility profile from reference_data row_id=867 using the full-actionable configuration without smoking-status changes.",
+      "tags": [
+        "plausibility",
+        "feasible",
+        "full_actionable_no_smoking_change",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "plausibility-full-actionable-profile-03",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 31,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 0,
+            "moderate_physical_activity_frequency": 7,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 42.20135079973118,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "plausibility_full_actionable_profile_04",
+      "description": "Plausibility profile from reference_data row_id=2199 using the full-actionable configuration without smoking-status changes.",
+      "tags": [
+        "plausibility",
+        "feasible",
+        "full_actionable_no_smoking_change",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "plausibility-full-actionable-profile-04",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 30,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 1,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 40.3153606735755,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "plausibility_full_actionable_profile_05",
+      "description": "Plausibility profile from reference_data row_id=1821 using the full-actionable configuration without smoking-status changes.",
+      "tags": [
+        "plausibility",
+        "feasible",
+        "full_actionable_no_smoking_change",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "plausibility-full-actionable-profile-05",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 55,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 0,
+            "moderate_physical_activity_frequency": 2,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 35.772126301873776,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "plausibility_full_actionable_profile_06",
+      "description": "Plausibility profile from reference_data row_id=1690 using the full-actionable configuration without smoking-status changes.",
+      "tags": [
+        "plausibility",
+        "feasible",
+        "full_actionable_no_smoking_change",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "plausibility-full-actionable-profile-06",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 69,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 4,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 32.79454929933089,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "plausibility_full_actionable_profile_07",
+      "description": "Plausibility profile from reference_data row_id=1774 using the full-actionable configuration without smoking-status changes.",
+      "tags": [
+        "plausibility",
+        "feasible",
+        "full_actionable_no_smoking_change",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "plausibility-full-actionable-profile-07",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 49,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 0,
+            "moderate_physical_activity_frequency": 6,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 28.991489516687103,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "plausibility_full_actionable_profile_08",
+      "description": "Plausibility profile from reference_data row_id=2369 using the full-actionable configuration without smoking-status changes.",
+      "tags": [
+        "plausibility",
+        "feasible",
+        "full_actionable_no_smoking_change",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "plausibility-full-actionable-profile-08",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 61,
+            "smoking_status": 0,
+            "is_cholesterol": 1,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 7,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 41.043476907694966,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "plausibility_full_actionable_profile_09",
+      "description": "Plausibility profile from reference_data row_id=480 using the full-actionable configuration without smoking-status changes.",
+      "tags": [
+        "plausibility",
+        "feasible",
+        "full_actionable_no_smoking_change",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "plausibility-full-actionable-profile-09",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 56,
+            "smoking_status": 0,
+            "is_cholesterol": 1,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 0,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 36.36750154449887,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "plausibility_full_actionable_profile_10",
+      "description": "Plausibility profile from reference_data row_id=2927 using the full-actionable configuration without smoking-status changes.",
+      "tags": [
+        "plausibility",
+        "feasible",
+        "full_actionable_no_smoking_change",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "plausibility-full-actionable-profile-10",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 45,
+            "smoking_status": 0,
+            "is_cholesterol": 1,
+            "is_macrosomic_baby": 0,
+            "moderate_physical_activity_frequency": 0,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 35.94292534722222,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "plausibility_full_actionable_profile_11",
+      "description": "Plausibility profile from reference_data row_id=2606 using the full-actionable configuration without smoking-status changes.",
+      "tags": [
+        "plausibility",
+        "feasible",
+        "full_actionable_no_smoking_change",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "plausibility-full-actionable-profile-11",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 32,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 0,
+            "moderate_physical_activity_frequency": 0,
+            "is_bloodline": 1,
+            "brinkman_index": 0,
+            "BMI": 34.144120707596244,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "plausibility_full_actionable_profile_12",
+      "description": "Plausibility profile from reference_data row_id=2332 using the full-actionable configuration without smoking-status changes.",
+      "tags": [
+        "plausibility",
+        "feasible",
+        "full_actionable_no_smoking_change",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "plausibility-full-actionable-profile-12",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 39,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 1,
+            "moderate_physical_activity_frequency": 3,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 28.396928062303733,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "plausibility_full_actionable_profile_13",
+      "description": "Plausibility profile from reference_data row_id=1974 using the full-actionable configuration without smoking-status changes.",
+      "tags": [
+        "plausibility",
+        "feasible",
+        "full_actionable_no_smoking_change",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "plausibility-full-actionable-profile-13",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 24,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 0,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 40.934019427173034,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "plausibility_full_actionable_profile_14",
+      "description": "Plausibility profile from reference_data row_id=2008 using the full-actionable configuration without smoking-status changes.",
+      "tags": [
+        "plausibility",
+        "feasible",
+        "full_actionable_no_smoking_change",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "plausibility-full-actionable-profile-14",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 41,
+            "smoking_status": 1,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 4,
+            "is_bloodline": 0,
+            "brinkman_index": 3,
+            "BMI": 24.457331881124627,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "plausibility_full_actionable_profile_15",
+      "description": "Plausibility profile from reference_data row_id=2383 using the full-actionable configuration without smoking-status changes.",
+      "tags": [
+        "plausibility",
+        "feasible",
+        "full_actionable_no_smoking_change",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "plausibility-full-actionable-profile-15",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 37,
+            "smoking_status": 1,
+            "is_cholesterol": 1,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 0,
+            "is_bloodline": 1,
+            "brinkman_index": 2,
+            "BMI": 27.34847499120511,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "plausibility_full_actionable_profile_16",
+      "description": "Plausibility profile from reference_data row_id=2920 using the full-actionable configuration without smoking-status changes.",
+      "tags": [
+        "plausibility",
+        "feasible",
+        "full_actionable_no_smoking_change",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "plausibility-full-actionable-profile-16",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 39,
+            "smoking_status": 1,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 1,
+            "is_bloodline": 0,
+            "brinkman_index": 2,
+            "BMI": 27.199243053839755,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "plausibility_full_actionable_profile_17",
+      "description": "Plausibility profile from reference_data row_id=2085 using the full-actionable configuration without smoking-status changes.",
+      "tags": [
+        "plausibility",
+        "feasible",
+        "full_actionable_no_smoking_change",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "plausibility-full-actionable-profile-17",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 42,
+            "smoking_status": 1,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 6,
+            "is_bloodline": 0,
+            "brinkman_index": 2,
+            "BMI": 26.64647413470847,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "plausibility_smoker_full_actionable_profile_20",
+      "description": "Plausibility profile from reference_data row_id=1657 using the smoker full-actionable configuration.",
+      "tags": [
+        "plausibility",
+        "feasible",
+        "full_actionable_smoker",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "plausibility-smoker-full-actionable-profile-20",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 37,
+            "smoking_status": 2,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 0,
+            "is_bloodline": 0,
+            "brinkman_index": 2,
+            "BMI": 34.329434385515135,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "smoking_status",
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "plausibility_smoker_full_actionable_profile_21",
+      "description": "Plausibility profile from reference_data row_id=1985 using the smoker full-actionable configuration.",
+      "tags": [
+        "plausibility",
+        "feasible",
+        "full_actionable_smoker",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "plausibility-smoker-full-actionable-profile-21",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 27,
+            "smoking_status": 2,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 2,
+            "is_bloodline": 0,
+            "brinkman_index": 1,
+            "BMI": 33.702571114457555,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "smoking_status",
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "plausibility_smoker_full_actionable_profile_22",
+      "description": "Plausibility profile from reference_data row_id=2517 using the smoker full-actionable configuration.",
+      "tags": [
+        "plausibility",
+        "feasible",
+        "full_actionable_smoker",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "plausibility-smoker-full-actionable-profile-22",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 29,
+            "smoking_status": 2,
+            "is_cholesterol": 1,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 7,
+            "is_bloodline": 1,
+            "brinkman_index": 1,
+            "BMI": 33.56778386957956,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "smoking_status",
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "plausibility_smoker_full_actionable_profile_23",
+      "description": "Plausibility profile from reference_data row_id=1820 using the smoker full-actionable configuration.",
+      "tags": [
+        "plausibility",
+        "feasible",
+        "full_actionable_smoker",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "plausibility-smoker-full-actionable-profile-23",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 39,
+            "smoking_status": 2,
+            "is_cholesterol": 1,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 3,
+            "is_bloodline": 0,
+            "brinkman_index": 3,
+            "BMI": 26.036826121437027,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "smoking_status",
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "plausibility_smoker_full_actionable_profile_24",
+      "description": "Plausibility profile from reference_data row_id=2367 using the smoker full-actionable configuration.",
+      "tags": [
+        "plausibility",
+        "feasible",
+        "full_actionable_smoker",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "plausibility-smoker-full-actionable-profile-24",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 33,
+            "smoking_status": 2,
+            "is_cholesterol": 1,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 2,
+            "is_bloodline": 0,
+            "brinkman_index": 2,
+            "BMI": 31.075930395598363,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "smoking_status",
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "plausibility_smoker_full_actionable_profile_25",
+      "description": "Plausibility profile from reference_data row_id=1655 using the smoker full-actionable configuration.",
+      "tags": [
+        "plausibility",
+        "feasible",
+        "full_actionable_smoker",
+        "service",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "plausibility-smoker-full-actionable-profile-25",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 42,
+            "smoking_status": 2,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 0,
+            "is_bloodline": 1,
+            "brinkman_index": 2,
+            "BMI": 32.47972710871935,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "smoking_status",
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "consistency_profile_06",
+      "description": "Consistency profile from reference_data row_id=1949 using the active-smoker full-actionable configuration.",
+      "tags": [
+        "consistency_profile",
+        "feasible",
+        "active_smoker",
+        "service",
+        "production"
+      ],
+      "repeat_count": 10,
+      "request": {
+        "request_id": "consistency-profile-06",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 36,
+            "smoking_status": 2,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 7,
+            "is_bloodline": 0,
+            "brinkman_index": 3,
+            "BMI": 25.339606240760357,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "smoking_status",
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "consistency_profile_07",
+      "description": "Consistency profile from reference_data row_id=2538 using the active-smoker full-actionable configuration.",
+      "tags": [
+        "consistency_profile",
+        "feasible",
+        "active_smoker",
+        "service",
+        "production"
+      ],
+      "repeat_count": 10,
+      "request": {
+        "request_id": "consistency-profile-07",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 40,
+            "smoking_status": 2,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 0,
+            "is_bloodline": 0,
+            "brinkman_index": 3,
+            "BMI": 26.672806091507372,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "smoking_status",
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "consistency_profile_08",
+      "description": "Consistency profile from reference_data row_id=2508 using the active-smoker full-actionable configuration.",
+      "tags": [
+        "consistency_profile",
+        "feasible",
+        "active_smoker",
+        "service",
+        "production"
+      ],
+      "repeat_count": 10,
+      "request": {
+        "request_id": "consistency-profile-08",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 30,
+            "smoking_status": 2,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 7,
+            "is_bloodline": 1,
+            "brinkman_index": 2,
+            "BMI": 30.01890754969576,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "smoking_status",
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "consistency_profile_09",
+      "description": "Consistency profile from reference_data row_id=2301 using the active-smoker full-actionable configuration.",
+      "tags": [
+        "consistency_profile",
+        "feasible",
+        "active_smoker",
+        "service",
+        "production"
+      ],
+      "repeat_count": 10,
+      "request": {
+        "request_id": "consistency-profile-09",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 34,
+            "smoking_status": 2,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 0,
+            "is_bloodline": 1,
+            "brinkman_index": 2,
+            "BMI": 29.66454376268365,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "smoking_status",
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "consistency_profile_10",
+      "description": "Consistency profile from reference_data row_id=1457 using the active-smoker full-actionable configuration.",
+      "tags": [
+        "consistency_profile",
+        "feasible",
+        "active_smoker",
+        "service",
+        "production"
+      ],
+      "repeat_count": 10,
+      "request": {
+        "request_id": "consistency-profile-10",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 37,
+            "smoking_status": 2,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 0,
+            "is_bloodline": 1,
+            "brinkman_index": 2,
+            "BMI": 26.30889915271101,
+            "is_hypertension": 0
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "smoking_status",
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_01",
+      "description": "Latency profile from reference_data row_id=2336 using the full-actionable without smoking-status changes configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "latency-profile-01",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 36,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 0,
+            "moderate_physical_activity_frequency": 0,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 40.617653226785585,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_02",
+      "description": "Latency profile from reference_data row_id=1570 using the full-actionable without smoking-status changes configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "latency-profile-02",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 29,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 7,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 38.085454536780695,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    },
+    {
+      "name": "latency_profile_04",
+      "description": "Latency profile from reference_data row_id=1204 using the full-actionable without smoking-status changes configuration.",
+      "tags": [
+        "latency",
+        "latency_profile",
+        "performance",
+        "backend",
+        "production"
+      ],
+      "repeat_count": 1,
+      "request": {
+        "request_id": "latency-profile-04",
+        "target": {
+          "target_class": "low_risk",
+          "min_target_probability": 0.5
+        },
+        "instance": {
+          "features": {
+            "age": 52,
+            "smoking_status": 0,
+            "is_cholesterol": 0,
+            "is_macrosomic_baby": 2,
+            "moderate_physical_activity_frequency": 0,
+            "is_bloodline": 0,
+            "brinkman_index": 0,
+            "BMI": 36.69945987654321,
+            "is_hypertension": 1
+          }
+        },
+        "constraints": {
+          "mutable_allowed": [
+            "BMI",
+            "moderate_physical_activity_frequency",
+            "is_hypertension",
+            "is_cholesterol"
+          ]
+        }
+      },
+      "expectation": {
+        "expected_status": "FEASIBLE",
+        "expected_reason_codes": [
+          "OK"
+        ],
+        "no_solution_expected": false
+      }
+    }
+  ]
+}

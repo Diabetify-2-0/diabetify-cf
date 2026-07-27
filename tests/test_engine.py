@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from math import sqrt
 from time import perf_counter, sleep
 
 import pandas as pd
@@ -55,7 +56,7 @@ def test_engine_returns_infeasible_when_no_mutable_feature() -> None:
 def test_engine_returns_feasible_when_input_already_satisfies_target() -> None:
     req = CounterfactualRequest.model_validate(_request_payload(["bmi"]))
     engine = TestCounterfactualEngine()
-    engine.artifacts = object()  # type: ignore[assignment]
+    engine.artifacts = object()  
 
     def _prepared_request(request: CounterfactualRequest) -> object:
         return type(
@@ -75,7 +76,7 @@ def test_engine_returns_feasible_when_input_already_satisfies_target() -> None:
             },
         )()
 
-    engine._prepare_request = _prepared_request  # type: ignore[method-assign]
+    engine._prepare_request = _prepared_request  
 
     result = engine.generate(req)
 
@@ -87,12 +88,14 @@ def test_engine_returns_feasible_when_input_already_satisfies_target() -> None:
     assert result.planner_input.mutable_allowed == ["bmi"]
 
 
-def test_engine_returns_feasible_when_low_risk_probability_already_meets_requested_threshold() -> None:
+def test_engine_returns_feasible_when_low_risk_probability_already_meets_requested_threshold() -> (
+    None
+):
     payload = _request_payload(["bmi"])
     payload["target"]["min_target_probability"] = 0.30
     req = CounterfactualRequest.model_validate(payload)
     engine = TestCounterfactualEngine()
-    engine.artifacts = object()  # type: ignore[assignment]
+    engine.artifacts = object()  
 
     def _prepared_request(request: CounterfactualRequest) -> object:
         return type(
@@ -112,7 +115,7 @@ def test_engine_returns_feasible_when_low_risk_probability_already_meets_request
             },
         )()
 
-    engine._prepare_request = _prepared_request  # type: ignore[method-assign]
+    engine._prepare_request = _prepared_request  
 
     result = engine.generate(req)
 
@@ -138,7 +141,7 @@ def test_engine_timeout_returns_terminal_response_without_waiting_for_generator(
     payload["generation"]["timeout_ms"] = 100
     req = CounterfactualRequest.model_validate(payload)
     engine = TestCounterfactualEngine()
-    engine.artifacts = object()  # type: ignore[assignment]
+    engine.artifacts = object()  
 
     def _prepared_request(request: CounterfactualRequest) -> object:
         return type(
@@ -162,8 +165,8 @@ def test_engine_timeout_returns_terminal_response_without_waiting_for_generator(
         sleep(0.3)
         return pd.DataFrame([{"age": 45, "bmi": 28.0, "glucose": 165.0}])
 
-    engine._prepare_request = _prepared_request  # type: ignore[method-assign]
-    engine._generate_raw_candidates = _slow_generate_candidates  # type: ignore[method-assign]
+    engine._prepare_request = _prepared_request  
+    engine._generate_raw_candidates = _slow_generate_candidates  
     started = perf_counter()
 
     result = engine.generate(req)
@@ -266,76 +269,134 @@ def test_target_satisfied_enforces_min_probability() -> None:
     assert not engine._target_satisfied(moderate_low_prediction, "low_risk", 0.40)
 
 
-def test_objective_score_normalizes_action_cost_by_feature_range() -> None:
+def test_objective_score_uses_raw_lof_as_plausibility_penalty() -> None:
+    registry = FeatureRegistry.from_columns(["BMI"])
+    prediction = PredictionInfo(class_name="low_risk", probability_low_risk=0.8)
+    lower_lof_candidate = CounterfactualCandidate(
+        candidate_id="lower-lof",
+        features={"BMI": 29.0},
+        delta={"BMI": -1.0},
+        prediction=prediction,
+        metrics=CandidateMetrics(
+            distance_l1=0.0,
+            changed_feature_count=1,
+            lof_score=0.8,
+        ),
+    )
+    higher_lof_candidate = CounterfactualCandidate(
+        candidate_id="higher-lof",
+        features={"BMI": 29.0},
+        delta={"BMI": -1.0},
+        prediction=prediction,
+        metrics=CandidateMetrics(
+            distance_l1=0.0,
+            changed_feature_count=1,
+            lof_score=1.2,
+        ),
+    )
+    engine = TestCounterfactualEngine()
+    engine._reference_lof_scores = lambda: pd.Series([0.9, 1.1, 1.3]).to_numpy()
+    weights = {
+        "proximity": 0.0,
+        "plausibility": 1.0,
+    }
+
+    lower_score = engine._objective_score(
+        candidate=lower_lof_candidate,
+        preferences=weights,
+        mutable_allowed=["BMI"],
+        registry=registry,
+    )
+    higher_score = engine._objective_score(
+        candidate=higher_lof_candidate,
+        preferences=weights,
+        mutable_allowed=["BMI"],
+        registry=registry,
+    )
+
+    assert lower_score == 0.0
+    assert higher_score == 2 / 3
+    assert lower_score < higher_score
+
+
+def test_objective_score_defaults_use_proximity_plausibility_weights() -> None:
+    registry = FeatureRegistry.from_columns(["BMI"])
+    candidate = CounterfactualCandidate(
+        candidate_id="weighted",
+        features={"BMI": 29.0},
+        delta={"BMI": -1.0},
+        prediction=PredictionInfo(class_name="low_risk", probability_low_risk=0.8),
+        metrics=CandidateMetrics(
+            distance_l1=0.4,
+            changed_feature_count=1,
+            lof_score=1.2,
+        ),
+    )
+    engine = TestCounterfactualEngine()
+    engine._normalized_lof_score = lambda _lof_score: 0.6
+
+    score = engine._objective_score(
+        candidate=candidate,
+        preferences={},
+        mutable_allowed=["BMI", "is_hypertension"],
+        registry=registry,
+    )
+
+    expected = 0.50 * (0.4 / sqrt(2)) + 0.50 * 0.6
+    assert abs(score - expected) < 1e-12
+
+
+def test_proximity_uses_heom_for_mixed_feature_types() -> None:
     registry = FeatureRegistry(
         version="test_v1",
         features=[
             FeatureDefinition(
-                name="wide_scale",
+                name="BMI",
                 feature_type="continuous",
                 immutable=False,
                 actionable=True,
                 default_mutable=True,
-                global_min=0,
-                global_max=100,
+                global_min=10,
+                global_max=60,
                 cost_weight=1.0,
-                preferred_direction="any",
+                preferred_direction="decrease",
                 aliases=[],
             ),
             FeatureDefinition(
-                name="narrow_scale",
-                feature_type="continuous",
+                name="smoking_status",
+                feature_type="ordinal",
+                immutable=False,
+                actionable=True,
+                default_mutable=True,
+                global_min=0,
+                global_max=2,
+                cost_weight=1.0,
+                preferred_direction="decrease",
+                aliases=[],
+            ),
+            FeatureDefinition(
+                name="is_hypertension",
+                feature_type="binary",
                 immutable=False,
                 actionable=True,
                 default_mutable=True,
                 global_min=0,
                 global_max=1,
                 cost_weight=1.0,
-                preferred_direction="any",
+                preferred_direction="decrease",
                 aliases=[],
             ),
         ],
     )
-    metrics = CandidateMetrics(
-        distance_l1=0.0,
-        changed_feature_count=1,
-        lof_score=1.0,
-    )
-    prediction = PredictionInfo(class_name="low_risk", probability_low_risk=0.8)
-    wide_candidate = CounterfactualCandidate(
-        candidate_id="wide",
-        features={"wide_scale": 10.0, "narrow_scale": 0.0},
-        delta={"wide_scale": 10.0},
-        prediction=prediction,
-        metrics=metrics,
-    )
-    narrow_candidate = CounterfactualCandidate(
-        candidate_id="narrow",
-        features={"wide_scale": 0.0, "narrow_scale": 0.1},
-        delta={"narrow_scale": 0.1},
-        prediction=prediction,
-        metrics=metrics,
-    )
     engine = TestCounterfactualEngine()
-    weights = {
-        "proximity": 0.0,
-        "sparsity": 0.0,
-        "plausibility": 0.0,
-        "action_cost": 1.0,
-    }
 
-    wide_score = engine._objective_score(
-        candidate=wide_candidate,
-        preferences=weights,
-        registry=registry,
-    )
-    narrow_score = engine._objective_score(
-        candidate=narrow_candidate,
-        preferences=weights,
+    distance = engine._normalized_l1(
+        candidate={"BMI": 25.0, "smoking_status": 1, "is_hypertension": 0},
+        baseline={"BMI": 30.0, "smoking_status": 2, "is_hypertension": 1},
         registry=registry,
     )
 
-    assert wide_score == narrow_score == 0.1
+    assert distance == sqrt((5.0 / 50.0) ** 2 + (1.0 / 2.0) ** 2 + 1.0)
 
 
 def test_build_mutable_allowed_filters_immutable_non_actionable_and_duplicates() -> None:
@@ -560,3 +621,44 @@ def test_process_candidates_surfaces_medical_only_infeasible_reason() -> None:
     assert result.status == Status.INFEASIBLE
     assert result.reason_code == ReasonCode.MEDICAL_RULE_VIOLATION_ONLY
     assert result.message == "Candidates exist but fail medical plausibility constraints."
+
+
+def test_process_candidates_does_not_gate_on_immutable_mutable_or_lof_violations() -> None:
+    req = CounterfactualRequest.model_validate(_request_payload(["bmi"]))
+    engine = TestCounterfactualEngine()
+    prepared = type(
+        "Prepared",
+        (),
+        {
+            "registry": FeatureRegistry.from_columns(["age", "bmi", "glucose"]),
+            "model_columns": ["age", "bmi", "glucose"],
+            "instance_features": {"age": 45, "bmi": 31.2, "glucose": 165},
+            "immutable_set": {"age"},
+            "mutable_allowed": ["bmi"],
+            "query_df": pd.DataFrame([{"age": 45, "bmi": 31.2, "glucose": 165.0}]),
+            "base_prediction": PredictionInfo(class_name="high_risk", probability_low_risk=0.2),
+        },
+    )()
+    engine.artifacts = object()  
+    engine._as_model_input_df = lambda frame: frame  
+    engine._predict_info = lambda _frame: PredictionInfo(  
+        class_name="low_risk",
+        probability_low_risk=0.8,
+    )
+    engine._lof_score = lambda _frame: 9.9  
+
+    result = engine._process_candidates(
+        request=req,
+        prepared=prepared,
+        raw_candidates=pd.DataFrame([{"age": 60, "bmi": 28.0, "glucose": 120.0}]),
+        started=perf_counter(),
+    )
+
+    assert result.status == Status.FEASIBLE
+    assert result.reason_code == ReasonCode.OK
+    assert result.candidate is not None
+    assert result.candidate.features["age"] == 60.0
+    assert result.candidate.features["glucose"] == 120.0
+    assert result.candidate.metrics.lof_score == 9.9
+    assert result.validation.immutable_violation is False
+    assert result.validation.mutable_violation is False

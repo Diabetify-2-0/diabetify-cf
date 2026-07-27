@@ -15,10 +15,6 @@ def test_load_verification_scenarios_from_directory() -> None:
     medical_infeasible_repeatable = next(
         item for item in scenarios if item.name == "consistency_profile_12"
     )
-    infeasible = next(item for item in scenarios if item.name == "infeasible_no_mutable")
-    target_unreachable = next(
-        item for item in scenarios if item.name == "infeasible_target_unreachable_bmi_only"
-    )
     plausibility = next(
         item for item in scenarios if item.name == "plausibility_full_actionable_profile_01"
     )
@@ -50,16 +46,6 @@ def test_load_verification_scenarios_from_directory() -> None:
         ReasonCode.MEDICAL_RULE_VIOLATION_ONLY,
     )
     assert medical_infeasible_repeatable.expectation.no_solution_expected is True
-
-    assert infeasible.expectation.expected_status == Status.INFEASIBLE
-    assert infeasible.expectation.expected_reason_codes == (ReasonCode.NO_MUTABLE_FEATURE,)
-    assert infeasible.expectation.no_solution_expected is True
-
-    assert target_unreachable.expectation.expected_status == Status.INFEASIBLE
-    assert target_unreachable.expectation.expected_reason_codes == (
-        ReasonCode.TARGET_UNREACHABLE_UNDER_CONSTRAINTS,
-    )
-    assert target_unreachable.expectation.no_solution_expected is True
 
     assert plausibility.expectation.expected_status == Status.FEASIBLE
     assert plausibility.expectation.expected_reason_codes == (ReasonCode.OK,)
@@ -103,5 +89,4 @@ def test_load_verification_scenarios_can_exclude_by_tags() -> None:
     names = {item.name for item in scenarios}
 
     assert "consistency_profile_01" not in names
-    assert "feasible_bmi_activity" in names
-    assert "infeasible_no_mutable" in names
+    assert "actionability_non_bmi_activity_hypertension" in names

@@ -59,7 +59,6 @@ def main() -> None:
         columns_path=settings.columns_path,
         reference_data_path=settings.reference_data_path,
         feature_registry_path=settings.feature_registry_path,
-        max_lof_score=settings.max_lof_score,
         options=NearestNeighborOptions.from_settings(settings),
     )
     verifier = ExternalCounterfactualVerifier(settings=settings)

@@ -216,10 +216,9 @@ def _dummy_summary() -> MetricSummary:
     return MetricSummary(
         immutable_violation_rate=None,
         mutable_violation_rate=None,
-        lof_violation_rate=None,
         average_lof_score=None,
         min_lof_score=None,
-        max_lof_score=None,
+        maximum_lof_score=None,
         repeatability_rate=None,
         average_latency_ms=10.0,
         p95_latency_ms=10.0,
@@ -285,8 +284,6 @@ def test_actionability_suite_collects_all_configured_actionability_scenarios() -
         "actionability_smoker_bmi_hypertension_smoking_allowed",
         "actionability_smoker_bmi_activity_hypertension_smoking_allowed",
         "actionability_smoker_full_subset",
-        "actionability_infeasible_no_mutable",
-        "actionability_infeasible_hypertension_only",
     ]
     assert all(scenario.repeat_count == 1 for scenario in scenarios)
 
@@ -391,16 +388,14 @@ def test_build_plausibility_suite_payload_uses_compact_lof_shape() -> None:
 
     assert "metadata" not in payload
     assert set(payload["summary"]) == {
-        "lof_within_threshold",
         "average_lof_score",
         "min_lof_score",
-        "max_lof_score",
+        "maximum_lof_score",
         "total_scenarios",
         "total_candidates",
         "average_latency_ms",
         "p95_latency_ms",
     }
-    assert payload["summary"]["lof_within_threshold"] is True
     scenario_payload = payload["scenarios"][0]
     assert scenario_payload == {
         "name": "suite_case",
@@ -422,10 +417,9 @@ def test_build_repeatability_suite_payload_uses_compact_repeatability_shape() ->
         summary=MetricSummary(
             immutable_violation_rate=None,
             mutable_violation_rate=None,
-            lof_violation_rate=None,
             average_lof_score=None,
             min_lof_score=None,
-            max_lof_score=None,
+            maximum_lof_score=None,
             repeatability_rate=1.0,
             average_latency_ms=15.0,
             p95_latency_ms=17.7,
@@ -491,10 +485,9 @@ def test_build_latency_suite_payload_uses_latency_shape() -> None:
         summary=MetricSummary(
             immutable_violation_rate=None,
             mutable_violation_rate=None,
-            lof_violation_rate=None,
             average_lof_score=None,
             min_lof_score=None,
-            max_lof_score=None,
+            maximum_lof_score=None,
             repeatability_rate=None,
             average_latency_ms=15.0,
             p95_latency_ms=17.7,
@@ -550,7 +543,6 @@ def test_build_backend_suite_index_contains_suite_rows() -> None:
     assert payload["suite_count"] == 1
     assert payload["suites"][0]["suite_name"] == "actionability_core"
     assert payload["overall_summary"]["total_scenarios"] == 1
-    assert payload["overall_summary"]["lof_violation_rate"] is None
     assert payload["overall_summary"]["average_lof_score"] is None
     assert payload["overall_summary"]["min_lof_score"] is None
-    assert payload["overall_summary"]["max_lof_score"] is None
+    assert payload["overall_summary"]["maximum_lof_score"] is None

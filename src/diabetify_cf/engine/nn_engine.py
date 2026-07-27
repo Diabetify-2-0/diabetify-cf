@@ -35,7 +35,6 @@ class NearestNeighborCounterfactualEngine(ArtifactBackedCounterfactualEngine):
         columns_path: str = "",
         reference_data_path: str = "",
         feature_registry_path: str = "",
-        max_lof_score: float = 1.5,
         options: NearestNeighborOptions | None = None,
     ) -> None:
         super().__init__(
@@ -43,7 +42,6 @@ class NearestNeighborCounterfactualEngine(ArtifactBackedCounterfactualEngine):
             columns_path=columns_path,
             reference_data_path=reference_data_path,
             feature_registry_path=feature_registry_path,
-            max_lof_score=max_lof_score,
         )
         self.options = options or NearestNeighborOptions()
 
@@ -73,10 +71,6 @@ class NearestNeighborCounterfactualEngine(ArtifactBackedCounterfactualEngine):
             ]
             eligible = reference_frame.iloc[top_indices].copy()
             eligible_probabilities = low_risk_probabilities[top_indices]
-        elif len(eligible) > self.options.candidate_pool_size:
-            ranked = np.argsort(eligible_probabilities)[::-1][: self.options.candidate_pool_size]
-            eligible = eligible.iloc[ranked].copy()
-            eligible_probabilities = eligible_probabilities[ranked]
 
         ranked_neighbors = self._rank_neighbors(
             eligible=eligible,
@@ -85,6 +79,7 @@ class NearestNeighborCounterfactualEngine(ArtifactBackedCounterfactualEngine):
             mutable_allowed=mutable_allowed,
             prepared=prepared,
         )
+        ranked_neighbors = ranked_neighbors[: self.options.candidate_pool_size]
         projected = self._project_neighbors(
             ranked_neighbors=ranked_neighbors[: self.options.max_neighbors],
             baseline=baseline,
@@ -107,29 +102,61 @@ class NearestNeighborCounterfactualEngine(ArtifactBackedCounterfactualEngine):
         mutable_allowed: list[str],
         prepared: PreparedRequest,
     ) -> list[pd.Series]:
-        ranked: list[tuple[tuple[float, float, int], pd.Series]] = []
+        ranked: list[tuple[tuple[float, float, int, float], pd.Series]] = []
         for row, low_risk_probability in zip(
             eligible.itertuples(index=False, name=None),
             eligible_probabilities,
             strict=True,
         ):
             series = pd.Series(row, index=eligible.columns)
-            weighted_distance = 0.0
+            candidate_features = self._series_to_feature_map(series=series, prepared=prepared)
+            actionable_candidate_features = {
+                feature_name: candidate_features[feature_name]
+                for feature_name in mutable_allowed
+                if feature_name in candidate_features
+            }
+            actionable_baseline = {
+                feature_name: baseline[feature_name]
+                for feature_name in mutable_allowed
+                if feature_name in baseline
+            }
+            heom_distance = self._normalized_l1(
+                actionable_candidate_features,
+                actionable_baseline,
+                prepared.registry,
+            )
+            action_cost = 0.0
             changed_count = 0
             for feature_name in mutable_allowed:
                 delta = abs(float(series[feature_name]) - float(baseline[feature_name]))
                 if delta < 1e-9:
                     continue
                 changed_count += 1
-                weighted_distance += self._weighted_normalized_delta(
+                action_cost += self._weighted_normalized_delta(
                     feature_name=feature_name,
                     delta=delta,
                     prepared=prepared,
                 )
-            score = (-float(low_risk_probability), weighted_distance, changed_count)
+            score = (
+                heom_distance,
+                action_cost,
+                changed_count,
+                -float(low_risk_probability),
+            )
             ranked.append((score, series))
         ranked.sort(key=lambda item: item[0])
         return [series for _, series in ranked]
+
+    def _series_to_feature_map(
+        self,
+        *,
+        series: pd.Series,
+        prepared: PreparedRequest,
+    ) -> dict[str, Any]:
+        return {
+            feature_name: prepared.registry.coerce_value(feature_name, series[feature_name])
+            for feature_name in prepared.model_columns
+        }
 
     def _project_neighbors(
         self,

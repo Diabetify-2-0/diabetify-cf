@@ -27,7 +27,6 @@ class VerificationCandidateResult:
     target_satisfied: bool
     prediction_matches_returned: bool
     external_lof_score: float
-    external_lof_within_threshold: bool
     medical_ok: bool
     directional_ok: bool
     transition_ok: bool
@@ -58,8 +57,7 @@ class VerificationReport:
 
 
 class _VerifierRuleChecker(ArtifactBackedCounterfactualEngine):
-    def __init__(self, *, artifacts: ModelArtifacts, max_lof_score: float) -> None:
-        self.max_lof_score = max(1.0, float(max_lof_score))
+    def __init__(self, *, artifacts: ModelArtifacts) -> None:
         self.logger = logging.getLogger("diabetify_cf.verification")
         self.artifacts = artifacts
         self.initialization_error = None
@@ -79,7 +77,6 @@ class ExternalCounterfactualVerifier:
         *,
         settings: Settings | None = None,
         artifacts: ModelArtifacts | None = None,
-        max_lof_score: float | None = None,
     ) -> None:
         if artifacts is None:
             loaded_settings = settings or Settings()
@@ -89,15 +86,9 @@ class ExternalCounterfactualVerifier:
                 reference_data_path=loaded_settings.reference_data_path,
                 feature_registry_path=loaded_settings.feature_registry_path,
             )
-            if max_lof_score is None:
-                max_lof_score = loaded_settings.max_lof_score
-
-        if max_lof_score is None:
-            max_lof_score = 1.5
 
         self._checker = _VerifierRuleChecker(
             artifacts=artifacts,
-            max_lof_score=max_lof_score,
         )
 
     def verify_response(
@@ -194,7 +185,6 @@ class ExternalCounterfactualVerifier:
                 verified=verified_prediction,
             ),
             external_lof_score=external_lof_score,
-            external_lof_within_threshold=external_lof_score <= self._checker.max_lof_score,
             medical_ok=medical_ok,
             directional_ok=directional_ok,
             transition_ok=transition_ok,
@@ -218,7 +208,6 @@ class ExternalCounterfactualVerifier:
                 item.immutable_ok
                 and item.mutable_ok
                 and item.target_satisfied
-                and item.external_lof_within_threshold
                 and item.constraint_gate_ok
                 for item in candidate_results
             )
