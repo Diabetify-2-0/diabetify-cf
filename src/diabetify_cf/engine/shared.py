@@ -819,8 +819,8 @@ class ArtifactBackedCounterfactualEngine(CounterfactualEngine, ABC):
         mutable_allowed: list[str],
         registry: FeatureRegistry,
     ) -> float:
-        w_proximity = float(preferences.get("proximity", 0.50))
-        w_plausibility = float(preferences.get("plausibility", 0.50))
+        w_proximity = float(preferences.get("proximity", 0.75))
+        w_plausibility = float(preferences.get("plausibility", 0.25))
 
         mutable_count = max(len(mutable_allowed), 1)
         proximity_denominator = max(float(np.sqrt(mutable_count)), 1e-6)

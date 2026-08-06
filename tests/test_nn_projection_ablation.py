@@ -10,6 +10,8 @@ from diabetify_cf.engine.nn_engine import NearestNeighborCounterfactualEngine
 from diabetify_cf.experiments.nn_projection_ablation import (
     NNProjectionAblation,
     NNProjectionAblationConfig,
+    NNProjectionBestCandidateAblation,
+    NNProjectionFullSpaceHeomAblation,
     ProfileEvaluation,
     ProjectionResult,
     SelectedProfile,
@@ -96,6 +98,61 @@ def test_sparse_selection_uses_smallest_valid_prefix_from_full_neighbor() -> Non
     assert selected is not None
     assert selected.changed_feature_count == 2
     assert selected.neighbor_rank == 1
+
+
+def test_best_candidate_ablation_selects_sparse_across_all_neighbors() -> None:
+    results = [
+        _result(method="sparse", changed=2, rank=1, proximity=0.20),
+        _result(method="sparse", changed=1, rank=4, proximity=0.05),
+        _result(method="full", changed=3, rank=1, proximity=0.30),
+    ]
+    full = NNProjectionBestCandidateAblation._select_full(results)
+    experiment = NNProjectionBestCandidateAblation.__new__(NNProjectionBestCandidateAblation)
+
+    selected = experiment._select_sparse(results, full=full)
+
+    assert selected is not None
+    assert selected.changed_feature_count == 1
+    assert selected.neighbor_rank == 4
+    assert experiment._requires_same_source_neighbor() is False
+
+
+def test_full_space_heom_ablation_ranks_neighbors_with_all_features() -> None:
+    engine = NearestNeighborCounterfactualEngine.__new__(NearestNeighborCounterfactualEngine)
+    registry = SimpleNamespace(
+        get=lambda name: _feature(name, span=10.0, cost_weight=1.0),
+        coerce_value=lambda _name, value: float(value),
+    )
+    engine._series_to_feature_map = lambda *, series, prepared: {
+        feature: float(series[feature]) for feature in prepared.model_columns
+    }
+    engine._equal = lambda left, right: float(left) == float(right)
+    engine._normalized_l1 = NearestNeighborCounterfactualEngine._normalized_l1.__get__(
+        engine,
+        NearestNeighborCounterfactualEngine,
+    )
+    experiment = NNProjectionFullSpaceHeomAblation.__new__(NNProjectionFullSpaceHeomAblation)
+    experiment.engine = engine
+    prepared = SimpleNamespace(
+        model_columns=["fixed", "mutable"],
+        registry=registry,
+    )
+    eligible = pd.DataFrame(
+        [
+            {"fixed": 0.0, "mutable": 9.0},
+            {"fixed": 9.0, "mutable": 1.0},
+        ]
+    )
+
+    ranked = experiment._rank_neighbors(
+        eligible=eligible,
+        eligible_probabilities=pd.Series([0.6, 0.9]).to_numpy(),
+        baseline={"fixed": 0.0, "mutable": 0.0},
+        mutable_allowed=["mutable"],
+        prepared=prepared,
+    )
+
+    assert float(ranked[0]["mutable"]) == 9.0
 
 
 def test_config_rejects_non_low_risk_target() -> None:

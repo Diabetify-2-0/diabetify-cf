@@ -211,7 +211,7 @@ class NNProjectionAblation:
                 sparse=None,
             )
 
-        ranked_neighbors = self.engine._rank_neighbors(
+        ranked_neighbors = self._rank_neighbors(
             eligible=self.eligible_frame,
             eligible_probabilities=self.eligible_probabilities,
             baseline=baseline,
@@ -225,7 +225,7 @@ class NNProjectionAblation:
         )
         results = self._evaluate_projection_specs(specs=specs, prepared=prepared)
         full = self._select_full(results)
-        sparse = self._select_sparse_from_same_neighbor(results, full=full)
+        sparse = self._select_sparse(results, full=full)
 
         evaluation = ProfileEvaluation(
             reference_index=reference_index,
@@ -241,7 +241,7 @@ class NNProjectionAblation:
     def evaluate_request_profile(self, request: CounterfactualRequest) -> ProfileEvaluation:
         prepared = self.engine._prepare_request(request)
         baseline = dict(prepared.instance_features)
-        ranked_neighbors = self.engine._rank_neighbors(
+        ranked_neighbors = self._rank_neighbors(
             eligible=self.eligible_frame,
             eligible_probabilities=self.eligible_probabilities,
             baseline=baseline,
@@ -259,7 +259,7 @@ class NNProjectionAblation:
             min_target_probability=request.target.min_target_probability,
         )
         full = self._select_full(results)
-        sparse = self._select_sparse_from_same_neighbor(results, full=full)
+        sparse = self._select_sparse(results, full=full)
 
         evaluation = ProfileEvaluation(
             reference_index=None,
@@ -282,6 +282,23 @@ class NNProjectionAblation:
             indices = np.argsort(probabilities)[::-1][: self.config.candidate_pool_size]
             return self.reference_frame.iloc[indices].copy(), probabilities[indices]
         return eligible, eligible_probabilities
+
+    def _rank_neighbors(
+        self,
+        *,
+        eligible: pd.DataFrame,
+        eligible_probabilities: np.ndarray,
+        baseline: dict[str, Any],
+        mutable_allowed: list[str],
+        prepared: PreparedRequest,
+    ) -> list[pd.Series]:
+        return self.engine._rank_neighbors(
+            eligible=eligible,
+            eligible_probabilities=eligible_probabilities,
+            baseline=baseline,
+            mutable_allowed=mutable_allowed,
+            prepared=prepared,
+        )
 
     def _build_projection_specs(
         self,
@@ -430,6 +447,14 @@ class NNProjectionAblation:
                 -item.probability_low_risk,
             ),
         )
+
+    def _select_sparse(
+        self,
+        results: list[ProjectionResult],
+        *,
+        full: ProjectionResult | None,
+    ) -> ProjectionResult | None:
+        return self._select_sparse_from_same_neighbor(results, full=full)
 
     def _select_profiles_from_input(self) -> tuple[list[SelectedProfile], dict[str, Any]]:
         assert self.profile_input_path is not None
@@ -646,24 +671,9 @@ class NNProjectionAblation:
             full - sparse for full, sparse in zip(full_sparsities, sparse_sparsities, strict=True)
         ]
         return {
-            "experiment": "nn_full_vs_prefix_sparse_target_gate_only",
+            "experiment": self._experiment_name(),
             "methodology": {
-                "shared_neighbor_ranking": True,
-                "same_source_neighbor": True,
-                "full_selection": "first target-valid full projection by neighbor rank",
-                "sparse_selection": (
-                    "smallest target-valid cheapest-feature prefix from the same neighbor "
-                    "selected by the full method"
-                ),
-                "active_selection_checks": ["target_probability"],
-                "omitted_selection_checks": [
-                    "directional_constraint",
-                    "allowed_transition",
-                    "medical_range",
-                    "final_objective_ranking",
-                ],
-                "primary_proximity_metric": "heom",
-                "primary_sparsity_metric": "changed_feature_count",
+                **self._methodology_payload(),
             },
             "config": self._config_payload(),
             "selection_summary": selection_summary,
@@ -711,11 +721,38 @@ class NNProjectionAblation:
                     "selected ablation candidate does not contain all model features"
                 )
         if (
-            evaluation.full is not None
+            self._requires_same_source_neighbor()
+            and evaluation.full is not None
             and evaluation.sparse is not None
             and evaluation.full.neighbor_rank != evaluation.sparse.neighbor_rank
         ):
             raise RuntimeError("full and sparse candidates must use the same source neighbor")
+
+    def _experiment_name(self) -> str:
+        return "nn_full_vs_prefix_sparse_target_gate_only"
+
+    def _methodology_payload(self) -> dict[str, Any]:
+        return {
+            "shared_neighbor_ranking": True,
+            "same_source_neighbor": True,
+            "full_selection": "first target-valid full projection by neighbor rank",
+            "sparse_selection": (
+                "smallest target-valid cheapest-feature prefix from the same neighbor "
+                "selected by the full method"
+            ),
+            "active_selection_checks": ["target_probability"],
+            "omitted_selection_checks": [
+                "directional_constraint",
+                "allowed_transition",
+                "medical_range",
+                "final_objective_ranking",
+            ],
+            "primary_proximity_metric": "heom",
+            "primary_sparsity_metric": "changed_feature_count",
+        }
+
+    def _requires_same_source_neighbor(self) -> bool:
+        return True
 
     def _reference_features(self, reference_index: int) -> dict[str, JSONFeatureValue]:
         if reference_index < 0 or reference_index >= len(self.reference_frame):
@@ -753,6 +790,123 @@ class NNProjectionAblation:
         if self.profile_input_path is not None:
             return self.config.fixed_profile_payload()
         return self.config.to_payload()
+
+
+class NNProjectionBestCandidateAblation(NNProjectionAblation):
+    """Compare best target-valid full and sparse projections across all ranked neighbors."""
+
+    @staticmethod
+    def _select_sparse_best_candidate(results: list[ProjectionResult]) -> ProjectionResult | None:
+        candidates = [item for item in results if item.method == "sparse"]
+        if not candidates:
+            return None
+        return min(
+            candidates,
+            key=lambda item: (
+                item.proximity_normalized_l1,
+                item.changed_feature_count,
+                item.neighbor_rank,
+                -item.probability_low_risk,
+            ),
+        )
+
+    def _select_sparse(
+        self,
+        results: list[ProjectionResult],
+        *,
+        full: ProjectionResult | None,
+    ) -> ProjectionResult | None:
+        return self._select_sparse_best_candidate(results)
+
+    def _experiment_name(self) -> str:
+        return "nn_full_vs_prefix_sparse_best_candidate_target_gate_only"
+
+    def _methodology_payload(self) -> dict[str, Any]:
+        return {
+            "shared_neighbor_ranking": True,
+            "same_source_neighbor": False,
+            "full_selection": "first target-valid full projection by neighbor rank",
+            "sparse_selection": (
+                "minimum-proximity target-valid prefix sparse projection across all "
+                "ranked neighbors"
+            ),
+            "active_selection_checks": ["target_probability"],
+            "omitted_selection_checks": [
+                "directional_constraint",
+                "allowed_transition",
+                "medical_range",
+                "final_objective_ranking",
+            ],
+            "primary_proximity_metric": "heom",
+            "primary_sparsity_metric": "changed_feature_count",
+        }
+
+    def _requires_same_source_neighbor(self) -> bool:
+        return False
+
+
+class NNProjectionFullSpaceHeomAblation(NNProjectionAblation):
+    """Compare full and sparse projections after full-feature HEOM neighbor ranking."""
+
+    def _rank_neighbors(
+        self,
+        *,
+        eligible: pd.DataFrame,
+        eligible_probabilities: np.ndarray,
+        baseline: dict[str, Any],
+        mutable_allowed: list[str],
+        prepared: PreparedRequest,
+    ) -> list[pd.Series]:
+        ranked: list[tuple[tuple[float, float, int], pd.Series]] = []
+        for row_index, (row, low_risk_probability) in enumerate(
+            zip(
+                eligible.itertuples(index=False, name=None),
+                eligible_probabilities,
+                strict=True,
+            )
+        ):
+            series = pd.Series(row, index=eligible.columns)
+            candidate_features = self.engine._series_to_feature_map(
+                series=series,
+                prepared=prepared,
+            )
+            heom_distance = self.engine._normalized_l1(
+                candidate_features,
+                baseline,
+                prepared.registry,
+            )
+            ranked.append(
+                (
+                    (heom_distance, -float(low_risk_probability), row_index),
+                    series,
+                )
+            )
+        ranked.sort(key=lambda item: item[0])
+        return [series for _, series in ranked]
+
+    def _experiment_name(self) -> str:
+        return "nn_full_vs_prefix_sparse_full_space_heom_target_gate_only"
+
+    def _methodology_payload(self) -> dict[str, Any]:
+        return {
+            "shared_neighbor_ranking": True,
+            "same_source_neighbor": True,
+            "neighbor_ranking_space": "all_model_features",
+            "full_selection": "first target-valid full projection by full-space HEOM neighbor rank",
+            "sparse_selection": (
+                "smallest target-valid cheapest-feature prefix from the same neighbor "
+                "selected by the full method"
+            ),
+            "active_selection_checks": ["target_probability"],
+            "omitted_selection_checks": [
+                "directional_constraint",
+                "allowed_transition",
+                "medical_range",
+                "final_objective_ranking",
+            ],
+            "primary_proximity_metric": "heom",
+            "primary_sparsity_metric": "changed_feature_count",
+        }
 
 
 def artifact_sha256(path: str | Path) -> str:
