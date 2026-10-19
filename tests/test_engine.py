@@ -342,7 +342,7 @@ def test_objective_score_defaults_use_proximity_plausibility_weights() -> None:
         registry=registry,
     )
 
-    expected = 0.50 * (0.4 / sqrt(2)) + 0.50 * 0.6
+    expected = 0.75 * (0.4 / sqrt(2)) + 0.25 * 0.6
     assert abs(score - expected) < 1e-12
 
 
